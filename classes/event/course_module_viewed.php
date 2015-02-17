@@ -15,28 +15,34 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Provides code to be executed during the module installation
+ * Defines the view event.
  *
- * This file replaces the legacy STATEMENTS section in db/install.xml,
- * lib.php/modulename_install() post installation hook and partially defaults.php.
- *
- * @package    mod_domoscio
+ * @package    mod_newmodule
  * @copyright  2015 Your Name <your@email.adress>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-/**
- * Post installation procedure
- *
- * @see upgrade_plugins_modules()
- */
-function xmldb_domoscio_install() {
-}
+namespace mod_newmodule\event;
+
+defined('MOODLE_INTERNAL') || die();
 
 /**
- * Post installation recovery procedure
+ * The mod_newmodule instance list viewed event class
  *
- * @see upgrade_plugins_modules()
+ * If the view mode needs to be stored as well, you may need to
+ * override methods get_url() and get_legacy_log_data(), too.
+ *
+ * @package    mod_newmodule
+ * @copyright  2015 Your Name <your@email.adress>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-function xmldb_domoscio_install_recovery() {
+class course_module_viewed extends \core\event\course_module_viewed {
+
+    /**
+     * Initialize the event
+     */
+    protected function init() {
+        $this->data['objecttable'] = 'newmodule';
+        parent::init();
+    }
 }
