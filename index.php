@@ -30,6 +30,7 @@
 require_once(dirname(dirname(dirname(__FILE__))).'/config.php');
 require_once(dirname(__FILE__).'/lib.php');
 
+
 $id = required_param('id', PARAM_INT); // Course.
 
 $course = $DB->get_record('course', array('id' => $id), '*', MUST_EXIST);
@@ -156,45 +157,56 @@ $table->attributes['class'] = 'generaltable mod_index';
 
 if ($usesections) {
     $strsectionname = get_string('sectionname', 'format_'.$course->format);
-    $table->head  = array ($strsectionname, $strname);
-    $table->align = array ('center', 'left');
-} else {
+    $table->head  = array ($strsectionname);
+    $table->align = array ('center');
+    //$table->valign= arra
+} /*else {
     $table->head  = array ($strname);
-    $table->align = array ('left');
-}
+    $table->align = array ('center');
+}*/
 
 
 $modinfo = get_fast_modinfo($course);
 $currentsection = '';
 
+
 foreach ($modinfo->cms as $cm) {
+
     $row = array();
+
     if ($usesections) {
+
         if ($cm->sectionnum !== $currentsection) {
+        
             if ($cm->sectionnum) {
                 $row[] = get_section_name($course, $cm->sectionnum);
+
             }
             if ($currentsection !== '') {
-                $table->data[] = 'hr';
+                 
+                //$table->data[] = 'hr';
             }
             $currentsection = $cm->sectionnum;
+
         }
     }
 
-    $class = $cm->visible ? null : array('class' => 'dimmed');
+    //$class = $cm->visible ? null : array('class' => 'dimmed');
+
 
     /*$row[] = html_writer::link(new moodle_url('view.php', array('id' => $cm->id)),
                 $cm->get_formatted_name(), $class);*/
-
-    $row[] = html_writer::link(new moodle_url("$CFG->wwwroot/mod/".$cm->modname."/view.php?id=".$cm->id, array('id' => $cm->id)),
-                $cm->get_formatted_name(), $class);
-
-    
-
+    if($cm->modname !== "domoscio"){
+    $test[] = "<FORM>  <INPUT type=\"checkbox\" name=\"nom\" value=\"valeur attachée au bouton\"> </FORM>";    
+    $row[] = html_writer::link(new moodle_url("$CFG->wwwroot/mod/".$cm->modname."/view.php?id=".$cm->id, array('id' => $cm->id)),$cm->get_formatted_name(), null);  
+    }
 
 
     $table->data[] = $row;
+
+
 }
+
 
 echo html_writer::table($table);
 

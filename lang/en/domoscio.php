@@ -15,8 +15,8 @@ $string['domscio:view'] = 'View quiz information';
 
 
 // settings page
-$string['settings_url'] = 'Domoscio Username';
-$string['settings_url_helptext'] = 'Enter the Domoscio user API.';
+$string['settings_id'] = 'Domoscio Identifiant';
+$string['settings_id_helptext'] = 'Enter the Domoscio Identifiant user API.';
 $string['settings_apikey'] = 'Domoscio API key';
 $string['settings_apikey_helptext'] = 'Enter the MediaServer API key. An API key looks like "bku5t-N7P4n-rJs17-fkAsB-38Mqv".';
 

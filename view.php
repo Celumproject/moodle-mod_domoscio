@@ -30,6 +30,7 @@
 require_once(dirname(dirname(dirname(__FILE__))).'/config.php');
 require_once(dirname(__FILE__).'/lib.php');
 
+
 $id = optional_param('id', 0, PARAM_INT); // Course_module ID, or
 $n  = optional_param('d', 0, PARAM_INT);  // ... domoscio instance ID - it should be named as the first character of the module.
 
@@ -88,14 +89,21 @@ if ($domoscio->intro) {
 }
 
 // Replace the following lines with you own code.
-echo $OUTPUT->heading('Yay! It works!');
+echo $OUTPUT->heading('Domoscio');
 
 
 $url1=new moodle_url("$CFG->wwwroot/mod/domoscio/index.php?id=".$COURSE->id);
-echo $OUTPUT->action_link( $url1, "Liste des ressources");
-
+echo $OUTPUT->action_link( $url1, "Associer Ressource"); echo "<BR>";
+echo $OUTPUT->action_link( $url1, "Ajouter Quizz");
 
 //echo $OUTPUT->continue_button(new moodle_url("$CFG->wwwroot/mod/domoscio/index.php?id=".$COURSE->id));
+
+
+echo "<BR>";
+//include("auth.php");
+
+
+
 
 
 
