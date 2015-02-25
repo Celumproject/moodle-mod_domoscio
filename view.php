@@ -100,7 +100,7 @@ echo $OUTPUT->action_link( $url1, "Ajouter Quizz");
 
 
 echo "<BR>";
-//include("auth.php");
+require_once($CFG->dirroot.'/mod/domoscio/sdk/auth.php');
 
 
 

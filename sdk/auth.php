@@ -1,8 +1,8 @@
 <?php
 
 
-require_once(dirname(dirname(dirname(__FILE__))).'/config.php');
-require_once(dirname(__FILE__).'/lib.php');
+//require_once(dirname(dirname(dirname(__FILE__))).'/config.php');
+//require_once(dirname(__FILE__).'/lib.php');
 
 
 
@@ -17,7 +17,7 @@ curl_setopt($ch, CURLOPT_URL, "http://stats-engine.domoscio.com/v1/companies/".$
 curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
 
 curl_setopt($ch, CURLOPT_HEADER, true);
-curl_setopt($ch, CURLOPT_USERPWD, "mohsan:b326f68391fe36101cf48feee48471f5");
+//curl_setopt($ch, CURLOPT_USERPWD, "mohsan:b326f68391fe36101cf48feee48471f5");
 
 $ch_reponse=curl_exec($ch);
 
