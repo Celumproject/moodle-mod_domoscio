@@ -104,6 +104,7 @@ function domoscio_add_instance(stdClass $domoscio, mod_domoscio_mod_form $mform 
 
         $graph = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/knowledge_graphs/?token=$config->domoscio_apikey")->post($json));
 
+        $graphid = $graph->id;
         $knowledge_graph = new stdClass;
         $knowledge_graph->course_id = $domoscio->course;
         $knowledge_graph->knowledge_graph_id = $graph->id;
