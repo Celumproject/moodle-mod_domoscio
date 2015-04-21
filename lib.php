@@ -523,6 +523,44 @@ function is_user_with_role($courseid, $rolename, $userid = 0) {
     return $result;
 }
 
+function get_resource_info($knowledge_node) {
+
+    global $DB, $CFG;
+
+    $query = "SELECT `mdl_course_modules`.`module`,`mdl_course_modules`.`instance`
+            FROM `mdl_course_modules` INNER JOIN `mdl_knowledge_nodes`
+            ON `mdl_course_modules`.`id` = `mdl_knowledge_nodes`.`resource_id`
+            WHERE `mdl_knowledge_nodes`.`knowledge_node_id` =".$knowledge_node;
+
+    $resource = $DB->get_record_sql($query);
+
+    $modulename = null;
+
+    switch($resource->module) {
+        case 3:
+            $modulename = "mdl_book";
+            break;
+
+        case 14:
+            $modulename = "mld_lesson";
+            break;
+
+        case 16:
+            $modulename = "mdl_page";
+            break;
+
+        case 18:
+            $modulename = "mdl_resource";
+            break;
+    }
+
+    $query = "SELECT name FROM $modulename WHERE id = $resource->instance";
+
+    $moduleinfo = $DB->get_record_sql($query);
+
+    return $moduleinfo->name;
+}
+
 /* Chope les réponses */
 function get_answers($qnum)
 {

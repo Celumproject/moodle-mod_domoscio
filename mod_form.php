@@ -66,8 +66,8 @@ class mod_domoscio_mod_form extends moodleform_mod {
         // ... or adding more fieldsets ('header' elements) if needed for better logic.
         #$mform->addElement('static', 'label1', 'domosciosetting1', 'Your domoscio fields go here. Replace me!');
 
-        $mform->addElement('header', 'domoscioresourceset', get_string('domosciofieldset', 'domoscio'));
-        $mform->addElement('select', 'resource', get_string('groupmode', 'group'), $this->select_ressource(), NOGROUPS);
+        $mform->addElement('header', 'domoscioresourceset', get_string('domoscioresourceset', 'domoscio'));
+        $mform->addElement('select', 'resource', get_string('resourceset_resource', 'domoscio'), $this->select_ressource(), NOGROUPS);
         $mform->addHelpButton('resource', 'domoscioresourceset', 'domoscio');
 
         // Add standard grading elements.

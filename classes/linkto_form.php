@@ -40,11 +40,19 @@ require_once("$CFG->libdir/formslib.php");
 class linkto_form extends moodleform {
 
     public function definition() {
-        global $CFG;
+        global $DB, $CFG;
+
+        //requetes sur les questions
+        $sqlquestions = "SELECT * FROM `mdl_question` INNER JOIN `mdl_quiz_slots` ON `mdl_question`.`id` = `mdl_quiz_slots`.`questionid` WHERE `mdl_quiz_slots`.`quizid` = $this->_customdata";
+
+        $questions = $DB->get_records_sql($sqlquestions);
 
         $mform = $this->_form;
 
-        $mform->addElement('select', 'resourceid', $this->_customdata['titles'], $this->_customdata['options'], $attributes);
+        foreach($questions as $question)
+        {
+            $mform->addElement('advcheckbox', $question->id, $question->name, "<hr/>".$question->questiontext, array('group' => 1), array(0, 1));
+        }
 
         $this->add_action_buttons();
     }

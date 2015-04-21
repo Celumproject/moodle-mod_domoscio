@@ -100,8 +100,8 @@ if (user_has_role_assignment($USER->id,3)) {
 
     $resource = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/knowledge_nodes/$domoscio->resource_id?token=$config->domoscio_apikey")->get());
 
-    print_r($resource);
-    echo "<BR/>";
+    echo get_resource_info($resource->id);
+    echo "<BR/><HR/>";
 
     echo "Inscrivez les questions que vous souhaitez proposer aux étudiants.
     <br/>Sélectionnez l'un des quiz ci-dessous pour associer les questions pour l'ancrage :<hr/>";
