@@ -29,14 +29,15 @@
 
 require_once(dirname(dirname(dirname(__FILE__))).'/config.php');
 require_once(dirname(__FILE__).'/lib.php');
+require_once(dirname(__FILE__).'/sdk/client.php');
 
-
+$config = get_config('domoscio');
 $id = optional_param('id', 0, PARAM_INT); // Course_module ID, or
 $n  = optional_param('d', 0, PARAM_INT);  // ... domoscio instance ID - it should be named as the first character of the module.
 
 
 if ($id) {
-    $cm         = get_coursemodule_from_id('domoscio', $id, 0, false, MUST_EXIST);
+    $cm         = $DB->get_record('course_modules', array('id' => $id), '*', MUST_EXIST);
     $course     = $DB->get_record('course', array('id' => $cm->course), '*', MUST_EXIST);
     $domoscio  = $DB->get_record('domoscio', array('id' => $cm->instance), '*', MUST_EXIST);
 } else if ($n) {
@@ -65,7 +66,7 @@ $event->trigger();*/
 
 $PAGE->set_url('/mod/domoscio/view.php', array('id' => $cm->id));
 $PAGE->set_title(format_string($domoscio->name));
-$PAGE->set_heading(format_string($course->fullname));
+$PAGE->set_heading("Domoscio for Moodle");
 
 
 //REDIRIGE DIRECTEMENT VERS l'index
@@ -80,35 +81,145 @@ $PAGE->set_heading(format_string($course->fullname));
 
 // Output starts here.
 
-
 echo $OUTPUT->header();
+
+// Replace the following lines with you own code.
+echo $OUTPUT->heading($domoscio->name);
 
 // Conditions to show the intro can change to look for own settings or whatever.
 if ($domoscio->intro) {
     echo $OUTPUT->box(format_module_intro('domoscio', $domoscio, $cm->id), 'generalbox mod_introbox', 'domosciointro');
 }
 
-// Replace the following lines with you own code.
-echo $OUTPUT->heading('Domoscio');
+// --- VUE PROFESSEUR ---
+
+if (user_has_role_assignment($USER->id,3)) {
+
+    echo "Le plugin est lié à la ressource suivante :<br/>";
+    $rest = new domoscio_client();
+
+    $resource = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/knowledge_nodes/$domoscio->resource_id?token=$config->domoscio_apikey")->get());
+
+    print_r($resource);
+    echo "<BR/>";
+
+    echo "Inscrivez les questions que vous souhaitez proposer aux étudiants.
+    <br/>Sélectionnez l'un des quiz ci-dessous pour associer les questions pour l'ancrage :<hr/>";
+
+    $sql = "SELECT `id`, `name` FROM `mdl_quiz` WHERE `course` = ".$course->id;
+
+    $quizzes = $DB->get_records_sql($sql);
+
+    foreach($quizzes as $quiz)
+    {
+        $url = new moodle_url("$CFG->wwwroot/mod/domoscio/linkto.php?id=".$cm->id."&q=".$quiz->id);
+        echo $OUTPUT->action_link( $url, $quiz->name )."<br/>";
+    }
 
 
-$url1=new moodle_url("$CFG->wwwroot/mod/domoscio/index.php?id=".$COURSE->id);
-echo $OUTPUT->action_link( $url1, "Associer Ressource"); echo "<BR>";
-echo $OUTPUT->action_link( $url1, "Ajouter Quizz");
+    //require_once($CFG->dirroot.'/mod/domoscio/sdk/auth.php');
 
-//echo $OUTPUT->continue_button(new moodle_url("$CFG->wwwroot/mod/domoscio/index.php?id=".$COURSE->id));
+}
 
+// --- VUE ETUDIANT ---
 
-echo "<BR>";
-require_once($CFG->dirroot.'/mod/domoscio/sdk/auth.php');
+elseif (user_has_role_assignment($USER->id,5)) {
 
+    // Vérifie si l'étudiant s'est déjà connecté au plugin Domoscio
+    $check = $DB->get_record_sql("SELECT * FROM `mdl_userapi` WHERE `user_id` =".$USER->id);
 
+    if(count($check) > 0)
+    {
+        // Si oui, le plugin récupère les données de l'étudiant
+        echo "Utilisateur inscrit<br/>";
 
+        $rest = new domoscio_client();
 
+        $student = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/students/$check->uniq_id?token=$config->domoscio_apikey")->get());
 
+        print_r($student);
+    }
+    else
+    {
+        // Sinon, le plugin demande à l'api de créer un nouvel étudiant
+        echo "Première visite<br/>";
+
+        $json = json_encode(array(
+            'student_group_id' => "0",
+            'civil_profile_attributes' => array(
+                                                'name' => "eleve",
+                                                'sexe' => "male",
+                                                'day_of_birth' => "11-05-1989",
+                                                'place_of_birth' => "FR",
+                                                'country_of_residence' => "FR",
+                                                'city_of_residence' => "Paris"
+                                                ),
+            'learning_profile_attributes' => array(
+                                                    'forgetting_parameters' => "[1,2,3]"
+                                                    )
+        ));
+
+        $rest = new domoscio_client();
+
+        $student = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/students/?token=$config->domoscio_apikey")->post($json));
+
+        echo $student->id;
+
+        // Le plugin récupère l'uniq_id créé par l'api et l'inscrit en DB
+        $record = new stdClass();
+        $record->user_id = $USER->id;
+        $record->uniq_id = $student->id;
+        $insert = $DB->insert_record('userapi', $record, false);
+    }
+
+    echo "<br/>Voici les données dont l'API aura besoin lors de la première connexion de l'étudiant<hr/>";
+    // Récupère les identifiants des dernières tentatives de réponse aux quiz
+    $sqllast = "SELECT `quiz`, MAX(`uniqueid`) AS `uniqueid`
+                FROM `mdl_quiz_attempts`
+                WHERE `userid` = $USER->id
+                AND `state` = 'finished'
+                GROUP BY `quiz`
+                ORDER BY `uniqueid` ASC";
+
+    $last_attempts = $DB->get_records_sql($sqllast);
+    $data = array();
+    foreach($last_attempts as $last_attempt)
+    {
+        $data[] = $last_attempt->uniqueid;
+    }
+
+    $datas = implode(',', $data);
+
+    //Récupère les questions où l'étudiant à correctement répondu lors de ses dernières tentatives
+    $sqlright = "SELECT `questionid`
+                FROM `mdl_question_attempts`
+                WHERE `mdl_question_attempts`.`rightanswer` = `mdl_question_attempts`.`responsesummary`
+                AND `questionusageid` IN ($datas)
+                ORDER BY `questionid` ASC";
+
+    $rightresponses = $DB->get_records_sql($sqlright);
+
+    //Récupère les questions où l'étudiant à mal répondu lors de ses dernières tentatives
+    $sqlwrong = "SELECT `questionid`
+                FROM `mdl_question_attempts`
+                WHERE `mdl_question_attempts`.`rightanswer` != `mdl_question_attempts`.`responsesummary`
+                AND `questionusageid` IN ($datas)
+                ORDER BY `questionid` ASC";
+
+    $wrongresponses = $DB->get_records_sql($sqlwrong);
+
+    echo "Lors de ses dernières tentatives, l'étudiant ".$USER->id." a correctement répondu aux questions suivantes :<br/>";
+    foreach ($rightresponses as $rightresponse){echo $rightresponse->questionid.", ";}
+    echo "<hr/>";
+    echo "Lors de ses dernières tentatives, l'étudiant ".$USER->id." a mal répondu aux questions suivantes :<br/>";
+    foreach ($wrongresponses as $wrongresponse){echo $wrongresponse->questionid.", ";}
+    echo "<hr/>";
+
+    //-----------------------
+
+    $url1=new moodle_url("$CFG->wwwroot/mod/domoscio/doquiz.php");
+    echo $OUTPUT->action_link( $url1, "Faire les tests");
+}
 
 // Finish the page.
 echo $OUTPUT->footer();
-
-
-

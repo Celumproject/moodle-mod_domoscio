@@ -38,7 +38,6 @@ $course = $DB->get_record('course', array('id' => $id), '*', MUST_EXIST);
 require_course_login($course);
 
 
-
 /*$params = array(
     'context' => context_course::instance($course->id)
 );
@@ -46,7 +45,7 @@ $event = \mod_domoscio\event\course_module_instance_list_viewed::create($params)
 $event->add_record_snapshot('course', $course);
 $event->trigger();*/
 
-$strname = get_string('modulenameplural', 'mod_domoscio');
+$strname = get_string('modulename', 'mod_domoscio');
 $PAGE->set_url('/mod/domoscio/index.php', array('id' => $id));
 $PAGE->navbar->add($strname);
 $PAGE->set_title("$course->shortname: $strname");
@@ -177,13 +176,13 @@ foreach ($modinfo->cms as $cm) {
     if ($usesections) {
 
         if ($cm->sectionnum !== $currentsection) {
-        
+
             if ($cm->sectionnum) {
                 $row[] = get_section_name($course, $cm->sectionnum);
 
             }
             if ($currentsection !== '') {
-                 
+
                 //$table->data[] = 'hr';
             }
             $currentsection = $cm->sectionnum;
@@ -197,8 +196,8 @@ foreach ($modinfo->cms as $cm) {
     /*$row[] = html_writer::link(new moodle_url('view.php', array('id' => $cm->id)),
                 $cm->get_formatted_name(), $class);*/
     if($cm->modname !== "domoscio"){
-    $test[] = "<FORM>  <INPUT type=\"checkbox\" name=\"nom\" value=\"valeur attachée au bouton\"> </FORM>";    
-    $row[] = html_writer::link(new moodle_url("$CFG->wwwroot/mod/".$cm->modname."/view.php?id=".$cm->id, array('id' => $cm->id)),$cm->get_formatted_name(), null);  
+    $test[] = "<FORM>  <INPUT type=\"checkbox\" name=\"nom\" value=\"valeur attachée au bouton\"> </FORM>";
+    $row[] = html_writer::link(new moodle_url("$CFG->wwwroot/mod/".$cm->modname."/view.php?id=".$cm->id, array('id' => $cm->id)),$cm->get_formatted_name(), null);
     }
 
 
@@ -207,6 +206,7 @@ foreach ($modinfo->cms as $cm) {
 
 }
 
+print_r($row);
 
 echo html_writer::table($table);
 

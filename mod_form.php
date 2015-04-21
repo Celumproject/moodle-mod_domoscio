@@ -66,8 +66,9 @@ class mod_domoscio_mod_form extends moodleform_mod {
         // ... or adding more fieldsets ('header' elements) if needed for better logic.
         #$mform->addElement('static', 'label1', 'domosciosetting1', 'Your domoscio fields go here. Replace me!');
 
-        $mform->addElement('header', 'domosciofieldset', get_string('domosciofieldset', 'domoscio'));
-        $mform->addElement('static', 'label2', 'domosciosetting2', 'Your domoscio fields go here. Replace me!');
+        $mform->addElement('header', 'domoscioresourceset', get_string('domosciofieldset', 'domoscio'));
+        $mform->addElement('select', 'resource', get_string('groupmode', 'group'), $this->select_ressource(), NOGROUPS);
+        $mform->addHelpButton('resource', 'domoscioresourceset', 'domoscio');
 
         // Add standard grading elements.
         #$this->standard_grading_coursemodule_elements();
@@ -77,5 +78,55 @@ class mod_domoscio_mod_form extends moodleform_mod {
 
         // Add standard buttons, common to all modules.
         $this->add_action_buttons();
+    }
+
+    function select_ressource() {
+
+        global $COURSE, $CFG, $DB;
+
+        // Recherche les course modules à afficher
+        $query = "SELECT * FROM `mdl_course_modules` WHERE `module` IN (3,14,16,18)";
+
+        $modules = $DB->get_records_sql($query);
+
+        $datas = array();
+
+        foreach($modules as $module)
+        {
+            $datas[$module->id] = $this->get_resource_info($module->module, $module->instance);
+        }
+
+        return $datas;
+    }
+
+    function get_resource_info($module, $instance) {
+
+        global $DB, $CFG;
+
+        $modulename = null;
+
+        switch($module) {
+            case 3:
+                $modulename = "mdl_book";
+                break;
+
+            case 14:
+                $modulename = "mld_lesson";
+                break;
+
+            case 16:
+                $modulename = "mdl_page";
+                break;
+
+            case 18:
+                $modulename = "mdl_resource";
+                break;
+        }
+
+        $query = "SELECT name FROM $modulename WHERE id = $instance";
+
+        $moduleinfo = $DB->get_record_sql($query);
+
+        return $moduleinfo->name;
     }
 }

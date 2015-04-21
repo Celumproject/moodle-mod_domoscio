@@ -29,6 +29,8 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+require_once(dirname(__FILE__).'/sdk/client.php');
+
 defined('MOODLE_INTERNAL') || die();
 
 /**
@@ -76,17 +78,75 @@ function domoscio_supports($feature) {
  */
 
 function domoscio_add_instance(stdClass $domoscio, mod_domoscio_mod_form $mform = null) {
-    global $DB;
+    global $DB, $COURSE;
 
     $domoscio->timecreated = time();
 
-    // You may have to add extra stuff in here.
+    // Si le cours n'est pas référencé en tant que knowledge_graph, en créé un nouveau sur l'api
+    $check = $DB->get_records_sql("SELECT `knowledge_graph_id` FROM `mdl_knowledge_graphs` WHERE `course_id` =".$domoscio->course);
+
+    $rest = new domoscio_client();
+
+    if(count($check) > 0) // Récupère le knowledge_graph_id existant
+    {
+        foreach($check as $result)
+        {
+            $graphid = $result->knowledge_graph_id;
+        }
+
+        $graph = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/29/knowledge_graphs/$graphid?token=c07dc64c75eaa3c51a292a7ccd101e3b")->get());
+    }
+    else // Sinon récupère un nouveau knowledge_graph_id et l'inscrit en DB
+    {
+        $json = json_encode(array('name' => strval($COURSE->fullname)));
+
+        $graph = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/29/knowledge_graphs/?token=c07dc64c75eaa3c51a292a7ccd101e3b")->post($json));
+
+        $knowledge_graph = new stdClass;
+        $knowledge_graph->course_id = $domoscio->course;
+        $knowledge_graph->knowledge_graph_id = $graph->id;
+
+        $knowledge_graph = $DB->insert_record('knowledge_graphs', $knowledge_graph);
+    }
+
+    // Si la ressource n'est pas référencé en tant que knowledge_node, en créé un nouveau sur l'api
+    $check = $DB->get_records_sql("SELECT `knowledge_node_id` FROM `mdl_knowledge_nodes` WHERE `resource_id` =".$domoscio->resource);
+
+    $rest = new domoscio_client();
+
+    if(count($check) > 0) // Récupère le knowledge_node_id existant
+    {
+        foreach($check as $result)
+        {
+            $id = $result->knowledge_node_id;
+        }
+
+        $resource = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/29/knowledge_nodes/$id?token=c07dc64c75eaa3c51a292a7ccd101e3b")->get());
+    }
+    else // Sinon récupère un nouveau knowledge_node et l'inscrit en DB
+    {
+        $json = json_encode(array('knowledge_graph_id' => strval($graphid),
+                                    'name' => strval($domoscio->resource)));
+
+        $resource = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/29/knowledge_nodes/?token=c07dc64c75eaa3c51a292a7ccd101e3b")->post($json));
+
+        $knowledge_node = new stdClass;
+        $knowledge_node->resource_id = $domoscio->resource;
+        $knowledge_node->knowledge_node_id = $resource->id;
+
+        $knowledge_node = $DB->insert_record('knowledge_nodes', $knowledge_node);
+    }
+
+    // Le plugin récupère le resource_id créé par l'api et l'inscrit en DB avec la nouvelle instance de plugin domoscio
+
+    $domoscio->resource_id = $resource->id;
 
     $domoscio->id = $DB->insert_record('domoscio', $domoscio);
 
     domoscio_grade_item_update($domoscio);
 
     return $domoscio->id;
+
 }
 
 /**
@@ -447,4 +507,480 @@ function domoscio_extend_navigation(navigation_node $navref, stdClass $course, s
  */
 function domoscio_extend_settings_navigation(settings_navigation $settingsnav, navigation_node $domoscionode=null) {
     // TODO Delete this function and its docblock, or implement it.
+}
+
+function is_user_with_role($courseid, $rolename, $userid = 0) {
+    $result = false;
+    $roles = get_user_roles(context_course::instance($courseid), $userid, false);
+    foreach ($roles as $role) {
+        if ($role->shortname == $rolename) {
+            $result = true;
+            break;
+        }
+    }
+    return $result;
+}
+
+/* Chope les réponses */
+function get_answers($qnum)
+{
+    global $CFG, $DB;
+    $sqlanswers = "SELECT *
+                    FROM `mdl_question_answers`
+                    WHERE `question` = $qnum";
+
+    $answers = $DB->get_records_sql($sqlanswers);
+    return $answers;
+}
+
+/* Chope les bonnes réponses */
+function get_right_answers($qnum)
+{
+    global $CFG, $DB;
+    $sqlanswers = "SELECT *
+                    FROM `mdl_question_answers`
+                    WHERE `question` = $qnum
+                    AND `fraction` = 1";
+
+    $answers = $DB->get_record_sql($sqlanswers);
+    return $answers;
+}
+
+//Génère l'affichage des questions qui attendent un champ de saisie
+function get_inputanswer($question)
+{
+    $display =
+    "<div class'qtext'>
+        <p>".$question->questiontext."</p>
+    </div>
+    <div class='ablock'>
+        <label for = 'q0:".$question->id."_answer'>Answer :</label>
+        <span class='answer'>
+            <input id='q0:".$question->id."_answer' type='text' size='80' name='q0:".$question->id."_answer'></input>
+        </span>
+    </div>";
+
+    return $display;
+}
+
+//Génère l'affichage des questions QCM
+function get_multichoiceanswer($question)
+{
+    $i = 0;
+
+    $radio = array();
+
+    $answers_list = get_answers($question->id);
+
+    foreach($answers_list as $answer)
+    {
+        $radio[] =
+            "<div class='r0'>
+                <input id='q0:".$question->id."_answer' type='radio' value='".$i."' name='q0:".$question->id."_answer'></input>
+                <label for = 'q0:".$question->id."_answer'>".strip_tags($answer->answer)."</label>
+            </div>";
+        $i++;
+    }
+    $radio_fetched = implode("", $radio);
+
+    $display =
+    "<div class'qtext'>
+        <p>".$question->questiontext."</p>
+    </div>
+    <div class='ablock'>
+        <div class='prompt'>Select one :</div>
+        <div class='answer'>".$radio_fetched.
+        "</div>
+    </div>";
+
+    return $display;
+}
+
+/* Génère l'affichage d'une question de type texte à trous*/
+function get_multianswer($question)
+{
+    global $CFG, $DB;
+
+    // Récupère les sous-questions d'un texte à trous
+    $sqlanswers = "SELECT `questiontext`, `qtype`
+                    FROM `mdl_question`
+                    WHERE `parent` =".$question->id;
+
+    $answers = $DB->get_records_sql($sqlanswers);
+
+    // Parse les réponses aux sous-questions et récupère leur contenu
+    $result = array();
+
+    $i = 1;
+
+    foreach($answers as $answer)
+    {
+        preg_match("/%100%(.*?)#/", $answer->questiontext, $matchesOK);
+        preg_match("/E:(.*?)#W/", $answer->questiontext, $matchesWrong);
+        $result[$answer->qtype.$i][] = $matchesOK[1];
+        $result[$answer->qtype.$i][] = $matchesWrong[1];
+        $i++;
+    }
+
+    // Retrouve le texte de la question
+    $sql_qtext = "SELECT `questiontext`
+                FROM `mdl_question`
+                WHERE `id` =".$question->id;
+
+    $qtext = $DB->get_record_sql($sql_qtext);
+
+    // Parse the text for each holes and replace by HTML select
+    preg_match_all("/({#.*?})/", $qtext->questiontext, $patterns);
+    $i = 0;
+    foreach($patterns[0] as $pattern)
+    {
+        $patterns[0][$i] = "'".$patterns[0][$i]."'";
+        $i++;
+    }
+
+    $replacements = array();
+    $i = $j = 1;
+
+    foreach($result as $key => $hole)
+    {
+        if($key == "multichoice".$j)
+        {
+            $options = array();
+
+            foreach($hole as $k => $option)
+            {
+                $options[] = "<option value='".$option."'>".$option."</option>";
+            }
+
+            shuffle($options);
+            array_unshift($options , "<option value=''></option>");
+
+            $options_fetched = implode("", $options);
+
+            $replacements[] =
+                "<span class='subquestion'>
+                    <label class='subq accesshide' for='q0:".$question->id."_sub".$i."_answer'>
+                    Answer
+                    </label>
+                    <select id='q0:".$question->id."_sub".$i."_answer' class='select menuq0:".$question->id."_sub".$i."_answer' name='q0:".$question->id."_sub".$i."_answer'>".$options_fetched.
+                    "</select>
+                </span>";
+        }
+        elseif($key == "shortanswer".$j)
+        {
+            $replacements[] =
+            "<span class='subquestion'>
+                <label class='subq accesshide' for='q0:".$question->id."_sub".$i." answer'>
+                Answer
+                </label>
+                <input id=id='q0:".$question->id."_sub".$i."_answer' type='text' size='7' name='q0:".$question->id."_sub".$i."_answer'></input>
+            </span>";
+        }
+        $i++;
+        $j++;
+    }
+
+    return preg_replace($patterns[0], $replacements, $qtext->questiontext);
+}
+
+// Génère l'affichage des questions de type Match (drag and drop)
+function get_match($question)
+{
+    global $CFG, $DB;
+    $sqlquestions = "SELECT *
+                    FROM `mdl_qtype_match_subquestions`
+                    WHERE `questionid` =".$question->id;
+
+    $subquestions = $DB->get_records_sql($sqlquestions);
+
+    $options = array();
+
+    foreach($subquestions as $k => $subquestion)
+    {
+        $options[] = "<option value='".$subquestion->answertext."'>".$subquestion->answertext."</option>";
+    }
+
+    shuffle($options);
+    array_unshift($options , "<option value=''>Choose...</option>");
+
+    $options_fetched = implode("", $options);
+
+    $table = array();
+    $i = 1;
+
+    foreach($subquestions as $subquestion)
+    {
+        $table[] =
+        "<tr class='r0'>
+            <td class='text'>
+                <p>".$subquestion->questiontext."</p>
+            </td>
+            <td class='control'>
+                <label class='subq accesshide' for='q0:".$question->id."_sub".$i." answer'>
+                Answer
+                </label>
+                <select id='menuq0:".$question->id."_sub".$i."' class='select menuq0:".$question->id."_sub".$i."' name='q0:".$question->id."_sub".$i."'>".$options_fetched.
+                "</select>
+            </td>
+        </tr>";
+
+        $i++;
+    }
+
+    $table_fetched = implode("", $table);
+
+    $display =
+    "<div class='qtext'>
+        <p>".$question->questiontext."</p>
+    </div>
+    <table class='answer'>
+        <tbody>"
+            .$table_fetched.
+        "</tbody>
+    </table>";
+
+    return $display;
+}
+
+/*----------------- RESULTATS ----------------*/
+
+//Génère l'affichage des résultats aux questions de saisie
+function get_inputresult($question, $post)
+{
+    $answer = get_right_answers($question->id);
+
+    if($post['q0:'.$question->id.'_answer'] != $answer->answer)
+    {
+
+    echo"<div class'qtext'>
+            <p>".$question->questiontext."</p>
+        </div>
+        <div class='ablock'>
+            <label for = 'q0:".$question->id."_answer'>Answer :</label>
+            <span class='answer'>
+                <input class='incorrect' id='q0:".$question->id."_answer' type='text' value='".$post['q0:'.$question->id.'_answer']."' readonly='readonly' size='80' name='q0:".$question->id."_answer'></input>
+            </span>
+        </div>
+        <div class='outcome'>
+            <div class='rightanswer'>The right answer is : ".$answer->answer.
+            "</div>
+        </div>";
+    }
+    else
+    {
+
+    echo"<div class'qtext'>
+            <p>".$question->questiontext."</p>
+        </div>
+        <div class='ablock'>
+            <label for = 'q0:".$question->id."_answer'>Answer :</label>
+            <span class='answer'>
+                <input class='correct' id='q0:".$question->id."_answer' type='text' value='".$post['q0:'.$question->id.'_answer']."' readonly='readonly' size='80' name='q0:".$question->id."_answer'></input>
+            </span>
+        </div>
+        <div class='outcome'>
+            <div class='rightanswer'>The right answer is : ".$answer->answer.
+            "</div>
+        </div>";
+    }
+
+}
+
+//Génère l'affichage des résultats aux questions QCM
+function get_multichoiceresult($question, $post)
+{
+    $i = 0;
+
+    $radio = array();
+
+    $answers_list = get_answers($question->id);
+
+    $rightanswer = get_right_answers($question->id);
+
+    foreach($answers_list as $answer)
+    {
+        $class = null;
+
+        if($i == $post['q0:'.$question->id.'_answer'])
+        {
+            $checkradio = "checked='checked'";
+            if($answer->answer !== $rightanswer->answer)
+            {
+                $class = "incorrect";
+            }
+            else
+            {
+                $class = "correct";
+            }
+        }
+        else
+        {
+            $checkradio = null;
+        }
+
+        $radio[] =
+            "<div class='r0 ".$class."''>
+                <input disabled='disabled' id='q0:".$question->id."_answer' type='radio' value='".$i."' name='q0:".$question->id."_answer'".$checkradio."></input>
+                <label for = 'q0:".$question->id."_answer'>".strip_tags($answer->answer)."</label>
+            </div>";
+        $i++;
+    }
+    $radio_fetched = implode("", $radio);
+
+    $display =
+    "<div class'qtext'>
+        <p>".$question->questiontext."</p>
+    </div>
+    <div class='ablock'>
+        <div class='prompt'>Select one :</div>
+        <div class='answer'>".$radio_fetched.
+        "</div>
+    </div>
+    <div class='outcome'>
+        <div class='rightanswer'>The right answer is : ".$rightanswer->answer.
+        "</div>
+    </div>";
+
+    return $display;
+}
+
+/* Génère l'affichage des résultats aux questions de type texte à trous*/
+function get_multiresult($question, $post)
+{
+    global $CFG, $DB;
+
+    // Récupère les sous-questions d'un texte à trous
+    $sqlanswers = "SELECT `id`, `qtype`, `questiontext`
+                    FROM `mdl_question`
+                    WHERE `parent` =".$question->id;
+
+    $answers = $DB->get_records_sql($sqlanswers);
+
+    $i = 1;
+    $result = array();
+    foreach($answers as $answer)
+    {
+        preg_match("/%100%(.*?)#/", $answer->questiontext, $matchesOK);
+        $result[$answer->qtype.$i][] = $matchesOK[1];
+        $i++;
+    }
+
+    // Retrouve le texte de la question
+    $sql_qtext = "SELECT `questiontext`
+                FROM `mdl_question`
+                WHERE `id` =".$question->id;
+
+    $qtext = $DB->get_record_sql($sql_qtext);
+
+    // Parse the text for each holes and replace by HTML select
+    preg_match_all("/({#.*?})/", $qtext->questiontext, $patterns);
+    $i = 0;
+    foreach($patterns[0] as $pattern)
+    {
+        $patterns[0][$i] = "'".$patterns[0][$i]."'";
+        $i++;
+    }
+
+    $replacements = array();
+    $i = $j = 1;
+
+    foreach($result as $key => $hole)
+    {
+        if(($post['q0:'.$question->id.'_sub'.$i.'_answer']) == $hole[0])
+        {
+            $class = "correct";
+        }
+        else
+        {
+            $class = "incorrect";
+        }
+
+        if($key == "multichoice".$j)
+        {
+            $replacements[] =
+                "<span class='subquestion'>
+                    <label class='subq accesshide' for='q0:".$question->id."_sub".$i."_answer'>
+                    Answer
+                    </label>
+                    <select id='q0:".$question->id."_sub".$i."_answer' class='select menuq0:".$question->id."_sub".$i."_answer ".$class."' name='q0:".$question->id."_sub".$i."_answer' disabled='disabled'>
+                        <option>".$post['q0:'.$question->id.'_sub'.$i.'_answer']."</option>
+                    </select>
+                </span>";
+        }
+        elseif($key == "shortanswer".$j)
+        {
+            $replacements[] =
+            "<span class='subquestion'>
+                <label class='subq accesshide' for='q0:".$question->id."_sub".$i." answer'>
+                Answer
+                </label>
+                <input class='".$class."' id='q0:".$question->id."_sub".$i."_answer' type='text' size='7' name='q0:".$question->id."_sub".$i."_answer' value='".$post['q0:'.$question->id.'_sub'.$i.'_answer']."' readonly='readonly'></input>
+            </span>";
+        }
+        $i++;
+        $j++;
+
+
+    }
+
+    return preg_replace($patterns[0], $replacements, $qtext->questiontext);
+}
+
+// Génère l'affichage des réponses aux questions de type Match (drag and drop)
+function get_matchresult($question, $post)
+{
+    global $CFG, $DB;
+    $sqlquestions = "SELECT *
+                    FROM `mdl_qtype_match_subquestions`
+                    WHERE `questionid` =".$question->id;
+
+    $subquestions = $DB->get_records_sql($sqlquestions);
+
+    $options = array();
+
+    $table = array();
+    $i = 1;
+
+    foreach($subquestions as $subquestion)
+    {
+        $class = null;
+        if(($post['q0:'.$question->id.'_sub'.$i]) == $subquestion->answertext)
+        {
+            $class = "correct";
+        }
+        else
+        {
+            $class = "incorrect";
+        }
+
+        $table[] =
+        "<tr class='r0'>
+            <td class='text'>
+                <p>".$subquestion->questiontext."</p>
+            </td>
+            <td class='control'>
+                <label class='subq accesshide' for='q0:".$question->id."_sub".$i." answer'>
+                Answer
+                </label>
+                <select id='q0:".$question->id."_answer' class='select menu q0:".$question->id."_sub".$i." answer ".$class."' name='q0:".$question->id."_answer' disabled='disabled'>
+                    <option>".$post['q0:'.$question->id.'_sub'.$i]."</option>
+                </select>
+            </td>
+        </tr>";
+        $i++;
+    }
+
+    $table_fetched = implode("", $table);
+
+    $display =
+    "<div class='qtext'>
+        <p>".$question->questiontext."</p>
+    </div>
+    <table class='answer'>
+        <tbody>"
+            .$table_fetched.
+        "</tbody>
+    </table>";
+
+    return $display;
 }
