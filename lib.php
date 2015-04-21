@@ -80,6 +80,8 @@ function domoscio_supports($feature) {
 function domoscio_add_instance(stdClass $domoscio, mod_domoscio_mod_form $mform = null) {
     global $DB, $COURSE;
 
+    $config = get_config('domoscio');
+
     $domoscio->timecreated = time();
 
     // Si le cours n'est pas référencé en tant que knowledge_graph, en créé un nouveau sur l'api
@@ -94,13 +96,13 @@ function domoscio_add_instance(stdClass $domoscio, mod_domoscio_mod_form $mform 
             $graphid = $result->knowledge_graph_id;
         }
 
-        $graph = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/29/knowledge_graphs/$graphid?token=c07dc64c75eaa3c51a292a7ccd101e3b")->get());
+        $graph = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/knowledge_graphs/$graphid?token=$config->domoscio_apikey")->get());
     }
     else // Sinon récupère un nouveau knowledge_graph_id et l'inscrit en DB
     {
         $json = json_encode(array('name' => strval($COURSE->fullname)));
 
-        $graph = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/29/knowledge_graphs/?token=c07dc64c75eaa3c51a292a7ccd101e3b")->post($json));
+        $graph = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/knowledge_graphs/?token=$config->domoscio_apikey")->post($json));
 
         $knowledge_graph = new stdClass;
         $knowledge_graph->course_id = $domoscio->course;
@@ -121,14 +123,14 @@ function domoscio_add_instance(stdClass $domoscio, mod_domoscio_mod_form $mform 
             $id = $result->knowledge_node_id;
         }
 
-        $resource = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/29/knowledge_nodes/$id?token=c07dc64c75eaa3c51a292a7ccd101e3b")->get());
+        $resource = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/knowledge_nodes/$id?token=$config->domoscio_apikey")->get());
     }
     else // Sinon récupère un nouveau knowledge_node et l'inscrit en DB
     {
         $json = json_encode(array('knowledge_graph_id' => strval($graphid),
                                     'name' => strval($domoscio->resource)));
 
-        $resource = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/29/knowledge_nodes/?token=c07dc64c75eaa3c51a292a7ccd101e3b")->post($json));
+        $resource = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/knowledge_nodes/?token=$config->domoscio_apikey")->post($json));
 
         $knowledge_node = new stdClass;
         $knowledge_node->resource_id = $domoscio->resource;
