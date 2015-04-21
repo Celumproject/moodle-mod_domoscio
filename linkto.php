@@ -75,10 +75,13 @@ if ($mform->is_cancelled()) {
 
 } else if ($fromform = $mform->get_data()) {
 
-    //$DB->update_record("cell_tests", $fromform);
-    //redirect("$CFG->wwwroot/mod/domoscio/linkto.php?id=".$cm->id."&q=".$q);
-    print_r($fromform);
-    exit;
+    foreach($fromform as $k => $value)
+    {
+        if($value == 1)
+        {
+            echo $k.", ";
+        }
+    }
 
 } else {
 
