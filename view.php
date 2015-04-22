@@ -119,8 +119,6 @@ if (user_has_role_assignment($USER->id,3)) {
     }
 
 
-    //require_once($CFG->dirroot.'/mod/domoscio/sdk/auth.php');
-
 }
 
 // --- VUE ETUDIANT ---
