@@ -103,7 +103,8 @@ if ($mform->is_cancelled()) {
         }
     }
 
-    echo "La liste des questions est mise à jour."
+    echo "La liste des questions est mise à jour.<hr/>";
+    echo html_writer::tag('button', 'Continue', array('type' => 'button','onclick'=>"javascript:location.href='$CFG->wwwroot/mod/domoscio/view.php?id=$cm->id'"));
 
 } else {
 
