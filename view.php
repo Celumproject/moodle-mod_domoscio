@@ -101,14 +101,16 @@ if (user_has_role_assignment($USER->id,3)) {
     $resource = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/knowledge_nodes/$domoscio->resource_id?token=$config->domoscio_apikey")->get());
 
     echo get_resource_info($resource->id);
-    echo "<BR/><HR/>";
+    echo "<BR/><HR/>Le plugin propose les questions suivantes :<br/>";
 
-    echo "Inscrivez les questions que vous souhaitez proposer aux étudiants.
+    $questions = $DB->get_records_sql("SELECT `question_id` FROM `mdl_knowledge_node_questions` WHERE `instance` = $domoscio->id");
+
+    foreach($questions as $question){echo $question->question_id.", ";}
+
+    echo "<hr/>Inscrivez les questions que vous souhaitez proposer aux étudiants.
     <br/>Sélectionnez l'un des quiz ci-dessous pour associer les questions pour l'ancrage :<hr/>";
 
-    $sql = "SELECT `id`, `name` FROM `mdl_quiz` WHERE `course` = ".$course->id;
-
-    $quizzes = $DB->get_records_sql($sql);
+    $quizzes = $DB->get_records_sql("SELECT `id`, `name` FROM `mdl_quiz` WHERE `course` = ".$course->id);
 
     foreach($quizzes as $quiz)
     {

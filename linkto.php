@@ -77,11 +77,33 @@ if ($mform->is_cancelled()) {
 
     foreach($fromform as $k => $value)
     {
-        if($value == 1)
+        if(is_numeric($k))
         {
-            echo $k.", ";
+            if($value == 1)
+            {
+                $check = $DB->get_record_sql("SELECT * FROM `mdl_knowledge_node_questions` WHERE `question_id` = $k AND instance = $domoscio->id");
+
+                if($check == null)
+                {
+                    $entry = new stdClass;
+                    $entry->instance = $domoscio->id;
+                    $entry->question_id = $k;
+                    $write = $DB->insert_record('knowledge_node_questions', $entry);
+                }
+            }
+            elseif($value == 0)
+            {
+                $check = $DB->get_record_sql("SELECT * FROM `mdl_knowledge_node_questions` WHERE `question_id` = $k AND instance = $domoscio->id");
+
+                if(!empty($check))
+                {
+                    $DB->delete_records('knowledge_node_questions', array('question_id' => $k, 'instance' => $domoscio->id));
+                }
+            }
         }
     }
+
+    echo "La liste des questions est mise à jour."
 
 } else {
 
