@@ -28,6 +28,7 @@
 // Replace domoscio with the name of your module and remove this line.
 
 require_once(dirname(dirname(dirname(__FILE__))).'/config.php');
+require_once(dirname(dirname(dirname(__FILE__))).'/calendar/lib.php');
 require_once(dirname(__FILE__).'/classes/quiz_form.php');
 require_once(dirname(__FILE__).'/lib.php');
 
@@ -105,6 +106,27 @@ $rest = new domoscio_client();
 $result = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/results/?token=$config->domoscio_apikey")->post($json));
 
 print_r($result);
+
+
+// Inscrit un rappel dans le calendrier
+$rest = new domoscio_client();
+
+$kn_student = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/knowledge_node_students/$kn_student->kn_student_id?token=$config->domoscio_apikey")->get());
+
+$event = new stdClass;
+$event->name    = "Domoscio Rappel :".$domoscio->name;
+$event->description = "Vous avez un rappel à faire sur la ressource ";
+$event->courseid    = $course->id;
+$event->groupid     = 0;
+$event->userid      = $USER->id;
+$event->modulename  = 'domoscio';
+$event->instance    = $domoscio->id;
+$event->eventtype   = 'feedbackcloses';
+$event->timestart   = strtotime($kn_student->next_review_at);
+$event->visible     = instance_is_visible('domoscio', $domoscio);
+$event->timeduration    = 60;
+
+calendar_event::create($event);
 
 echo html_writer::tag('button', 'Continue', array('type' => 'button','onclick'=>"javascript:location.href='$CFG->wwwroot/mod/domoscio/view.php?id=$cm->id'"));
 
