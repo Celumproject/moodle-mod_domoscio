@@ -41,59 +41,55 @@ if ($id) {
     $course     = $DB->get_record('course', array('id' => $cm->course), '*', MUST_EXIST);
     $domoscio  = $DB->get_record('domoscio', array('id' => $cm->instance), '*', MUST_EXIST);
 }
-
-require_course_login($course);
+$config = get_config('domoscio');
 
 $strname = get_string('modulename', 'mod_domoscio');
 $PAGE->set_url('/mod/domoscio/index.php', array('id' => $id));
 $PAGE->navbar->add($strname);
-$PAGE->set_title('Evaluation');
 $PAGE->set_heading("Domoscio for Moodle");
 $PAGE->set_pagelayout('incourse');
 
 echo $OUTPUT->header();
 
-echo $OUTPUT->heading("Evaluation");
-
 // Récupère les identifiants des questions sélectionnées par le concepteur
+if ($id) {
+    $PAGE->set_title('Evaluation');
+    echo $OUTPUT->heading("Evaluation");
+    $lists = $DB->get_records_sql("SELECT `question_id` FROM `mdl_knowledge_node_questions` WHERE `instance` = $domoscio->id");
 
-$lists = $DB->get_records_sql("SELECT `question_id` FROM `mdl_knowledge_node_questions` WHERE `instance` = $domoscio->id");
+    $selected = array_rand($lists, 1);
 
-$selected = array_rand($lists, 1);
+    // Récupère les informations relatives aux questions sélectionnées
 
-// Récupère les informations relatives aux questions sélectionnées
+    $question = $DB->get_record_sql("SELECT * FROM `mdl_question` WHERE `id` = $selected");
 
-$question = $DB->get_record_sql("SELECT * FROM `mdl_question` WHERE `id` = $selected");
-
-$qtype = $question->qtype;
 // Créé un nouveau formulaire qui collectera toutes les données du test
-echo "<form id='responseform' method='POST' action='$CFG->wwwroot/mod/domoscio/results.php?id=$cm->id&q=$selected'>";
+    echo "<form id='responseform' method='POST' action='$CFG->wwwroot/mod/domoscio/results.php?id=$cm->id&q=$selected'>";
+    echo display_questions($question);
+} else {
+    $PAGE->set_title('Rappels');
+    echo $OUTPUT->heading("Rappels");
 
-    echo "<div class='que ".$qtype." deferredfeedback notyetanswered'>";
-        echo "<div class='info'>";
-            echo "<h3 class='no'>Question <span class='qno'>".$question->id."</span></h3>";
-        echo "</div>";
-        echo "<div class='content'>";
-            echo "<div class='formulation'>";
-                if($qtype == "calculated" || $qtype == "numerical" || $qtype == "shortanswer")
-                {
-                    echo get_inputanswer($question);
-                }
-                elseif($qtype == "multichoice" || $qtype == "calculatedmulti" || $qtype == "truefalse")
-                {
-                    echo get_multichoiceanswer($question);
-                }
-                elseif($qtype == "multianswer")
-                {
-                    echo get_multianswer($question);
-                }
-                elseif($qtype == "match")
-                {
-                    echo  get_match($question);
-                }
-            echo "</div>";
-        echo "</div>";
-    echo "</div>";
+    $todo_tests = count_tests($config);
+    $qid = array();
+    foreach($todo_tests as $test)
+    {
+        $instance = $DB->get_record_sql("SELECT `instance` FROM `mdl_knowledge_node_students` WHERE `kn_student_id` = $test");
+        $lists = $DB->get_records_sql("SELECT `question_id` FROM `mdl_knowledge_node_questions` WHERE `instance` = $instance->instance");
+
+        $selected = array_rand($lists, 1);
+
+        // Récupère les informations relatives aux questions sélectionnées
+
+        $question = $DB->get_record_sql("SELECT * FROM `mdl_question` WHERE `id` = $selected");
+        $qid[] = $question->id;
+        // Créé un nouveau formulaire qui collectera toutes les données du test
+        echo "<form id='responseform' method='POST' action='$CFG->wwwroot/mod/domoscio/results.php'>";
+        echo display_questions($question);
+    }
+    $qids = implode(',', $qid);
+    echo "<input type='hidden' value=$qids name='qids'></input>";
+}
 
 echo "<input type='submit' value='Next' name='next'></input>";
 echo "</form>";

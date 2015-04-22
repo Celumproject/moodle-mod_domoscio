@@ -61,8 +61,12 @@ echo $OUTPUT->heading("Résultats");
 
 
 // Récupère les informations relatives aux questions sélectionnées
-
-$questions = $DB->get_records_sql("SELECT * FROM `mdl_question` WHERE `id` = $q");
+if($id){
+    $questions = $DB->get_records_sql("SELECT * FROM `mdl_question` WHERE `id` = $qid");
+} else {
+    $qids = $_POST['qids'];
+    $questions = $DB->get_records_sql("SELECT * FROM `mdl_question` WHERE `id` IN ($qids)");
+}
 
 foreach($questions as $question)
 {
@@ -94,40 +98,43 @@ foreach($questions as $question)
         echo "</div>";
     echo "</div>";
 }
-//print_r($_POST);
 
-//Génère le résultat en json à retourner à l'api
-$kn_student = $DB->get_record_sql("SELECT `kn_student_id` FROM `mdl_knowledge_node_students` WHERE `user` = $USER->id AND `instance` = $domoscio->id");
+if ($id){
+    //Génère le résultat en json à retourner à l'api
+    $kn_student = $DB->get_record_sql("SELECT `kn_student_id` FROM `mdl_knowledge_node_students` WHERE `user` = $USER->id AND `instance` = $domoscio->id");
 
-$json = json_encode(array('knowledge_node_student_id' => intval($kn_student->kn_student_id), 'value' => intval($result)));
+    $json = json_encode(array('knowledge_node_student_id' => intval($kn_student->kn_student_id), 'value' => intval($result)));
 
-$rest = new domoscio_client();
+    $rest = new domoscio_client();
 
-$result = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/results/?token=$config->domoscio_apikey")->post($json));
+    $result = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/results/?token=$config->domoscio_apikey")->post($json));
 
-print_r($result);
+    print_r($result);
 
 
-// Inscrit un rappel dans le calendrier
-$rest = new domoscio_client();
+    // Inscrit un rappel dans le calendrier
+    $rest = new domoscio_client();
 
-$kn_student = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/knowledge_node_students/$kn_student->kn_student_id?token=$config->domoscio_apikey")->get());
+    $kn_student = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/knowledge_node_students/$kn_student->kn_student_id?token=$config->domoscio_apikey")->get());
 
-$event = new stdClass;
-$event->name    = "Domoscio Rappel :".$domoscio->name;
-$event->description = "Vous avez un rappel à faire sur la ressource ";
-$event->courseid    = $course->id;
-$event->groupid     = 0;
-$event->userid      = $USER->id;
-$event->modulename  = 'domoscio';
-$event->instance    = $domoscio->id;
-$event->eventtype   = 'feedbackcloses';
-$event->timestart   = strtotime($kn_student->next_review_at);
-$event->visible     = instance_is_visible('domoscio', $domoscio);
-$event->timeduration    = 60;
+    $event = new stdClass;
+    $event->name    = "Domoscio Rappel :".$domoscio->name;
+    $event->description = "Vous avez un rappel à faire sur la ressource ";
+    $event->courseid    = $course->id;
+    $event->groupid     = 0;
+    $event->userid      = $USER->id;
+    $event->modulename  = 'domoscio';
+    $event->instance    = $domoscio->id;
+    $event->eventtype   = 'feedbackcloses';
+    $event->timestart   = strtotime($kn_student->next_review_at);
+    $event->visible     = instance_is_visible('domoscio', $domoscio);
+    $event->timeduration    = 60;
 
-calendar_event::create($event);
+    calendar_event::create($event);
 
-echo html_writer::tag('button', 'Continue', array('type' => 'button','onclick'=>"javascript:location.href='$CFG->wwwroot/mod/domoscio/view.php?id=$cm->id'"));
-
+    echo html_writer::tag('button', 'Continue', array('type' => 'button','onclick'=>"javascript:location.href='$CFG->wwwroot/mod/domoscio/view.php?id=$cm->id'"));
+}
+else {
+    echo html_writer::tag('button', 'Continue', array('type' => 'button','onclick'=>"javascript:location.href='$CFG->wwwroot/'"));
+}
 echo $OUTPUT->footer();

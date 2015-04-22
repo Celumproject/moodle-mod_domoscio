@@ -205,55 +205,15 @@ elseif (user_has_role_assignment($USER->id,5)) {
         $insert = $DB->insert_record('userapi', $record, false);
 
     }
-/*
-    echo "<br/>Voici les données dont l'API aura besoin lors de la première connexion de l'étudiant<hr/>";
-    // Récupère les identifiants des dernières tentatives de réponse aux quiz
-    $sqllast = "SELECT `quiz`, MAX(`uniqueid`) AS `uniqueid`
-                FROM `mdl_quiz_attempts`
-                WHERE `userid` = $USER->id
-                AND `state` = 'finished'
-                GROUP BY `quiz`
-                ORDER BY `uniqueid` ASC";
 
-    $last_attempts = $DB->get_records_sql($sqllast);
-    $data = array();
-    foreach($last_attempts as $last_attempt)
-    {
-        $data[] = $last_attempt->uniqueid;
-    }
-
-    $datas = implode(',', $data);
-
-    //Récupère les questions où l'étudiant à correctement répondu lors de ses dernières tentatives
-    $sqlright = "SELECT `questionid`
-                FROM `mdl_question_attempts`
-                WHERE `mdl_question_attempts`.`rightanswer` = `mdl_question_attempts`.`responsesummary`
-                AND `questionusageid` IN ($datas)
-                ORDER BY `questionid` ASC";
-
-    $rightresponses = $DB->get_records_sql($sqlright);
-
-    //Récupère les questions où l'étudiant à mal répondu lors de ses dernières tentatives
-    $sqlwrong = "SELECT `questionid`
-                FROM `mdl_question_attempts`
-                WHERE `mdl_question_attempts`.`rightanswer` != `mdl_question_attempts`.`responsesummary`
-                AND `questionusageid` IN ($datas)
-                ORDER BY `questionid` ASC";
-
-    $wrongresponses = $DB->get_records_sql($sqlwrong);
-
-    echo "Lors de ses dernières tentatives, l'étudiant ".$USER->id." a correctement répondu aux questions suivantes :<br/>";
-    foreach ($rightresponses as $rightresponse){echo $rightresponse->questionid.", ";}
-    echo "<hr/>";
-    echo "Lors de ses dernières tentatives, l'étudiant ".$USER->id." a mal répondu aux questions suivantes :<br/>";
-    foreach ($wrongresponses as $wrongresponse){echo $wrongresponse->questionid.", ";}
-    echo "<hr/>";
-
-    //-----------------------
-*/
     echo "<br/>";
     $url1=new moodle_url("$CFG->wwwroot/mod/domoscio/doquiz.php?id=$cm->id");
-    echo $OUTPUT->action_link( $url1, "Faire les tests");
+    $url2=new moodle_url("$CFG->wwwroot/mod/domoscio/doquiz.php");
+    echo $OUTPUT->action_link( $url1, "Passer le test de positionnement");
+    $count = count_tests($config);
+    echo "<hr/>Vous avez ".count($count)." rappels à faire :<br/>";
+
+    echo $OUTPUT->action_link( $url2, "Faire les rappels");
 }
 
 // Finish the page.

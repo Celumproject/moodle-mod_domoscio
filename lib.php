@@ -561,6 +561,57 @@ function get_resource_info($knowledge_node) {
 
     return $moduleinfo->name;
 }
+/* Compte le nombre de rappels */
+function count_tests($config)
+{
+    global $DB, $USER, $CFG;
+
+    $kn_students = $DB->get_records_sql("SELECT kn_student_id FROM mdl_knowledge_node_students WHERE user = $USER->id");
+    $i = 0;
+    $list = array();
+    foreach($kn_students as $kn_student)
+    {
+        $rest = new domoscio_client();
+        $date = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/knowledge_node_students/$kn_student->kn_student_id?token=$config->domoscio_apikey")->get());
+
+        if(strtotime($date->next_review_at) < time())
+        {
+            $list[] = $kn_student->kn_student_id;
+        }
+    }
+
+    return $list;
+}
+
+/* Affiche l'interface de quiz */
+function display_questions($question)
+{
+    echo "<div class='que ".$question->qtype." deferredfeedback notyetanswered'>";
+        echo "<div class='info'>";
+            echo "<h3 class='no'>Question <span class='qno'>".$question->id."</span></h3>";
+        echo "</div>";
+        echo "<div class='content'>";
+            echo "<div class='formulation'>";
+                if($question->qtype == "calculated" || $question->qtype == "numerical" || $question->qtype == "shortanswer")
+                {
+                    echo get_inputanswer($question);
+                }
+                elseif($question->qtype == "multichoice" || $question->qtype == "calculatedmulti" || $question->qtype == "truefalse")
+                {
+                    echo get_multichoiceanswer($question);
+                }
+                elseif($question->qtype == "multianswer")
+                {
+                    echo get_multianswer($question);
+                }
+                elseif($question->qtype == "match")
+                {
+                    echo get_match($question);
+                }
+            echo "</div>";
+        echo "</div>";
+    echo "</div>";
+}
 
 /* Chope les réponses */
 function get_answers($qnum)
@@ -824,7 +875,7 @@ function get_inputresult($question, $post)
             <div class='rightanswer'>The right answer is : ".$answer->answer.
             "</div>
         </div>";
-        $result = 1;
+        $result = 100;
     }
     return $result;
 }
@@ -855,7 +906,7 @@ function get_multichoiceresult($question, $post)
             else
             {
                 $class = "correct";
-                $result = 1;
+                $result = 100;
             }
         }
         else
@@ -934,7 +985,7 @@ function get_multiresult($question, $post)
         if(($post['q0:'.$question->id.'_sub'.$i.'_answer']) == $hole[0])
         {
             $class = "correct";
-            $subresult += 1;
+            $subresult += 100;
         }
         else
         {
@@ -999,7 +1050,7 @@ function get_matchresult($question, $post)
         if(($post['q0:'.$question->id.'_sub'.$i]) == $subquestion->answertext)
         {
             $class = "correct";
-            $subresult += 1;
+            $subresult += 100;
         }
         else
         {
