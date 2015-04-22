@@ -33,11 +33,12 @@ require_once(dirname(__FILE__).'/lib.php');
 
 
 $id = optional_param('id', 0, PARAM_INT); // Course_module ID, or
+$q = optional_param('q', 0, PARAM_INT); // Course_module ID, or
 
 //$course = $DB->get_record('course', array('id' => $id), '*', MUST_EXIST);
 
 if ($id) {
-    $cm         = get_coursemodule_from_id('domoscio', $id, 0, false, MUST_EXIST);
+    $cm         = $DB->get_record('course_modules', array('id' => $id), '*', MUST_EXIST);
     $course     = $DB->get_record('course', array('id' => $cm->course), '*', MUST_EXIST);
     $domoscio  = $DB->get_record('domoscio', array('id' => $cm->instance), '*', MUST_EXIST);
 }
@@ -57,12 +58,11 @@ echo $OUTPUT->header();
 
 echo $OUTPUT->heading("Résultats");
 
-$list = $_POST['list'];
 
 // Récupère les informations relatives aux questions sélectionnées
 $sqlquestitem = "SELECT *
                 FROM `mdl_question`
-                WHERE `id` IN ($list)";
+                WHERE `id` IN ($q)";
 
 $questions = $DB->get_records_sql($sqlquestitem);
 
@@ -96,5 +96,7 @@ foreach($questions as $question)
         echo "</div>";
     echo "</div>";
 }
-print_r($_POST);
+//print_r($_POST);
+echo html_writer::tag('button', 'Continue', array('type' => 'button','onclick'=>"javascript:location.href='$CFG->wwwroot/mod/domoscio/view.php?id=$cm->id'"));
+
 echo $OUTPUT->footer();

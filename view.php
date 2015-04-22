@@ -130,7 +130,7 @@ elseif (user_has_role_assignment($USER->id,5)) {
     // Vérifie si l'étudiant s'est déjà connecté au plugin Domoscio
     $check = $DB->get_record_sql("SELECT * FROM `mdl_userapi` WHERE `user_id` =".$USER->id);
 
-    if(count($check) > 0)
+    if(!empty($check))
     {
         // Si oui, le plugin récupère les données de l'étudiant
         echo "Utilisateur inscrit<br/>";
@@ -140,6 +140,39 @@ elseif (user_has_role_assignment($USER->id,5)) {
         $student = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/students/$check->uniq_id?token=$config->domoscio_apikey")->get());
 
         print_r($student);
+
+        // Vérifie si un knowledge_node_student est créé
+        $check_knstudent = $DB->get_record_sql("SELECT * FROM `mdl_knowledge_node_students` WHERE `user` = $USER->id AND `instance` = $domoscio->id");
+
+        if(!empty($check_knstudent))
+        {
+            //Si oui, le plugin récupère les données du KN student
+            $rest = new domoscio_client();
+
+            $kn_student = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/knowledge_node_students/$check_knstudent->kn_student_id?token=$config->domoscio_apikey")->get());
+
+            print_r($kn_student);
+
+        }
+        else
+        {
+            $jsonkn = json_encode(array('knowledge_node_id' => intval($domoscio->resource_id), 'student_id' => intval($student->id)));
+
+            print_r($jsonkn);
+
+            $rest = new domoscio_client();
+
+            $kn_student = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/knowledge_node_students/?token=$config->domoscio_apikey")->post($jsonkn));
+
+            print_r($kn_student);
+
+            // Le plugin récupère le knowledge_node_student id créé par l'api et l'inscrit en DB
+            $record = new stdClass();
+            $record->user = $USER->id;
+            $record->kn_student_id = $kn_student->id;
+            $record->instance = $domoscio->id;
+            $insert = $DB->insert_record('knowledge_node_students', $record, false);
+        }
     }
     else
     {
@@ -147,17 +180,17 @@ elseif (user_has_role_assignment($USER->id,5)) {
         echo "Première visite<br/>";
 
         $json = json_encode(array(
-            'student_group_id' => "0",
+            'student_group_id' => strval("0"),
             'civil_profile_attributes' => array(
-                                                'name' => "eleve",
-                                                'sexe' => "male",
-                                                'day_of_birth' => "11-05-1989",
-                                                'place_of_birth' => "FR",
-                                                'country_of_residence' => "FR",
-                                                'city_of_residence' => "Paris"
+                                                'name' => strval($USER->firstname." ".$USER->lastname),
+                                                'sexe' => strval("male"),
+                                                'day_of_birth' => strval("11-05-1989"),
+                                                'place_of_birth' => strval("FR"),
+                                                'country_of_residence' => strval($USER->country),
+                                                'city_of_residence' => strval($USER->city)
                                                 ),
             'learning_profile_attributes' => array(
-                                                    'forgetting_parameters' => "[1,2,3]"
+                                                    'forgetting_parameters' => strval("[1,2,3]")
                                                     )
         ));
 
@@ -172,8 +205,9 @@ elseif (user_has_role_assignment($USER->id,5)) {
         $record->user_id = $USER->id;
         $record->uniq_id = $student->id;
         $insert = $DB->insert_record('userapi', $record, false);
-    }
 
+    }
+/*
     echo "<br/>Voici les données dont l'API aura besoin lors de la première connexion de l'étudiant<hr/>";
     // Récupère les identifiants des dernières tentatives de réponse aux quiz
     $sqllast = "SELECT `quiz`, MAX(`uniqueid`) AS `uniqueid`
@@ -218,8 +252,9 @@ elseif (user_has_role_assignment($USER->id,5)) {
     echo "<hr/>";
 
     //-----------------------
-
-    $url1=new moodle_url("$CFG->wwwroot/mod/domoscio/doquiz.php");
+*/
+    echo "<br/>";
+    $url1=new moodle_url("$CFG->wwwroot/mod/domoscio/doquiz.php?id=$cm->id");
     echo $OUTPUT->action_link( $url1, "Faire les tests");
 }
 

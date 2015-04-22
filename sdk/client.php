@@ -47,7 +47,7 @@ class domoscio_client
         $opts = array(
               'http'=>array(
                             'method'=>$pMethod,
-                            'header'=>'Content-type: application/x-www-form-urlencoded',
+                            'header'=>'Content-type: application/json',
                           )
         );
         if ($pContent !== null){

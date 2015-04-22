@@ -51,7 +51,7 @@ class linkto_form extends moodleform {
 
         foreach($questions as $question)
         {
-            $mform->addElement('advcheckbox', $question->id, $question->name, "<hr/>".$question->questiontext, array('group' => 1), array(0, 1));
+            $mform->addElement('advcheckbox', $question->questionid, $question->name, "<hr/>".$question->questiontext, array('group' => 1), array(0, 1));
         }
 
         $this->add_action_buttons();

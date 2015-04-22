@@ -29,6 +29,7 @@
 
 require_once(dirname(dirname(dirname(__FILE__))).'/config.php');
 require_once(dirname(__FILE__).'/lib.php');
+require_once(dirname(__FILE__).'/sdk/client.php');
 require_once($CFG->dirroot . '/mod/quiz/locallib.php');
 
 $id = optional_param('id', 0, PARAM_INT); // Course_module ID, or
@@ -36,7 +37,7 @@ $id = optional_param('id', 0, PARAM_INT); // Course_module ID, or
 //$course = $DB->get_record('course', array('id' => $id), '*', MUST_EXIST);
 
 if ($id) {
-    $cm         = get_coursemodule_from_id('domoscio', $id, 0, false, MUST_EXIST);
+    $cm         = $DB->get_record('course_modules', array('id' => $id), '*', MUST_EXIST);
     $course     = $DB->get_record('course', array('id' => $cm->course), '*', MUST_EXIST);
     $domoscio  = $DB->get_record('domoscio', array('id' => $cm->instance), '*', MUST_EXIST);
 }
@@ -54,65 +55,19 @@ echo $OUTPUT->header();
 
 echo $OUTPUT->heading("Evaluation");
 
-/*-----------
-    LA PARTIE SUIVANTE NE SERA PLUS NECESSAIRE LORSQUE LE PLUGIN SERA RELIE A L'API DOMOSICO
-    Ces données seront fournies directement par l'algo de l'api
-------------*/
+// Récupère les identifiants des questions sélectionnées par le concepteur
 
-    // Récupère la liste des dernières tentatives aux quiz terminées de l'étudiant
-    $sqllast = "SELECT `quiz`, MAX(`uniqueid`) AS `uniqueid`
-                FROM `mdl_quiz_attempts`
-                WHERE `userid` = $USER->id
-                AND `state` = 'finished'
-                GROUP BY `quiz`
-                ORDER BY `uniqueid` ASC";
+$lists = $DB->get_records_sql("SELECT `question_id` FROM `mdl_knowledge_node_questions` WHERE `instance` = $domoscio->id");
 
-    $last_attempts = $DB->get_records_sql($sqllast);
-
-    // Complète un tableau contenant les identifiants des tentatives
-    $data = array();
-    foreach($last_attempts as $last_attempt)
-    {
-        $data[] = $last_attempt->uniqueid;
-    }
-
-    // Extraction des données du tableau sous un format compatible pour la requête
-    $datas = implode(',', $data);
-
-    // Récupère les questions où l'étudiant à mal répondu
-    $sqlwrong = "SELECT `questionid`
-                FROM `mdl_question_attempts`
-                WHERE `mdl_question_attempts`.`rightanswer` != `mdl_question_attempts`.`responsesummary`
-                AND `questionusageid` IN ($datas)
-                ORDER BY `questionid` ASC";
-
-    $wrongquestions = $DB->get_records_sql($sqlwrong);
-
-    // Complète un tableau avec les identifiants des questions sélectionnées pour le test
-    $list = array();
-
-    foreach($wrongquestions as $wrongq)
-    {
-        $list[] = $wrongq->questionid;
-    }
-
-    $lists = implode(',', $list);
-
-/*----------- FIN DU CODE TEMPORAIRE -----------------*/
+$selected = array_rand($lists, 1);
 
 // Récupère les informations relatives aux questions sélectionnées
-$sqlquestitem = "SELECT *
-                FROM `mdl_question`
-                WHERE `id` IN ($lists)";
 
-$questions = $DB->get_records_sql($sqlquestitem);
+$question = $DB->get_record_sql("SELECT * FROM `mdl_question` WHERE `id` = $selected");
 
-
+$qtype = $question->qtype;
 // Créé un nouveau formulaire qui collectera toutes les données du test
-echo "<form id='responseform' method='POST' action='$CFG->wwwroot/mod/domoscio/results.php'>";
-foreach($questions as $question)
-{
-    $qtype = $question->qtype;
+echo "<form id='responseform' method='POST' action='$CFG->wwwroot/mod/domoscio/results.php?id=$cm->id&q=$selected'>";
 
     echo "<div class='que ".$qtype." deferredfeedback notyetanswered'>";
         echo "<div class='info'>";
@@ -139,8 +94,7 @@ foreach($questions as $question)
             echo "</div>";
         echo "</div>";
     echo "</div>";
-}
-echo "<input type='hidden' value=".$lists." name='list'></input>";
+
 echo "<input type='submit' value='Next' name='next'></input>";
 echo "</form>";
 
