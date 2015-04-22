@@ -31,7 +31,7 @@ require_once(dirname(dirname(dirname(__FILE__))).'/config.php');
 require_once(dirname(__FILE__).'/classes/quiz_form.php');
 require_once(dirname(__FILE__).'/lib.php');
 
-
+$config = get_config('domoscio');
 $id = optional_param('id', 0, PARAM_INT); // Course_module ID, or
 $q = optional_param('q', 0, PARAM_INT); // Course_module ID, or
 
@@ -60,11 +60,8 @@ echo $OUTPUT->heading("Résultats");
 
 
 // Récupère les informations relatives aux questions sélectionnées
-$sqlquestitem = "SELECT *
-                FROM `mdl_question`
-                WHERE `id` IN ($q)";
 
-$questions = $DB->get_records_sql($sqlquestitem);
+$questions = $DB->get_records_sql("SELECT * FROM `mdl_question` WHERE `id` = $q");
 
 foreach($questions as $question)
 {
@@ -78,25 +75,37 @@ foreach($questions as $question)
             echo "<div class='formulation'>";
                 if($qtype == "calculated" || $qtype == "numerical" || $qtype == "shortanswer")
                 {
-                    echo get_inputresult($question, $_POST);
+                    $result = get_inputresult($question, $_POST);
                 }
                 elseif($qtype == "multichoice" || $qtype == "calculatedmulti" || $qtype == "truefalse")
                 {
-                    echo get_multichoiceresult($question, $_POST);
+                    $result = get_multichoiceresult($question, $_POST);
                 }
                 elseif($qtype == "multianswer")
                 {
-                    echo get_multiresult($question, $_POST);
+                    $result = get_multiresult($question, $_POST);
                 }
                 elseif($qtype == "match")
                 {
-                    echo  get_matchresult($question, $_POST);
+                    $result = get_matchresult($question, $_POST);
                 }
             echo "</div>";
         echo "</div>";
     echo "</div>";
 }
 //print_r($_POST);
+
+//Génère le résultat en json à retourner à l'api
+$kn_student = $DB->get_record_sql("SELECT `kn_student_id` FROM `mdl_knowledge_node_students` WHERE `user` = $USER->id AND `instance` = $domoscio->id");
+
+$json = json_encode(array('knowledge_node_student_id' => intval($kn_student->kn_student_id), 'value' => intval($result)));
+
+$rest = new domoscio_client();
+
+$result = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/results/?token=$config->domoscio_apikey")->post($json));
+
+print_r($result);
+
 echo html_writer::tag('button', 'Continue', array('type' => 'button','onclick'=>"javascript:location.href='$CFG->wwwroot/mod/domoscio/view.php?id=$cm->id'"));
 
 echo $OUTPUT->footer();

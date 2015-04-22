@@ -806,6 +806,7 @@ function get_inputresult($question, $post)
             <div class='rightanswer'>The right answer is : ".$answer->answer.
             "</div>
         </div>";
+        $result = 0;
     }
     else
     {
@@ -823,8 +824,9 @@ function get_inputresult($question, $post)
             <div class='rightanswer'>The right answer is : ".$answer->answer.
             "</div>
         </div>";
+        $result = 1;
     }
-
+    return $result;
 }
 
 //Génère l'affichage des résultats aux questions QCM
@@ -848,10 +850,12 @@ function get_multichoiceresult($question, $post)
             if($answer->answer !== $rightanswer->answer)
             {
                 $class = "incorrect";
+                $result = 0;
             }
             else
             {
                 $class = "correct";
+                $result = 1;
             }
         }
         else
@@ -868,7 +872,7 @@ function get_multichoiceresult($question, $post)
     }
     $radio_fetched = implode("", $radio);
 
-    $display =
+    echo
     "<div class'qtext'>
         <p>".$question->questiontext."</p>
     </div>
@@ -882,7 +886,7 @@ function get_multichoiceresult($question, $post)
         "</div>
     </div>";
 
-    return $display;
+    return $result;
 }
 
 /* Génère l'affichage des résultats aux questions de type texte à trous*/
@@ -924,16 +928,18 @@ function get_multiresult($question, $post)
 
     $replacements = array();
     $i = $j = 1;
-
+    $subresult = 0;
     foreach($result as $key => $hole)
     {
         if(($post['q0:'.$question->id.'_sub'.$i.'_answer']) == $hole[0])
         {
             $class = "correct";
+            $subresult += 1;
         }
         else
         {
             $class = "incorrect";
+            $subresult += 0;
         }
 
         if($key == "multichoice".$j)
@@ -963,8 +969,12 @@ function get_multiresult($question, $post)
 
 
     }
+    if(count($answers) != $subresult){$result = 0;}else{$result = 1;}
 
-    return preg_replace($patterns[0], $replacements, $qtext->questiontext);
+    $display = preg_replace($patterns[0], $replacements, $qtext->questiontext);
+
+    echo $display;
+    return $result;
 }
 
 // Génère l'affichage des réponses aux questions de type Match (drag and drop)
@@ -981,6 +991,7 @@ function get_matchresult($question, $post)
 
     $table = array();
     $i = 1;
+    $subresult = 0;
 
     foreach($subquestions as $subquestion)
     {
@@ -988,10 +999,12 @@ function get_matchresult($question, $post)
         if(($post['q0:'.$question->id.'_sub'.$i]) == $subquestion->answertext)
         {
             $class = "correct";
+            $subresult += 1;
         }
         else
         {
             $class = "incorrect";
+            $subresult += 0;
         }
 
         $table[] =
@@ -1013,7 +1026,7 @@ function get_matchresult($question, $post)
 
     $table_fetched = implode("", $table);
 
-    $display =
+    echo
     "<div class='qtext'>
         <p>".$question->questiontext."</p>
     </div>
@@ -1023,5 +1036,7 @@ function get_matchresult($question, $post)
         "</tbody>
     </table>";
 
-    return $display;
+    if(count($subquestions) != $subresult){$result = 0;}else{$result = 1;}
+
+    return $result;
 }
