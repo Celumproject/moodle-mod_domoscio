@@ -53,6 +53,7 @@ echo $OUTPUT->header();
 
 // Récupère les identifiants des questions sélectionnées par le concepteur
 if ($id) {
+    // TEST DE POSITIONNEMENT
     $PAGE->set_title('Evaluation');
     echo $OUTPUT->heading("Evaluation");
     $lists = $DB->get_records_sql("SELECT `question_id` FROM `mdl_knowledge_node_questions` WHERE `instance` = $domoscio->id");
@@ -67,13 +68,13 @@ if ($id) {
     echo "<form id='responseform' method='POST' action='$CFG->wwwroot/mod/domoscio/results.php?id=$cm->id&q=$selected'>";
     echo display_questions($question);
 } else {
+    // RAPPELS
     $PAGE->set_title('Rappels');
     echo $OUTPUT->heading("Rappels");
 
     $todo_tests = count_tests($config);
-    $qid = array();
+    $qid = $batch = array();
 
-    $batch = array();
     echo "<form id='responseform' method='POST' action='$CFG->wwwroot/mod/domoscio/results.php'>";
     foreach($todo_tests as $test)
     {

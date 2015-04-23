@@ -61,7 +61,7 @@ echo $OUTPUT->heading("Résultats");
 
 // Récupère les informations relatives aux questions sélectionnées
 if($id){
-    $questions = $DB->get_records_sql("SELECT * FROM `mdl_question` WHERE `id` = $qid");
+    $questions = $DB->get_records_sql("SELECT * FROM `mdl_question` WHERE `id` = $q");
 } else {
     $qids = $_POST['qids'];
     $questions = $DB->get_records_sql("SELECT * FROM `mdl_question` WHERE `id` IN ($qids)");
