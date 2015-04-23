@@ -1091,3 +1091,24 @@ function get_matchresult($question, $post)
 
     return $result;
 }
+
+// Créé un rappel dans le calendrier Moodle
+function create_event($domoscio, $course, $kn_student)
+{
+    global $DB, $CGF, $USER;
+
+    $event = new stdClass;
+    $event->name    = "Domoscio Rappel :".$domoscio->name;
+    $event->description = "Vous avez un rappel à faire sur la ressource ";
+    $event->courseid    = $course->id;
+    $event->groupid     = 0;
+    $event->userid      = $USER->id;
+    $event->modulename  = 'domoscio';
+    $event->instance    = $domoscio->id;
+    $event->eventtype   = 'feedbackcloses';
+    $event->timestart   = strtotime($kn_student->next_review_at);
+    $event->visible     = instance_is_visible('domoscio', $domoscio);
+    $event->timeduration    = 60;
+
+    calendar_event::create($event);
+}

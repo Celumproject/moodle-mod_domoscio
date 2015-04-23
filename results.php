@@ -107,7 +107,7 @@ foreach($questions as $question)
 
         $api_return = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/results/?token=$config->domoscio_apikey")->post($json));
 
-        print_r($api_return);
+        //print_r($api_return);
 
         // Inscrit un rappel dans le calendrier
         $domoscio  = $DB->get_record('domoscio', array('id' => $_POST['kn_q'.$question->id]), '*', MUST_EXIST);
@@ -117,20 +117,7 @@ foreach($questions as $question)
 
         $kn_student = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/knowledge_node_students/$kn_student->kn_student_id?token=$config->domoscio_apikey")->get());
 
-        $event = new stdClass;
-        $event->name    = "Domoscio Rappel :".$domoscio->name;
-        $event->description = "Vous avez un rappel à faire sur la ressource ";
-        $event->courseid    = $course->id;
-        $event->groupid     = 0;
-        $event->userid      = $USER->id;
-        $event->modulename  = 'domoscio';
-        $event->instance    = $domoscio->id;
-        $event->eventtype   = 'feedbackcloses';
-        $event->timestart   = strtotime($kn_student->next_review_at);
-        $event->visible     = instance_is_visible('domoscio', $domoscio);
-        $event->timeduration    = 60;
-
-        calendar_event::create($event);
+        $new_event = create_event($domoscio, $course, $kn_student);
     }
 }
 
@@ -152,20 +139,7 @@ if ($id){
 
     $kn_student = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/knowledge_node_students/$kn_student->kn_student_id?token=$config->domoscio_apikey")->get());
 
-    $event = new stdClass;
-    $event->name    = "Domoscio Rappel :".$domoscio->name;
-    $event->description = "Vous avez un rappel à faire sur la ressource ";
-    $event->courseid    = $course->id;
-    $event->groupid     = 0;
-    $event->userid      = $USER->id;
-    $event->modulename  = 'domoscio';
-    $event->instance    = $domoscio->id;
-    $event->eventtype   = 'feedbackcloses';
-    $event->timestart   = strtotime($kn_student->next_review_at);
-    $event->visible     = instance_is_visible('domoscio', $domoscio);
-    $event->timeduration    = 60;
-
-    calendar_event::create($event);
+    $new_event = create_event($domoscio, $course, $kn_student);
 
     echo html_writer::tag('button', 'Continue', array('type' => 'button','onclick'=>"javascript:location.href='$CFG->wwwroot/mod/domoscio/view.php?id=$cm->id'"));
 }

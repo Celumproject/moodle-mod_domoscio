@@ -91,14 +91,14 @@ if ($domoscio->intro) {
     echo $OUTPUT->box(format_module_intro('domoscio', $domoscio, $cm->id), 'generalbox mod_introbox', 'domosciointro');
 }
 
+$rest = new domoscio_client();
+
+$resource = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/knowledge_nodes/$domoscio->resource_id?token=$config->domoscio_apikey")->get());
 // --- VUE PROFESSEUR ---
 
 if (user_has_role_assignment($USER->id,3)) {
 
     echo "<div class='block'><b class='mod_introbox'>Le plugin est lié à la ressource suivante :</b></div>";
-    $rest = new domoscio_client();
-
-    $resource = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/knowledge_nodes/$domoscio->resource_id?token=$config->domoscio_apikey")->get());
 
     echo get_resource_info($resource->id);
     echo "<hr/><div class='block'><b class='mod_introbox'>Le plugin propose les questions suivantes :</b></div>";
@@ -116,7 +116,7 @@ if (user_has_role_assignment($USER->id,3)) {
     {
         $url = new moodle_url("$CFG->wwwroot/mod/domoscio/linkto.php?id=".$cm->id."&q=".$quiz->id);
         echo "<div class='coursebox'>";
-        echo $OUTPUT->action_link( $url, "<h4>".$quiz->name."</h4>" )."<br/>";
+        echo $OUTPUT->action_link( $url, "<h5>".$quiz->name."</h5>" );
         echo "</div>";
     }
 
@@ -127,19 +127,21 @@ if (user_has_role_assignment($USER->id,3)) {
 
 elseif (user_has_role_assignment($USER->id,5)) {
 
+    echo "Vous révisez la ressource du cours suivante :<br/>";
+    echo get_resource_info($resource->id);
+    echo "<hr/>";
+
     // Vérifie si l'étudiant s'est déjà connecté au plugin Domoscio
     $check = $DB->get_record_sql("SELECT * FROM `mdl_userapi` WHERE `user_id` =".$USER->id);
 
     if(!empty($check))
     {
         // Si oui, le plugin récupère les données de l'étudiant
-        echo "Utilisateur inscrit<br/>";
-
         $rest = new domoscio_client();
 
         $student = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/students/$check->uniq_id?token=$config->domoscio_apikey")->get());
 
-        print_r($student);
+        echo "Utilisateur inscrit n°".$student->id."<br/>";
 
         // Vérifie si un knowledge_node_student est créé
         $check_knstudent = $DB->get_record_sql("SELECT * FROM `mdl_knowledge_node_students` WHERE `user` = $USER->id AND `instance` = $domoscio->id");
@@ -151,20 +153,20 @@ elseif (user_has_role_assignment($USER->id,5)) {
 
             $kn_student = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/knowledge_node_students/$check_knstudent->kn_student_id?token=$config->domoscio_apikey")->get());
 
-            print_r($kn_student);
+            //print_r($kn_student);
 
         }
         else
         {
             $jsonkn = json_encode(array('knowledge_node_id' => intval($domoscio->resource_id), 'student_id' => intval($student->id)));
 
-            print_r($jsonkn);
+            //print_r($jsonkn);
 
             $rest = new domoscio_client();
 
             $kn_student = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/knowledge_node_students/?token=$config->domoscio_apikey")->post($jsonkn));
 
-            print_r($kn_student);
+            //print_r($kn_student);
 
             // Le plugin récupère le knowledge_node_student id créé par l'api et l'inscrit en DB
             $record = new stdClass();
@@ -215,8 +217,11 @@ elseif (user_has_role_assignment($USER->id,5)) {
 
     $count = count_tests($config);
     echo "<hr/>Vous avez ".count($count)." rappels à faire :<br/>";
-
     if(!empty($count)){echo $OUTPUT->action_link( $url2, "Faire les rappels");}
+
+    $reminder = date('d/m/Y à H:i',strtotime($kn_student->next_review_at));
+    echo "<hr/>Prochain rappel sur cet item : ".$reminder;
+
 }
 
 // Finish the page.
