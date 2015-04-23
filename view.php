@@ -95,27 +95,29 @@ if ($domoscio->intro) {
 
 if (user_has_role_assignment($USER->id,3)) {
 
-    echo "Le plugin est lié à la ressource suivante :<br/>";
+    echo "<div class='block'><b class='mod_introbox'>Le plugin est lié à la ressource suivante :</b></div>";
     $rest = new domoscio_client();
 
     $resource = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/knowledge_nodes/$domoscio->resource_id?token=$config->domoscio_apikey")->get());
 
     echo get_resource_info($resource->id);
-    echo "<BR/><HR/>Le plugin propose les questions suivantes :<br/>";
+    echo "<hr/><div class='block'><b class='mod_introbox'>Le plugin propose les questions suivantes :</b></div>";
 
     $questions = $DB->get_records_sql("SELECT `question_id` FROM `mdl_knowledge_node_questions` WHERE `instance` = $domoscio->id");
 
     foreach($questions as $question){echo $question->question_id.", ";}
 
-    echo "<hr/>Inscrivez les questions que vous souhaitez proposer aux étudiants.
-    <br/>Sélectionnez l'un des quiz ci-dessous pour associer les questions pour l'ancrage :<hr/>";
+    echo "<hr/><div class='block'><b class='mod_introbox'>Inscrivez les questions que vous souhaitez proposer aux étudiants.</b></div>
+    Sélectionnez l'un des quiz ci-dessous pour associer les questions pour l'ancrage :";
 
     $quizzes = $DB->get_records_sql("SELECT `id`, `name` FROM `mdl_quiz` WHERE `course` = ".$course->id);
 
     foreach($quizzes as $quiz)
     {
         $url = new moodle_url("$CFG->wwwroot/mod/domoscio/linkto.php?id=".$cm->id."&q=".$quiz->id);
-        echo $OUTPUT->action_link( $url, $quiz->name )."<br/>";
+        echo "<div class='coursebox'>";
+        echo $OUTPUT->action_link( $url, "<h4>".$quiz->name."</h4>" )."<br/>";
+        echo "</div>";
     }
 
 

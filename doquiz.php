@@ -72,12 +72,20 @@ if ($id) {
 
     $todo_tests = count_tests($config);
     $qid = array();
+
+    $batch = array();
     foreach($todo_tests as $test)
     {
         $instance = $DB->get_record_sql("SELECT `instance` FROM `mdl_knowledge_node_students` WHERE `kn_student_id` = $test");
         $lists = $DB->get_records_sql("SELECT `question_id` FROM `mdl_knowledge_node_questions` WHERE `instance` = $instance->instance");
 
+        // Filtre les questions déjà proposées pour éviter les doublons
+        foreach($batch as $prevq)
+        {
+            unset($lists[$prevq]);
+        }
         $selected = array_rand($lists, 1);
+        $batch[] = $selected;
 
         // Récupère les informations relatives aux questions sélectionnées
 

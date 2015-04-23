@@ -63,8 +63,9 @@ echo $OUTPUT->header();
 
 echo $OUTPUT->heading("Associer ressource");
 
-echo "Sélectionnez les questions du quiz <b>". $quizname->name ."</b> à proposer pour ce plugin :<br/>
-Ces questions seront liées à la ressource : ".get_resource_info($resource->id)."<hr/>";
+echo "<div class='block'><p class='mod_introbox'>Sélectionnez les questions du quiz <b>". $quizname->name ."</b> à proposer pour ce plugin :</p></div>
+<b>Ces questions seront liées à la ressource : </b><br/>";
+echo get_resource_info($resource->id)."<hr/>";
 
 $mform = new linkto_form("$CFG->wwwroot/mod/domoscio/linkto.php?id=".$cm->id."&q=".$q, array('q'=>$q, 'instance'=>$domoscio->id));
 

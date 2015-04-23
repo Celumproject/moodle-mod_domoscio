@@ -526,7 +526,7 @@ function is_user_with_role($courseid, $rolename, $userid = 0) {
 
 function get_resource_info($knowledge_node) {
 
-    global $DB, $CFG;
+    global $DB, $CFG, $OUTPUT;
 
     $query = "SELECT `mdl_course_modules`.`module`,`mdl_course_modules`.`instance`
             FROM `mdl_course_modules` INNER JOIN `mdl_knowledge_nodes`
@@ -539,27 +539,27 @@ function get_resource_info($knowledge_node) {
 
     switch($resource->module) {
         case 3:
-            $modulename = "mdl_book";
+            $modulename = "book";
             break;
 
         case 14:
-            $modulename = "mld_lesson";
+            $modulename = "lesson";
             break;
 
         case 16:
-            $modulename = "mdl_page";
+            $modulename = "page";
             break;
 
         case 18:
-            $modulename = "mdl_resource";
+            $modulename = "resource";
             break;
     }
 
-    $query = "SELECT name FROM $modulename WHERE id = $resource->instance";
+    $query = "SELECT name FROM mdl_$modulename WHERE id = $resource->instance";
 
     $moduleinfo = $DB->get_record_sql($query);
 
-    return $moduleinfo->name;
+    echo "<img class='activityicon' src='".$OUTPUT->pix_url('icon',$modulename,$modulename,array('class'=>'icon'))."'></img><span> ".$moduleinfo->name."</span>";
 }
 /* Compte le nombre de rappels */
 function count_tests($config)
