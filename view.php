@@ -212,10 +212,11 @@ elseif (user_has_role_assignment($USER->id,5)) {
     $url1=new moodle_url("$CFG->wwwroot/mod/domoscio/doquiz.php?id=$cm->id");
     $url2=new moodle_url("$CFG->wwwroot/mod/domoscio/doquiz.php");
     echo $OUTPUT->action_link( $url1, "Passer le test de positionnement");
+
     $count = count_tests($config);
     echo "<hr/>Vous avez ".count($count)." rappels à faire :<br/>";
 
-    echo $OUTPUT->action_link( $url2, "Faire les rappels");
+    if(!empty($count)){echo $OUTPUT->action_link( $url2, "Faire les rappels");}
 }
 
 // Finish the page.
