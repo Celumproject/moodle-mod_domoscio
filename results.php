@@ -97,6 +97,19 @@ foreach($questions as $question)
             echo "</div>";
         echo "</div>";
     echo "</div>";
+    if(!$id)
+    {
+        //Génère le résultat en json à retourner à l'api
+        $kn_student = $DB->get_record_sql("SELECT `kn_student_id` FROM `mdl_knowledge_node_students` WHERE `user` = $USER->id AND `instance` = ".$_POST['kn_q'.$question->id]);
+
+        $json = json_encode(array('knowledge_node_student_id' => intval($kn_student->kn_student_id), 'value' => intval($result)));
+
+        $rest = new domoscio_client();
+
+        $api_return = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/results/?token=$config->domoscio_apikey")->post($json));
+
+        print_r($api_return);
+    }
 }
 
 if ($id){
@@ -107,9 +120,9 @@ if ($id){
 
     $rest = new domoscio_client();
 
-    $result = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/results/?token=$config->domoscio_apikey")->post($json));
+    $api_return = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/results/?token=$config->domoscio_apikey")->post($json));
 
-    print_r($result);
+    print_r($api_return);
 
 
     // Inscrit un rappel dans le calendrier

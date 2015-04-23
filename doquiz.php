@@ -74,6 +74,7 @@ if ($id) {
     $qid = array();
 
     $batch = array();
+    echo "<form id='responseform' method='POST' action='$CFG->wwwroot/mod/domoscio/results.php'>";
     foreach($todo_tests as $test)
     {
         $instance = $DB->get_record_sql("SELECT `instance` FROM `mdl_knowledge_node_students` WHERE `kn_student_id` = $test");
@@ -91,12 +92,16 @@ if ($id) {
 
         $question = $DB->get_record_sql("SELECT * FROM `mdl_question` WHERE `id` = $selected");
         $qid[] = $question->id;
-        // Créé un nouveau formulaire qui collectera toutes les données du test
-        echo "<form id='responseform' method='POST' action='$CFG->wwwroot/mod/domoscio/results.php'>";
+
         echo display_questions($question);
+        // Poste en masqué l'instance du plugin requise pour l'api
+        $qinstance = "kn_q".$question->id;
+        echo "<input type='hidden' value=$instance->instance name=$qinstance></input>";
+
     }
     $qids = implode(',', $qid);
     echo "<input type='hidden' value=$qids name='qids'></input>";
+    // Créé un nouveau formulaire qui collectera toutes les données du test
 }
 
 echo "<input type='submit' value='Next' name='next'></input>";
