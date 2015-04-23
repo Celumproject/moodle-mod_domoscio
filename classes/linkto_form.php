@@ -43,15 +43,27 @@ class linkto_form extends moodleform {
         global $DB, $CFG;
 
         //requetes sur les questions
-        $sqlquestions = "SELECT * FROM `mdl_question` INNER JOIN `mdl_quiz_slots` ON `mdl_question`.`id` = `mdl_quiz_slots`.`questionid` WHERE `mdl_quiz_slots`.`quizid` = $this->_customdata";
+        $sqlquestions = "SELECT * FROM `mdl_question` INNER JOIN `mdl_quiz_slots` ON `mdl_question`.`id` = `mdl_quiz_slots`.`questionid` WHERE `mdl_quiz_slots`.`quizid` = ".$this->_customdata['q'];
 
         $questions = $DB->get_records_sql($sqlquestions);
+
+        //requetes sur les questions déjà sélectionnées le cas échéant
+        $selectedquestions = $DB->get_records_sql("SELECT * FROM `mdl_knowledge_node_questions` WHERE `instance`=".$this->_customdata['instance']);
+
+        $selected = array();
+
+        foreach($selectedquestions as $selectedquestion)
+        {
+            $selected[] = $selectedquestion->question_id;
+        }
 
         $mform = $this->_form;
 
         foreach($questions as $question)
         {
-            $mform->addElement('advcheckbox', $question->questionid, $question->name, "<hr/>".$question->questiontext, array('group' => 1), array(0, 1));
+            if(in_array($question->questionid, $selected)){$check = true;}else{$check = false;}
+
+            $mform->addElement('advcheckbox', $question->questionid, $question->name, "<hr/>".$question->questiontext, array('group' => 1), array(0, 1))->setChecked($check);
         }
 
         $this->add_action_buttons();
