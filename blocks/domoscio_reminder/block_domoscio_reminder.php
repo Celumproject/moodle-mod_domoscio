@@ -20,8 +20,8 @@
 * @copyright  Domoscio
 * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
 */
-require_once('mod/domoscio/lib.php');
-require_once('mod/domoscio/sdk/client.php');
+
+include 'mod/domoscio/sdk/client.php';
 
 class block_domoscio_reminder extends block_base {
 
@@ -32,21 +32,45 @@ class block_domoscio_reminder extends block_base {
 
     public function get_content() {
         global $DB, $USER, $CFG;
-        $config = get_config('domoscio');
 
         if ($this->content !== null) {
           return $this->content;
         }
 
-        $count = count_tests($config);
+        if (user_has_role_assignment($USER->id,5)) {
+            $config = get_config('domoscio');
 
-        if(!empty($count)){$this->content->footer = "<a href=".$CFG->wwwroot."/mod/domoscio/doquiz.php>Let's go !</a>";}
+            $count = $this->count_tests($config);
 
-        $this->content         =  new stdClass;
-        $this->content->text   = 'You have '.count($count).' tests to pass';
+            if(!empty($count)){$this->content->footer = "<a href=".$CFG->wwwroot."/mod/domoscio/doquiz.php>Let's go !</a>";}
 
+            $this->content         =  new stdClass;
+            $this->content->text   = 'You have '.count($count).' tests to pass';
 
+        }
         return $this->content;
+
+    }
+
+    public function count_tests($config)
+    {
+        global $DB, $USER, $CFG;
+
+        $kn_students = $DB->get_records_sql("SELECT kn_student_id FROM mdl_knowledge_node_students WHERE user = $USER->id");
+        $i = 0;
+        $list = array();
+        foreach($kn_students as $kn_student)
+        {
+            $rest = new domoscio_client();
+            $date = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/knowledge_node_students/$kn_student->kn_student_id?token=$config->domoscio_apikey")->get());
+
+            if(strtotime($date->next_review_at) < time())
+            {
+                $list[] = $kn_student->kn_student_id;
+            }
+        }
+
+        return $list;
     }
 
 }   // Here's the closing bracket for the class definition
