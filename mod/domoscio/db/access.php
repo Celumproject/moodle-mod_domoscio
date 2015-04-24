@@ -49,7 +49,7 @@ $capabilities = array(
             'manager' => CAP_ALLOW
         ),
     ),
-    
+
     // Ability to attempt the activity.
     'mod/domoscio:attempt' => array(
         'riskbitmask' => RISK_SPAM,
