@@ -42,10 +42,10 @@ class block_domoscio_reminder extends block_base {
 
             $count = $this->count_tests($config);
 
-            if(!empty($count)){$this->content->footer = "<a href=".$CFG->wwwroot."/mod/domoscio/doquiz.php>Let's go !</a>";}
 
             $this->content         =  new stdClass;
             $this->content->text   = 'You have '.count($count).' tests to pass';
+            if(!empty($count)){$this->content->footer = "<a href=".$CFG->wwwroot."/mod/domoscio/doquiz.php>Let's go !</a>";}
 
         }
         return $this->content;
