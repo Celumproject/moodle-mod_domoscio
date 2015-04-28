@@ -152,21 +152,25 @@ elseif (user_has_role_assignment($USER->id,5)) {
             $rest = new domoscio_client();
 
             $kn_student = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/knowledge_node_students/$check_knstudent->kn_student_id?token=$config->domoscio_apikey")->get());
-
-            //print_r($kn_student);
-
         }
         else
         {
+          $check_node = $DB->get_records_sql("SELECT * FROM `mdl_domoscio` WHERE `resource_id` = $domoscio->resource_id");
+
+          $rest = new domoscio_client();
+
+          if(count($check_node) > 1) //Si un knowledge_node_student_id existe déjà :
+          {
+            $kns_id = $DB->get_record_sql("SELECT `kn_student_id` FROM `mdl_knowledge_node_students` INNER JOIN `mdl_domoscio` ON `mdl_knowledge_node_students`.`instance` = `mdl_domoscio`.`id` WHERE `mdl_domoscio`.`resource_id` = $domoscio->resource_id LIMIT 1")->kn_student_id;
+
+            $kn_student = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/knowledge_node_students/$kns_id?token=$config->domoscio_apikey")->get());
+          }
+          else // Sinon
+          {
             $jsonkn = json_encode(array('knowledge_node_id' => intval($domoscio->resource_id), 'student_id' => intval($student->id)));
 
-            //print_r($jsonkn);
-
-            $rest = new domoscio_client();
-
             $kn_student = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/knowledge_node_students/?token=$config->domoscio_apikey")->post($jsonkn));
-
-            //print_r($kn_student);
+          }
 
             // Le plugin récupère le knowledge_node_student id créé par l'api et l'inscrit en DB
             $record = new stdClass();
