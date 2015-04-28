@@ -21,8 +21,6 @@
 * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
 */
 
-include 'mod/domoscio/sdk/client.php';
-
 class block_domoscio_reminder extends block_base {
 
 
@@ -61,8 +59,7 @@ class block_domoscio_reminder extends block_base {
         $list = array();
         foreach($kn_students as $kn_student)
         {
-            $rest = new domoscio_client();
-            $date = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/knowledge_node_students/$kn_student->kn_student_id?token=$config->domoscio_apikey")->get());
+            $date = json_decode($this->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/knowledge_node_students/$kn_student->kn_student_id?token=$config->domoscio_apikey")->get());
 
             if(strtotime($date->next_review_at) < time())
             {
@@ -71,6 +68,60 @@ class block_domoscio_reminder extends block_base {
         }
 
         return $list;
+    }
+
+    private $_url;
+    public function setUrl($url)
+    {
+        $this->_url = $url;
+        return $this;
+    }
+
+    public function get($params = array())
+    {
+        return $this->_launch($this->_makeUrl($params),
+                            $this->_createContext('GET'));
+    }
+
+    protected function _createContext($pMethod, $pContent = null)
+    {
+        $opts = array(
+              'http'=>array(
+                            'method'=>$pMethod,
+                            'header'=>'Content-type: application/json',
+                          )
+        );
+        if ($pContent !== null){
+            if (is_array($pContent)){
+                $pContent = http_build_query($pContent);
+            }
+            $opts['http']['content'] = $pContent;
+        }
+
+        return stream_context_create($opts);
+    }
+
+    protected function _makeUrl($pParams)
+    {
+        return $this->_url
+            .(strpos($this->_url, '?') ? '' : '?')
+            .http_build_query($pParams);
+    }
+
+    protected function _launch ($pUrl, $context)
+    {
+        if (($stream = fopen($pUrl, 'r', false, $context)) !== false)
+        {
+            $content = stream_get_contents($stream);
+            $header = stream_get_meta_data($stream);
+            fclose($stream);
+            //return array('content'=>$content, 'header'=>$header);
+            return $content;
+        }
+        else
+        {
+            return false;
+        }
     }
 
 }   // Here's the closing bracket for the class definition
