@@ -40,9 +40,10 @@ class block_domoscio_reminder extends block_base {
 
             $count = $this->count_tests($config);
 
+            if(count($count) > 1){$plural = "s";}else{$plural = "";}
 
-            $this->content         =  new stdClass;
-            $this->content->text   = 'You have '.count($count).' tests to pass';
+            $this->content         = new stdClass;
+            $this->content->text   = get_string('text1', 'block_domoscio_reminder').count($count).get_string('text2', 'block_domoscio_reminder').$plural.get_string('text3', 'block_domoscio_reminder');
             if(!empty($count)){$this->content->footer = "<a href=".$CFG->wwwroot."/mod/domoscio/doquiz.php>Let's go !</a>";}
 
         }
