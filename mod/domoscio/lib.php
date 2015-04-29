@@ -197,6 +197,8 @@ function domoscio_delete_instance($id) {
 
     // Delete any dependent records here.
 
+    $DB->delete_records('knowledge_node_students', array('instance' => $domoscio->id));
+    $DB->delete_records('knowledge_node_questions', array('instance' => $domoscio->id));
     $DB->delete_records('domoscio', array('id' => $domoscio->id));
 
     domoscio_grade_item_delete($domoscio);
@@ -561,14 +563,37 @@ function get_resource_info($knowledge_node) {
 
     echo "<img class='activityicon' src='".$OUTPUT->pix_url('icon',$modulename,$modulename,array('class'=>'icon'))."'></img><span> ".$moduleinfo->name."</span>";
 }
-/* Compte le nombre de rappels */
+
+/* Compte le nombre de rappels pour chaque cours où est inscrit l'étudiant*/
 function count_tests($config)
 {
-    global $DB, $USER, $CFG;
+  global $DB, $USER, $CFG;
 
-    $kn_students = $DB->get_records_sql("SELECT kn_student_id FROM mdl_knowledge_node_students WHERE user = $USER->id");
+  //Checke les cours où l'étudiant est inscrit
+  $course_enrol = $DB->get_records_sql("SELECT `courseid` FROM `mdl_enrol` INNER JOIN `mdl_user_enrolments` ON `mdl_user_enrolments`.`enrolid` = `mdl_enrol`.`id` WHERE `mdl_user_enrolments`.`userid` = $USER->id");
+
+  $courselist = array();
+  foreach($course_enrol as $course)
+  {
+    $courselist[] = $course->courseid;
+  }
+  $list = array();
+
+  //Si l'étudiant est inscrit à un ou des cours, récupère les rappels
+  if(!empty($courselist))
+  {
+    $courselist = join(',', $courselist);
+    $instances = $DB->get_records_sql("SELECT id FROM `mdl_domoscio` WHERE course IN ($courselist)");
+
+    $instancelist = array();
+    foreach($instances as $instance)
+    {
+      $instancelist[] = $instance->id;
+    }
+
+    $instancelist = join(',', $instancelist);
+    $kn_students = $DB->get_records_sql("SELECT kn_student_id FROM mdl_knowledge_node_students WHERE user = $USER->id AND instance IN ($instancelist)");
     $i = 0;
-    $list = array();
     foreach($kn_students as $kn_student)
     {
         $rest = new domoscio_client();
@@ -579,8 +604,9 @@ function count_tests($config)
             $list[] = $kn_student->kn_student_id;
         }
     }
+  }
 
-    return $list;
+  return $list;
 }
 
 /* Affiche l'interface de quiz */

@@ -19,13 +19,16 @@
 *
 * @copyright  Domoscio
 * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+* @uses global $OUTPUT to produce notices and other messages
 */
 
 class block_domoscio_reminder extends block_base {
 
 
     public function init() {
-        $this->title = get_string('domoscioreminder', 'block_domoscio_reminder');
+      global $OUTPUT;
+        $icon = html_writer::tag('img', '', array('src'=>$OUTPUT->pix_url('icon','domoscio','domoscio',array('class'=>'icon')), 'class'=>'activityicon', 'alt'=>'disable'));
+        $this->title = $icon.' '.get_string('domoscioreminder', 'block_domoscio_reminder');
     }
 
     public function get_content() {
