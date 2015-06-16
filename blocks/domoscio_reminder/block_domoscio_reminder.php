@@ -46,9 +46,8 @@ class block_domoscio_reminder extends block_base {
             if(count($count) > 1){$plural = "s";}else{$plural = "";}
 
             $this->content         = new stdClass;
-            $this->content->text   = get_string('text1', 'block_domoscio_reminder').count($count).get_string('text2', 'block_domoscio_reminder').$plural.get_string('text3', 'block_domoscio_reminder');
-            if(!empty($count)){$this->content->footer = "<a href=".$CFG->wwwroot."/mod/domoscio/doquiz.php>Let's go !</a>";}
-
+            $this->content->text   = '<span class="badge badge-important" style="font-size:18px">'.count($count).'</span>'.get_string('text2', 'block_domoscio_reminder').$plural.get_string('text3', 'block_domoscio_reminder');
+            if(!empty($count)){$this->content->footer = "<a href=".$CFG->wwwroot."/mod/domoscio/index.php>Let's go !</a>";}
         }
         return $this->content;
 
@@ -58,14 +57,14 @@ class block_domoscio_reminder extends block_base {
     {
         global $DB, $USER, $CFG;
 
-        $kn_students = $DB->get_records_sql("SELECT kn_student_id FROM mdl_knowledge_node_students WHERE user = $USER->id");
+        $kn_students = $DB->get_records_sql("SELECT kn_student_id FROM ".$CFG->prefix."knowledge_node_students WHERE user = $USER->id");
         $i = 0;
         $list = array();
         foreach($kn_students as $kn_student)
         {
-            $date = json_decode($this->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/knowledge_node_students/$kn_student->kn_student_id?token=$config->domoscio_apikey")->get());
+            $result = json_decode($this->setUrl($config, 'knowledge_node_students', $kn_student->kn_student_id)->get());
 
-            if(strtotime($date->next_review_at) < time())
+            if(strtotime($result->next_review_at) < time() && $result->active == 'true')
             {
                 $list[] = $kn_student->kn_student_id;
             }
@@ -75,9 +74,9 @@ class block_domoscio_reminder extends block_base {
     }
 
     private $_url;
-    public function setUrl($url)
+    public function setUrl($config, $feature, $var)
     {
-        $this->_url = $url;
+        $this->_url = $config->domoscio_apiurl."/companies/".$config->domoscio_id."/".$feature."/".$var."?token=".$config->domoscio_apikey;
         return $this;
     }
 

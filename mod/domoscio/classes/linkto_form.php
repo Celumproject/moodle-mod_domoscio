@@ -42,28 +42,34 @@ class linkto_form extends moodleform {
     public function definition() {
         global $DB, $CFG;
 
-        //requetes sur les questions
-        $sqlquestions = "SELECT * FROM `mdl_question` INNER JOIN `mdl_quiz_slots` ON `mdl_question`.`id` = `mdl_quiz_slots`.`questionid` WHERE `mdl_quiz_slots`.`quizid` = ".$this->_customdata['q'];
-
-        $questions = $DB->get_records_sql($sqlquestions);
-
-        //requetes sur les questions déjà sélectionnées le cas échéant
-        $selectedquestions = $DB->get_records_sql("SELECT * FROM `mdl_knowledge_node_questions` WHERE `instance`=".$this->_customdata['instance']);
-
-        $selected = array();
-
-        foreach($selectedquestions as $selectedquestion)
-        {
-            $selected[] = $selectedquestion->question_id;
-        }
+        $quizzes = $DB->get_records('quiz', array('course' => $this->_customdata['course']), '', 'id,name');
 
         $mform = $this->_form;
 
-        foreach($questions as $question)
+        foreach($quizzes as $quiz)
         {
-            if(in_array($question->questionid, $selected)){$check = true;}else{$check = false;}
+            $mform->addElement('html', "<h5 class='coursebox'>".$quiz->name."</h5>");
 
-            $mform->addElement('advcheckbox', $question->questionid, $question->name, "<hr/>".$question->questiontext, array('group' => 1), array(0, 1))->setChecked($check);
+            $sqlquestions = "SELECT ".$CFG->prefix."question.`id`, ".$CFG->prefix."question.`name`, ".$CFG->prefix."question.`questiontext` FROM ".$CFG->prefix."question INNER JOIN ".$CFG->prefix."quiz_slots ON ".$CFG->prefix."question.`id` = ".$CFG->prefix."quiz_slots.`questionid` WHERE ".$CFG->prefix."quiz_slots.`quizid` = ".$quiz->id;
+
+            $questions = $DB->get_records_sql($sqlquestions);
+
+            //requetes sur les questions déjà sélectionnées le cas échéant
+            $selectedquestions = $DB->get_records_sql("SELECT * FROM ".$CFG->prefix."knowledge_node_questions WHERE `knowledge_node`=".$this->_customdata['kn_id']);
+
+            $selected = array();
+
+            foreach($selectedquestions as $selectedquestion)
+            {
+                $selected[] = $selectedquestion->question_id;
+            }
+
+            foreach($questions as $question)
+            {
+                if(in_array($question->id, $selected)){$check = true;}else{$check = false;}
+
+                $mform->addElement('advcheckbox', $question->id, $question->id." ".$question->name, "<hr/>".$question->questiontext, array('group' => 1), array(0, 1))->setChecked($check);
+            }
         }
 
         $this->add_action_buttons();

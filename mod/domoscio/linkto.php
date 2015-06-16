@@ -34,14 +34,13 @@ require_once(dirname(__FILE__).'/classes/linkto_form.php');
 
 $config = get_config('domoscio');
 $id = optional_param('id', 0, PARAM_INT); // Course_module ID, or
-
 $q = optional_param('q', 0, PARAM_INT);
+$kn = optional_param('notion', 0, PARAM_INT);
 
 if ($id) {
     $cm         = $DB->get_record('course_modules', array('id' => $id), '*', MUST_EXIST);
-    $course     = $DB->get_record('course', array('id' => $cm->course), '*', MUST_EXIST);
+    $course     = get_course($cm->course);
     $domoscio  = $DB->get_record('domoscio', array('id' => $cm->instance), '*', MUST_EXIST);
-    $quizname   = $DB->get_record('quiz', array('id' => $q), '*', MUST_EXIST);
 }
 
 
@@ -57,22 +56,24 @@ $PAGE->set_pagelayout('incourse');
 
 $rest = new domoscio_client();
 
-$resource = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/knowledge_nodes/$domoscio->resource_id?token=$config->domoscio_apikey")->get());
+$resource = json_decode($rest->setUrl($config, 'knowledge_nodes', $domoscio->resource_id)->get());
+$notion = json_decode($rest->setUrl($config, 'knowledge_nodes', $kn)->get());
 
 echo $OUTPUT->header();
 
-echo $OUTPUT->heading("Associer ressource");
+echo $OUTPUT->heading(get_string('choose_q', 'domoscio'));
 
-echo "<div class='block'><p class='mod_introbox'>Sélectionnez les questions du quiz <b>". $quizname->name ."</b> à proposer pour ce plugin :</p></div>
-<b>Ces questions seront liées à la ressource : </b><br/>";
-echo get_resource_info($resource->id)."<hr/>";
+$linked_module = get_resource_info($resource->id);
 
-$mform = new linkto_form("$CFG->wwwroot/mod/domoscio/linkto.php?id=".$cm->id."&q=".$q, array('q'=>$q, 'instance'=>$domoscio->id));
+echo html_writer::tag('div', get_string('linkto_intro', 'domoscio').html_writer::tag('b', $linked_module->display." - ".$notion->name, array('class' => '')), array('class' => 'block mod_introbox'));
+
+$mform = new linkto_form("$CFG->wwwroot/mod/domoscio/linkto.php?id=$cm->id&notion=$kn", array('course' => $course->id, 'kn_id' => $notion->id));
+
 
 if ($mform->is_cancelled()) {
 
-    redirect("$CFG->wwwroot/mod/domoscio/view.php?id=".$cm->id);
-    exit;
+  redirect("$CFG->wwwroot/mod/domoscio/view.php?id=".$cm->id);
+  exit;
 
 } else if ($fromform = $mform->get_data()) {
 
@@ -80,25 +81,24 @@ if ($mform->is_cancelled()) {
     {
         if(is_numeric($k))
         {
+            $check = $DB->get_record_sql("SELECT * FROM ".$CFG->prefix."knowledge_node_questions WHERE `question_id` = $k AND knowledge_node = $notion->id");
+
             if($value == 1)
             {
-                $check = $DB->get_record_sql("SELECT * FROM `mdl_knowledge_node_questions` WHERE `question_id` = $k AND instance = $domoscio->id");
-
                 if($check == null)
                 {
                     $entry = new stdClass;
                     $entry->instance = $domoscio->id;
+                    $entry->knowledge_node = $kn;
                     $entry->question_id = $k;
                     $write = $DB->insert_record('knowledge_node_questions', $entry);
                 }
             }
             elseif($value == 0)
             {
-                $check = $DB->get_record_sql("SELECT * FROM `mdl_knowledge_node_questions` WHERE `question_id` = $k AND instance = $domoscio->id");
-
                 if(!empty($check))
                 {
-                    $DB->delete_records('knowledge_node_questions', array('question_id' => $k, 'instance' => $domoscio->id));
+                    $DB->delete_records('knowledge_node_questions', array('question_id' => $k, 'knowledge_node' => $notion->id));
                 }
             }
         }
@@ -109,32 +109,7 @@ if ($mform->is_cancelled()) {
 
 } else {
 
+$mform->display();
 
-  $mform->display();
 }
-
-/*
-$table = new html_table();
-$table->head = array('Question', 'Ressource');
-$table->data = $datas;
-
-echo html_writer::table($table);
-*/
-
-/*$mform = new linkto_form();
-
-if ($mform->is_cancelled()) {
-
-    exit;
-
-} else if ($fromform = $mform->get_data()) {
-
-    exit;
-
-} else {
-
-  $mform->set_data($formdata);
-  $mform->display();
-}*/
-
 echo $OUTPUT->footer();

@@ -25,7 +25,7 @@
  * Moodle is performing actions across all modules.
  *
  * @package    mod_domoscio
- * @copyright  2015 Your Name
+ * @copyright  2015 Domoscio SA
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -78,14 +78,14 @@ function domoscio_supports($feature) {
  */
 
 function domoscio_add_instance(stdClass $domoscio, mod_domoscio_mod_form $mform = null) {
-    global $DB, $COURSE;
+    global $DB, $COURSE, $CFG;
 
     $config = get_config('domoscio');
 
     $domoscio->timecreated = time();
 
     // Si le cours n'est pas référencé en tant que knowledge_graph, en créé un nouveau sur l'api
-    $check = $DB->get_records_sql("SELECT `knowledge_graph_id` FROM `mdl_knowledge_graphs` WHERE `course_id` =".$domoscio->course);
+    $check = $DB->get_records('knowledge_graphs', array('course_id' => $domoscio->course), '', 'knowledge_graph_id');
 
     $rest = new domoscio_client();
 
@@ -93,16 +93,16 @@ function domoscio_add_instance(stdClass $domoscio, mod_domoscio_mod_form $mform 
     {
         foreach($check as $result)
         {
-            $graphid = $result->knowledge_graph_id;
+          $graphid = $result->knowledge_graph_id;
         }
 
-        $graph = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/knowledge_graphs/$graphid?token=$config->domoscio_apikey")->get());
+        $graph = json_decode($rest->setUrl($config, 'knowledge_graphs', $graphid)->get());
     }
     else // Sinon récupère un nouveau knowledge_graph_id et l'inscrit en DB
     {
         $json = json_encode(array('name' => strval($COURSE->fullname)));
 
-        $graph = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/knowledge_graphs/?token=$config->domoscio_apikey")->post($json));
+        $graph = json_decode($rest->setUrl($config, 'knowledge_graphs', null)->post($json));
 
         $graphid = $graph->id;
         $knowledge_graph = new stdClass;
@@ -113,7 +113,7 @@ function domoscio_add_instance(stdClass $domoscio, mod_domoscio_mod_form $mform 
     }
 
     // Si la ressource n'est pas référencé en tant que knowledge_node, en créé un nouveau sur l'api
-    $check = $DB->get_records_sql("SELECT `knowledge_node_id` FROM `mdl_knowledge_nodes` WHERE `resource_id` =".$domoscio->resource);
+    $check = $DB->get_records('knowledge_nodes', array('resource_id' => $domoscio->resource), '', 'knowledge_node_id');
 
     $rest = new domoscio_client();
 
@@ -121,32 +121,110 @@ function domoscio_add_instance(stdClass $domoscio, mod_domoscio_mod_form $mform 
     {
         foreach($check as $result)
         {
-            $id = $result->knowledge_node_id;
+          $id = $result->knowledge_node_id;
         }
 
-        $resource = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/knowledge_nodes/$id?token=$config->domoscio_apikey")->get());
+        $resource = json_decode($rest->setUrl($config, 'knowledge_nodes', $id)->get());
     }
-    else // Sinon récupère un nouveau knowledge_node et l'inscrit en DB
+    else // Sinon créé un nouveau knowledge_node et l'inscrit en DB
     {
         $json = json_encode(array('knowledge_graph_id' => strval($graphid),
-                                    'name' => strval($domoscio->resource)));
+                                  'name' => strval($domoscio->resource)));
 
-        $resource = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/knowledge_nodes/?token=$config->domoscio_apikey")->post($json));
+        $resource = json_decode($rest->setUrl($config, 'knowledge_nodes', null)->post($json));
 
         $knowledge_node = new stdClass;
+
         $knowledge_node->resource_id = $domoscio->resource;
         $knowledge_node->knowledge_node_id = $resource->id;
-
-        $knowledge_node = $DB->insert_record('knowledge_nodes', $knowledge_node);
+        $knowledge_node->instance = null;
+        $knowledge_node->id = $DB->insert_record('knowledge_nodes', $knowledge_node);
     }
 
     // Le plugin récupère le resource_id créé par l'api et l'inscrit en DB avec la nouvelle instance de plugin domoscio
 
     $domoscio->resource_id = $resource->id;
 
+    $linked_resource = get_resource_info($resource->id);
+    $domoscio->resource_type = $linked_resource->modulename;
+
     $domoscio->id = $DB->insert_record('domoscio', $domoscio);
 
-    domoscio_grade_item_update($domoscio);
+    if(isset($knowledge_node))
+    {
+        $knupd = new stdClass;
+        $knupd->id = $knowledge_node->id;
+        $knupd->instance = $domoscio->id;
+        $addinstance = $DB->update_record('knowledge_nodes', $knupd, $bulk= false);
+    }
+    //domoscio_grade_item_update($domoscio);
+
+
+    // Si la ressource à ancrer est un package SCORM, associe un nouveau knowledge node pour chaque SCO contenu dans le package
+    if($linked_resource->modulename == "scorm" && count($check) == 0)
+    {
+        $scoes = get_scorm_scoes($resource->id);
+
+        foreach($scoes as $sco)
+        {
+            // Créé un nouveau knowledge node
+            $json = json_encode(array('knowledge_graph_id' => strval($graphid),
+                                      'name' => strval($sco->title)));
+
+            $kn_sco = json_decode($rest->setUrl($config, 'knowledge_nodes', null)->post($json));
+
+            // Ajoute les knowledge edges
+            $json = json_encode(array('knowledge_graph_id' => strval($graphid),
+                                      'source_node_id' => strval($resource->id),
+                                      'destination_node_id' => strval($kn_sco->id)));
+
+            $knedge = json_decode($rest->setUrl($config, 'knowledge_edges', null)->post($json));
+
+
+            // Inscrit le knowledge node du SCO en DB
+            $knowledge_node_sco = new stdClass;
+            $knowledge_node_sco->instance = $domoscio->id;
+            $knowledge_node_sco->knowledge_node_id = $kn_sco->id;
+            $knowledge_node_sco->resource_id = $domoscio->resource;
+            $knowledge_node_sco->child_id = $sco->id;
+
+            $knowledge_node_sco = $DB->insert_record('knowledge_nodes', $knowledge_node_sco);
+        }
+
+        //$import = write_scorm_content($domoscio->id, $linked_resource->cm);
+    }
+
+    if($linked_resource->modulename == "book" && count($check) == 0)
+    {
+        $chapters = get_book_chapters($resource->id);
+
+        foreach($chapters as $chapter)
+        {
+            // Créé un nouveau knowledge node
+            $json = json_encode(array('knowledge_graph_id' => strval($graphid),
+                                        'name' => strval($chapter->title)));
+
+            $kn_chapter = json_decode($rest->setUrl($config, 'knowledge_nodes', null)->post($json));
+
+            // Ajoute les knowledge edges
+            $json = json_encode(array('knowledge_graph_id' => strval($graphid),
+                                        'source_node_id' => strval($resource->id),
+                                        'destination_node_id' => strval($kn_chapter->id)));
+
+            $knedge = json_decode($rest->setUrl($config, 'knowledge_edges', null)->post($json));
+
+
+            // Inscrit le knowledge node du SCO en DB
+            $knowledge_node_chapter = new stdClass;
+            $knowledge_node_chapter->instance = $domoscio->id;
+            $knowledge_node_chapter->knowledge_node_id = $kn_chapter->id;
+            $knowledge_node_chapter->resource_id = $domoscio->resource;
+            $knowledge_node_chapter->child_id = $chapter->id;
+
+            $knowledge_node_chapter = $DB->insert_record('knowledge_nodes', $knowledge_node_chapter);
+        }
+    }
+
 
     return $domoscio->id;
 
@@ -485,21 +563,7 @@ function domoscio_pluginfile($course, $cm, $context, $filearea, array $args, $fo
     send_file_not_found();
 }
 
-/* Navigation API */
 
-/**
- * Extends the global navigation tree by adding domoscio nodes if there is a relevant content
- *
- * This can be called by an AJAX request so do not rely on $PAGE as it might not be set up properly.
- *
- * @param navigation_node $navref An object representing the navigation tree node of the domoscio module instance
- * @param stdClass $course current course record
- * @param stdClass $module current domoscio instance record
- * @param cm_info $cm course module information
- */
-function domoscio_extend_navigation(navigation_node $navref, stdClass $course, stdClass $module, cm_info $cm) {
-    // TODO Delete this function and its docblock, or implement it.
-}
 
 /**
  * Extends the settings navigation with the domoscio settings
@@ -526,14 +590,125 @@ function is_user_with_role($courseid, $rolename, $userid = 0) {
     return $result;
 }
 
+function create_student() {
+    global $USER;
+
+    $json = json_encode(array(
+        'student_group_id' => strval("0"),
+        'civil_profile_attributes' => array(
+                                          'name' => strval($USER->firstname." ".$USER->lastname),
+                                          'sexe' => strval("male"),
+                                          'day_of_birth' => strval("11-05-1989"),
+                                          'place_of_birth' => strval("FR"),
+                                          'country_of_residence' => strval($USER->country),
+                                          'city_of_residence' => strval($USER->city)
+                                          ),
+        'learning_profile_attributes' => array(
+                                          'forgetting_parameters' => strval("[1,2,3]")
+                                              )
+    ));
+
+    $rest = new domoscio_client();
+
+    $student = json_decode($rest->setUrl($config, 'students', null)->post($json));
+
+    echo $student->id;
+
+    // Le plugin récupère l'uniq_id créé par l'api et l'inscrit en DB
+    $record = new stdClass();
+    $record->user_id = $USER->id;
+    $record->uniq_id = $student->id;
+    $insert = $DB->insert_record('userapi', $record, false);
+}
+
+/*  Assuming the student already logged in the Domoscio plugin, this function retrieves his knowledge_node_student
+    or create a new knowledge_node_student if student never reviewed the plugin
+    or retrieves his knowledge_node_student if another Domoscio instance is linked to the same resource
+*/
+function manage_student($config, $domoscio, $check) {
+    global $USER, $CFG, $DB;
+
+    $rest = new domoscio_client();
+
+    $student = json_decode($rest->setUrl($config, 'students', $check->uniq_id)->get());
+
+    // Check if knowledge_node_student already exists for this plugin
+    $check_knstudent = $DB->get_records('knowledge_node_students', array('user' => $USER->id, 'instance' => $domoscio->id), '', '*');
+
+    if(!empty($check_knstudent)) //if true, send a requests to API and retrives datas foreach active knowledge_node_student
+    {
+        $kn_student = array();
+        foreach($check_knstudent as $notion)
+        {
+            $api_return = json_decode($rest->setUrl($config, 'knowledge_node_students', $notion->kn_student_id)->get());
+
+            if($api_return->active == 'true')
+            {
+                $kn_student[] = $api_return;
+            }
+        }
+
+        return $kn_student;
+    }
+    else
+    {
+        //if false, check if there is already an existing knowledge_node_student for the ressource reviewed
+        $check_node = $DB->get_records('domoscio', array('resource_id' => $domoscio->resource_id), '', '*');
+        $rest = new domoscio_client();
+
+        if(count($check_node) > 1) //if knowledge_node_student exists :
+        {
+            $kns_id = $DB->get_record_sql("SELECT `kn_student_id`
+                                           FROM ".$CFG->prefix."knowledge_node_students
+                                     INNER JOIN ".$CFG->prefix."domoscio
+                                             ON ".$CFG->prefix."knowledge_node_students.`instance` = ".$CFG->prefix."domoscio.`id`
+                                          WHERE ".$CFG->prefix."domoscio.`resource_id` = $domoscio->resource_id
+                                          LIMIT 1")->kn_student_id;
+
+            $kn_student = json_decode($rest->setUrl($config, 'knowledge_node_students', $kns_id)->get());
+        }
+        else // else, create a new Knowledge_node_student, its child Knowledge_node_students, and store them into database
+        {
+            $jsonkn = json_encode(array('knowledge_node_id' => intval($domoscio->resource_id), 'student_id' => intval($student->id)));
+
+            $kn_student = json_decode($rest->setUrl($config, 'knowledge_node_students', null)->post($jsonkn));
+
+            // Le plugin récupère le knowledge_node_student id créé par l'api et l'inscrit en DB
+            $record = new stdClass();
+            $record->user = $USER->id;
+            $record->kn_student_id = $kn_student->id;
+            $record->instance = $domoscio->id;
+            $insert = $DB->insert_record('knowledge_node_students', $record, false);
+
+            $active_notions = $DB->get_records('knowledge_nodes', array('instance' => $domoscio->id, 'active' => '1'), '', 'knowledge_node_id');
+
+            foreach ($active_notions as $active_notion)
+            {
+                $jsonkn = json_encode(array('knowledge_node_id' => intval($active_notion->knowledge_node_id), 'student_id' => intval($student->id)));
+
+                $kn_student = json_decode($rest->setUrl($config, 'knowledge_node_students', null)->post($jsonkn));
+
+                $record = new stdClass();
+                $record->user = $USER->id;
+                $record->kn_student_id = $kn_student->id;
+                $record->instance = $domoscio->id;
+                $insert = $DB->insert_record('knowledge_node_students', $record, false);
+            }
+        }
+    }
+
+}
+
+/*  Retrives course modules data and retrun display and useful datas*/
 function get_resource_info($knowledge_node) {
 
     global $DB, $CFG, $OUTPUT;
 
-    $query = "SELECT `mdl_course_modules`.`module`,`mdl_course_modules`.`instance`
-            FROM `mdl_course_modules` INNER JOIN `mdl_knowledge_nodes`
-            ON `mdl_course_modules`.`id` = `mdl_knowledge_nodes`.`resource_id`
-            WHERE `mdl_knowledge_nodes`.`knowledge_node_id` =".$knowledge_node;
+    $query = "SELECT ".$CFG->prefix."course_modules.`module`,".$CFG->prefix."course_modules.`instance`, ".$CFG->prefix."course_modules.`id`
+                FROM ".$CFG->prefix."course_modules
+          INNER JOIN ".$CFG->prefix."knowledge_nodes
+                  ON ".$CFG->prefix."course_modules.`id` = ".$CFG->prefix."knowledge_nodes.`resource_id`
+               WHERE ".$CFG->prefix."knowledge_nodes.`knowledge_node_id` =".$knowledge_node;
 
     $resource = $DB->get_record_sql($query);
 
@@ -553,202 +728,325 @@ function get_resource_info($knowledge_node) {
             break;
 
         case 18:
-            $modulename = "resource";
+            $modulename = "scorm";
             break;
     }
 
-    $query = "SELECT name FROM mdl_$modulename WHERE id = $resource->instance";
+    $moduleinfo = $DB->get_record($modulename, array('id' => $resource->instance), 'name');
 
-    $moduleinfo = $DB->get_record_sql($query);
+    $return = new stdClass();
 
-    echo "<img class='activityicon' src='".$OUTPUT->pix_url('icon',$modulename,$modulename,array('class'=>'icon'))."'></img><span> ".$moduleinfo->name."</span>";
-}
+    $return->display = html_writer::img($OUTPUT->pix_url('icon',$modulename,$modulename,array('class'=>'icon')), '', array('class' => 'activityicon')) . " <span>$moduleinfo->name</span>";
+    $return->modulename = $modulename;
+    $return->instance = $resource->instance;
+    $return->url = "$CFG->wwwroot/mod/$modulename/view.php?id=$resource->id";
+    $return->cm = $resource->id;
 
-/* Compte le nombre de rappels pour chaque cours où est inscrit l'étudiant*/
-function count_tests($config)
-{
-  global $DB, $USER, $CFG;
-
-  //Checke les cours où l'étudiant est inscrit
-  $course_enrol = $DB->get_records_sql("SELECT `courseid` FROM `mdl_enrol` INNER JOIN `mdl_user_enrolments` ON `mdl_user_enrolments`.`enrolid` = `mdl_enrol`.`id` WHERE `mdl_user_enrolments`.`userid` = $USER->id");
-
-  $courselist = array();
-  foreach($course_enrol as $course)
-  {
-    $courselist[] = $course->courseid;
-  }
-  $list = array();
-
-  //Si l'étudiant est inscrit à un ou des cours, récupère les rappels
-  if(!empty($courselist))
-  {
-    $courselist = join(',', $courselist);
-    $instances = $DB->get_records_sql("SELECT id FROM `mdl_domoscio` WHERE course IN ($courselist)");
-
-    $instancelist = array();
-    foreach($instances as $instance)
+    if($modulename == "scorm")
     {
-      $instancelist[] = $instance->id;
-    }
+        $sco = $DB->get_record_sql("SELECT *
+                                    FROM ".$CFG->prefix."scorm_scoes
+                              INNER JOIN ".$CFG->prefix."knowledge_nodes
+                                      ON ".$CFG->prefix."knowledge_nodes.`child_id` = ".$CFG->prefix."scorm_scoes.`id`
+                                   WHERE ".$CFG->prefix."knowledge_nodes.`knowledge_node_id` = $knowledge_node");
 
-    $instancelist = join(',', $instancelist);
-    $kn_students = $DB->get_records_sql("SELECT kn_student_id FROM mdl_knowledge_node_students WHERE user = $USER->id AND instance IN ($instancelist)");
-    $i = 0;
-    foreach($kn_students as $kn_student)
-    {
-        $rest = new domoscio_client();
-        $date = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/knowledge_node_students/$kn_student->kn_student_id?token=$config->domoscio_apikey")->get());
-
-        if(strtotime($date->next_review_at) < time())
+        if(!empty($sco))
         {
-            $list[] = $kn_student->kn_student_id;
+            $return->sco = " / ".$sco->title;
+            $return->scoid = $sco->child_id;
+        }
+        else
+        {
+            $return->sco = $return->scoid = " ";
         }
     }
-  }
+    else
+    {
+        $return->sco = $return->scoid = " ";
+    }
 
-  return $list;
+    return $return;
+
 }
 
-/* Affiche l'interface de quiz */
-function display_questions($question)
+/* Récupère les scoes inclus dans un package SCORM */
+function get_scorm_scoes($cm)
 {
-    echo "<div class='que ".$question->qtype." deferredfeedback notyetanswered'>";
-        echo "<div class='info'>";
-            echo "<h3 class='no'>Question <span class='qno'>".$question->id."</span></h3>";
-        echo "</div>";
-        echo "<div class='content'>";
-            echo "<div class='formulation'>";
-                if($question->qtype == "calculated" || $question->qtype == "numerical" || $question->qtype == "shortanswer")
-                {
-                    echo get_inputanswer($question);
-                }
-                elseif($question->qtype == "multichoice" || $question->qtype == "calculatedmulti" || $question->qtype == "truefalse")
-                {
-                    echo get_multichoiceanswer($question);
-                }
-                elseif($question->qtype == "multianswer")
-                {
-                    echo get_multianswer($question);
-                }
-                elseif($question->qtype == "match")
-                {
-                    echo get_match($question);
-                }
-            echo "</div>";
-        echo "</div>";
-    echo "</div>";
+    global $DB, $CFG;
+
+    $instance = get_resource_info($cm)->instance;
+
+    $scoes = $DB->get_records_sql("SELECT *
+                                   FROM ".$CFG->prefix."scorm_scoes
+                                  WHERE `scorm` = $instance
+                                    AND `scormtype` = 'sco'");
+
+    return $scoes;
 }
 
-/* Chope les réponses */
-function get_answers($qnum)
+function get_book_chapters($cm)
+{
+    global $DB, $CFG;
+
+    $instance = get_resource_info($cm)->instance;
+
+    $chapters = $DB->get_records_sql("SELECT *
+                                   FROM ".$CFG->prefix."book_chapters
+                                  WHERE `bookid` = $instance");
+
+    return $chapters;
+}
+
+/* Recherche le fichier de structure contenu dans un package SCORM, retrouve les questions et les inscrits en DB
+$instance est l'instance du plugin domoscio, $cm est le module de cours rattaché au plugin Domoscio */
+function write_scorm_content($instance, $cm)
+{
+    global $DB, $CFG;
+
+    $context = $DB->get_record_sql("SELECT *
+                                    FROM ".$CFG->prefix."context WHERE `instanceid` = $cm
+                                     AND `contextlevel` = '70'");
+
+    $fileid = $DB->get_record_sql("SELECT `id`
+                                   FROM ".$CFG->prefix."files
+                                  WHERE `filename` = 'structure.xml'
+                                    AND `contextid` = $context->id");
+
+    $fs = get_file_storage();
+
+    $file = $fs->get_file_by_id($fileid->id)->get_content();
+
+    $content=simplexml_load_string($file) or die("Error: Cannot create object");
+
+    $i = 0;
+    foreach($content[$i]->celltest as $celltest)
+    {
+        // Création de l'entrée celltest
+        $celltest_entry = new stdClass;
+        $celltest_entry->name = (string)$celltest->title;
+        $celltest_entry->qtype = (string)$celltest['type'];
+        $celltest_entry->questiontext = (string)$celltest->questiontext;
+        $celltest_entry->level = (string)$celltest->level;
+        $celltest_entry->instance = $instance;
+
+        $celltest_entry->id = $DB->insert_record('celltests', $celltest_entry);
+
+        // Création des entrées proposition_lists
+        foreach($celltest->proplist as $proplist)
+        {
+            $proplist_obj = new stdClass;
+            $proplist_obj->cell_question_id = $celltest_entry->id;
+            $proplist_obj->cell_question_type = (string)$proplist['type'];
+
+            $proplist_obj->id = $DB->insert_record('proposition_lists', $proplist_obj);
+
+            // Création des entrées propositions
+            foreach($proplist->proposition as $prop)
+            {
+                $prop_obj = new stdClass;
+                $prop_obj->proposition_list_id = $proplist_obj->id;
+                $prop_obj->content = (string)$prop;
+                if((string)$prop['right']==''){$prop_obj->right = "0";}else{$prop_obj->right = "1";}
+
+                $prop_obj->id = $DB->insert_record('propositions', $prop_obj);
+            }
+        }
+        $i++;
+    }
+}
+
+/* This function counts all plugins where student is enrolled and due date has arrived */
+function count_tests($config)
+{
+    global $DB, $USER, $CFG;
+
+    //Check courses student is enrolled
+    $course_enrol = $DB->get_records_sql("SELECT `courseid`
+                                          FROM ".$CFG->prefix."enrol
+                                    INNER JOIN ".$CFG->prefix."user_enrolments
+                                            ON ".$CFG->prefix."user_enrolments.`enrolid` = ".$CFG->prefix."enrol.`id`
+                                         WHERE ".$CFG->prefix."user_enrolments.`userid` = $USER->id");
+
+    $courselist = array();
+    foreach($course_enrol as $course)
+    {
+        $courselist[] = $course->courseid;
+    }
+    $list = array();
+
+    //Retrives due date for these courses
+    if(!empty($courselist))
+    {
+        $courselist = join(',', $courselist);
+        $instances = $DB->get_records_sql("SELECT id
+                                             FROM ".$CFG->prefix."domoscio
+                                            WHERE course IN ($courselist)");
+
+        $instancelist = array();
+        foreach($instances as $instance)
+        {
+            $instancelist[] = $instance->id;
+        }
+
+        $instancelist = join(',', $instancelist);
+        $kn_students = $DB->get_records_sql("SELECT *
+                                               FROM ".$CFG->prefix."knowledge_node_students
+                                         INNER JOIN ".$CFG->prefix."knowledge_nodes
+                                         ON ".$CFG->prefix."knowledge_nodes.`knowledge_node_id` = ".$CFG->prefix."knowledge_node_students.`knowledge_node_id`
+                                              WHERE ".$CFG->prefix."knowledge_node_students.`user` = $USER->id
+                                                AND ".$CFG->prefix."knowledge_nodes.`active` IS NULL
+                                                 OR ".$CFG->prefix."knowledge_nodes.`active` = '1'
+                                                AND ".$CFG->prefix."knowledge_node_students.`instance` IN ($instancelist)");
+
+        foreach($kn_students as $kn_student)
+        {
+            $rest = new domoscio_client();
+            $result = json_decode($rest->setUrl($config, 'knowledge_node_students', $kn_student->kn_student_id)->get());
+
+            if(strtotime($result->next_review_at) < time())
+            {
+                $list[] = $result->knowledge_node_id;
+            }
+        }
+    }
+
+    return $list;
+}
+
+/* This function displays tests interface */
+function display_questions($question, $resource_type)
+{
+    if($question->qtype == "calculated" || $question->qtype == "numerical" || $question->qtype == "shortanswer")
+    {
+        $display = get_inputanswer($question, $resource_type);
+    }
+    elseif($question->qtype == "multichoice" || $question->qtype == "calculatedmulti" || $question->qtype == "truefalse")
+    {
+        $display = get_multichoiceanswer($question, $resource_type);
+    }
+    elseif($question->qtype == "multianswer")
+    {
+        $display = get_multianswer($question, $resource_type);
+    }
+    elseif($question->qtype == "match")
+    {
+        $display = get_match($question, $resource_type);
+    }
+
+    $qspan = html_writer::start_span('qno') . $question->id . html_writer::end_span();
+    $qheader = html_writer::tag('h3', "Question ".$qspan, array('class' => 'no'));
+
+    $qcontent = html_writer::tag('div', $display, array('class' => 'formulation'));
+
+    $output = html_writer::tag('div', $qheader, array('class' => 'info'));
+    $output .= html_writer::tag('div', $qcontent, array('class' => 'content'));
+    $output = html_writer::tag('div', $output, array('class' => 'que '.$question->qtype.' deferredfeedback notyetanswered'));
+
+    return $output;
+}
+
+/* This function retrives all answers for the question in params */
+function get_answers($qnum, $resource_type)
 {
     global $CFG, $DB;
-    $sqlanswers = "SELECT *
-                    FROM `mdl_question_answers`
-                    WHERE `question` = $qnum";
 
+    if($resource_type == "scorm") // If question stored in cell test tables
+    {
+        $sqlanswers = "SELECT ".$CFG->prefix."propositions.`content` as `answer`
+                         FROM ".$CFG->prefix."propositions
+                   INNER JOIN ".$CFG->prefix."proposition_lists
+                           ON ".$CFG->prefix."proposition_lists.`id` = ".$CFG->prefix."propositions.`proposition_list_id`
+                        WHERE ".$CFG->prefix."proposition_lists.`cell_question_id` = $qnum";
+    }
+    else // else if stored in Quiz Moodle tables
+    {
+        $sqlanswers = "SELECT *
+                         FROM ".$CFG->prefix."question_answers
+                        WHERE `question` = $qnum";
+    }
     $answers = $DB->get_records_sql($sqlanswers);
+
     return $answers;
 }
 
-/* Chope les bonnes réponses */
-function get_right_answers($qnum)
-{
-    global $CFG, $DB;
-    $sqlanswers = "SELECT *
-                    FROM `mdl_question_answers`
-                    WHERE `question` = $qnum
-                    AND `fraction` = 1";
-
-    $answers = $DB->get_record_sql($sqlanswers);
-    return $answers;
-}
-
-//Génère l'affichage des questions qui attendent un champ de saisie
+/* Displays text input for simple text questions */
 function get_inputanswer($question)
 {
-    $display =
-    "<div class'qtext'>
-        <p>".$question->questiontext."</p>
-    </div>
-    <div class='ablock'>
-        <label for = 'q0:".$question->id."_answer'>Answer :</label>
-        <span class='answer'>
-            <input id='q0:".$question->id."_answer' type='text' size='80' name='q0:".$question->id."_answer'></input>
-        </span>
-    </div>";
+    $qlabel = html_writer::tag('label', get_string('answer', 'domoscio'), array('for' => 'q0:'.$question->id.'_answer'));
+    $qspan = html_writer::start_span('answer') . html_writer::tag('input', '', array('id' => 'q0:'.$question->id.'_answer', 'type' => 'text', 'size' => '80', 'name' => 'q0:'.$question->id.'_answer')) . html_writer::end_span();
 
-    return $display;
+    $output = html_writer::tag('div', '<p>'.$question->questiontext.'</p>', array('class' => 'qtext'));
+    $output .= html_writer::tag('div', $qlabel . $qspan, array('class' => 'ablock'));
+
+    return $output;
 }
 
-//Génère l'affichage des questions QCM
-function get_multichoiceanswer($question)
+/* Displays multichoice questions interface */
+function get_multichoiceanswer($question, $resource_type)
 {
     $i = 0;
 
     $radio = array();
 
-    $answers_list = get_answers($question->id);
+    $answers_list = get_answers($question->id, $resource_type);
 
     foreach($answers_list as $answer)
     {
-        $radio[] =
-            "<div class='r0'>
-                <input id='q0:".$question->id."_answer' type='radio' value='".$i."' name='q0:".$question->id."_answer'></input>
-                <label for = 'q0:".$question->id."_answer'>".strip_tags($answer->answer)."</label>
-            </div>";
+        $qinput = html_writer::tag('input', '', array('id' => 'q0:'.$question->id.'_answer', 'type' => 'radio', 'value' => $i, 'name' => 'q0:'.$question->id.'_answer'));
+        $qlabel = html_writer::tag('label', strip_tags($answer->answer), array('for' => 'q0:'.$question->id.'_answer'));
+
+        $radio[] = html_writer::tag('div', $qinput . $qlabel, array('class' => 'r0'));
         $i++;
     }
     $radio_fetched = implode("", $radio);
 
-    $display =
-    "<div class'qtext'>
-        <p>".$question->questiontext."</p>
-    </div>
-    <div class='ablock'>
-        <div class='prompt'>Select one :</div>
-        <div class='answer'>".$radio_fetched.
-        "</div>
-    </div>";
+    $qablock = html_writer::tag('div', get_string('select_answer', 'domoscio'), array('class' => 'prompt')) . html_writer::tag('div', $radio_fetched, array('class' => 'answer'));
+    $output = html_writer::tag('div', '<p>'.$question->questiontext.'</p>', array('class' => 'qtext'));
+    $output .= html_writer::tag('div', $qablock, array('class' => 'ablock'));
 
-    return $display;
+    return $output;
 }
 
-/* Génère l'affichage d'une question de type texte à trous*/
-function get_multianswer($question)
+/* Displays multianswer test interface */
+function get_multianswer($question, $resource_type)
 {
     global $CFG, $DB;
 
-    // Récupère les sous-questions d'un texte à trous
-    $sqlanswers = "SELECT `questiontext`, `qtype`
-                    FROM `mdl_question`
-                    WHERE `parent` =".$question->id;
-
-    $answers = $DB->get_records_sql($sqlanswers);
-
-    // Parse les réponses aux sous-questions et récupère leur contenu
+    // Retrives all subquestions
     $result = array();
-
     $i = 1;
 
-    foreach($answers as $answer)
+    if($resource_type == "scorm") // If data stored in cell test tables
     {
-        preg_match("/%100%(.*?)#/", $answer->questiontext, $matchesOK);
-        preg_match("/E:(.*?)#W/", $answer->questiontext, $matchesWrong);
-        $result[$answer->qtype.$i][] = $matchesOK[1];
-        $result[$answer->qtype.$i][] = $matchesWrong[1];
-        $i++;
+        $answers = $DB->get_records_sql("SELECT ".$CFG->prefix."propositions.`content` as `answer`, ".$CFG->prefix."propositions.`proposition_list_id`, ".$CFG->prefix."proposition_lists.`cell_question_type` FROM ".$CFG->prefix."propositions
+                                     INNER JOIN ".$CFG->prefix."proposition_lists
+                                             ON ".$CFG->prefix."proposition_lists.`id` = ".$CFG->prefix."propositions.`proposition_list_id`
+                                          WHERE ".$CFG->prefix."proposition_lists.`cell_question_id` = $question->id");
+
+        $j = reset($answers);
+
+        foreach($answers as $answer)
+        {
+            $result[$answer->cell_question_type.$answer->proposition_list_id][] = $answer->answer;
+        }
+    }
+    else // else if stored in Moodle Quiz tables
+    {
+        $answers = $DB->get_records_sql("SELECT ".$CFG->prefix."question_answers.`id`, ".$CFG->prefix."question.`qtype`, ".$CFG->prefix."question_answers.`answer`, ".$CFG->prefix."question_answers.`question`
+                                           FROM ".$CFG->prefix."question
+                                     INNER JOIN ".$CFG->prefix."question_answers
+                                             ON ".$CFG->prefix."question.`id` = ".$CFG->prefix."question_answers.`question`
+                                          WHERE ".$CFG->prefix."question.`parent` = $question->id");
+
+        $j = reset($answers);
+        foreach($answers as $answer)
+        {
+            $result[$answer->qtype.$answer->question][] = $answer->answer;
+        }
     }
 
-    // Retrouve le texte de la question
-    $sql_qtext = "SELECT `questiontext`
-                FROM `mdl_question`
-                WHERE `id` =".$question->id;
-
-    $qtext = $DB->get_record_sql($sql_qtext);
-
     // Parse the text for each holes and replace by HTML select
-    preg_match_all("/({#.*?})/", $qtext->questiontext, $patterns);
+    preg_match_all("/({#.*?})/", $question->questiontext, $patterns);
     $i = 0;
     foreach($patterns[0] as $pattern)
     {
@@ -757,7 +1055,8 @@ function get_multianswer($question)
     }
 
     $replacements = array();
-    $i = $j = 1;
+    $i = 1;
+    if($resource_type == "scorm"){$j = $j->proposition_list_id;}else{$j = $j->question;}
 
     foreach($result as $key => $hole)
     {
@@ -767,7 +1066,7 @@ function get_multianswer($question)
 
             foreach($hole as $k => $option)
             {
-                $options[] = "<option value='".$option."'>".$option."</option>";
+                $options[] = html_writer::tag('option', $option, array('value' => $option));
             }
 
             shuffle($options);
@@ -775,51 +1074,64 @@ function get_multianswer($question)
 
             $options_fetched = implode("", $options);
 
-            $replacements[] =
-                "<span class='subquestion'>
-                    <label class='subq accesshide' for='q0:".$question->id."_sub".$i."_answer'>
-                    Answer
-                    </label>
-                    <select id='q0:".$question->id."_sub".$i."_answer' class='select menuq0:".$question->id."_sub".$i."_answer' name='q0:".$question->id."_sub".$i."_answer'>".$options_fetched.
-                    "</select>
-                </span>";
+            $qlabel = html_writer::tag('label', get_string('answer', 'domoscio'), array('for' => 'q0:'.$question->id.'_sub'.$i.'_answer', 'class' => 'subq accesshide'));
+            $qselect = html_writer::tag('select', $options_fetched, array('id' => 'q0:'.$question->id.'_sub'.$i.'_answer', 'class' => 'select menuq0:'.$question->id.'_sub'.$i.'_answer', 'name' => 'q0:'.$question->id.'_sub'.$i.'_answer'));
+
+            $replacements[] = html_writer::start_span('subquestion') . $qlabel . $qselect . html_writer::end_span();
         }
         elseif($key == "shortanswer".$j)
         {
-            $replacements[] =
-            "<span class='subquestion'>
-                <label class='subq accesshide' for='q0:".$question->id."_sub".$i." answer'>
-                Answer
-                </label>
-                <input id=id='q0:".$question->id."_sub".$i."_answer' type='text' size='7' name='q0:".$question->id."_sub".$i."_answer'></input>
-            </span>";
+            $qlabel = html_writer::tag('label', get_string('answer', 'domoscio'), array('for' => 'q0:'.$question->id.'_sub'.$i.'_answer', 'class' => 'subq accesshide'));
+            $qinput = html_writer::tag('input', '', array('id' => 'q0:'.$question->id.'_sub'.$i.'_answer', 'type' => 'text', 'size' => '7', 'name' => 'q0:'.$question->id.'_sub'.$i.'_answer'));
+            $replacements[] = html_writer::start_span('subquestion') . $qlabel . $qinput . html_writer::end_span();
         }
         $i++;
         $j++;
     }
 
-    return preg_replace($patterns[0], $replacements, $qtext->questiontext);
+    return preg_replace($patterns[0], $replacements, $question->questiontext);
 }
 
-// Génère l'affichage des questions de type Match (drag and drop)
-function get_match($question)
+/* Displays match questions test interface */
+function get_match($question, $resource_type)
 {
     global $CFG, $DB;
-    $sqlquestions = "SELECT *
-                    FROM `mdl_qtype_match_subquestions`
-                    WHERE `questionid` =".$question->id;
 
-    $subquestions = $DB->get_records_sql($sqlquestions);
+    $options = $lists = $subquestions = array();
+    if($resource_type == "scorm")
+    {
+        $proplists = $DB->get_records_sql("SELECT ".$CFG->prefix."propositions.`id`, ".$CFG->prefix."propositions.`content` as `answertext`, ".$CFG->prefix."propositions.`proposition_list_id`
+                                             FROM ".$CFG->prefix."propositions
+                                       INNER JOIN ".$CFG->prefix."proposition_lists
+                                               ON ".$CFG->prefix."proposition_lists.`id` = ".$CFG->prefix."propositions.`proposition_list_id`
+                                            WHERE ".$CFG->prefix."proposition_lists.`cell_question_id` = $question->id");
 
-    $options = array();
+    foreach($proplists as $proplist)
+    {
+        $lists[$proplist->proposition_list_id][] = $proplist->answertext;
+    }
+
+    foreach($lists as $list)
+    {
+        $pairs = new stdClass;
+        $pairs->questiontext = $list[0];
+        $pairs->answertext = $list[1];
+        $subquestions[] = $pairs;
+    }
+
+    }
+    else
+    {
+        $subquestions = $DB->get_records('qtype_match_subquestions', array('questionid' => $question->id), '', '*');
+    }
 
     foreach($subquestions as $k => $subquestion)
     {
-        $options[] = "<option value='".$subquestion->answertext."'>".$subquestion->answertext."</option>";
+        $options[] = html_writer::tag('option', $subquestion->answertext, array('value' => $subquestion->answertext));
     }
 
     shuffle($options);
-    array_unshift($options , "<option value=''>Choose...</option>");
+    array_unshift($options , "<option value=''>".get_string('choose', 'domoscio')."</option>");
 
     $options_fetched = implode("", $options);
 
@@ -828,94 +1140,90 @@ function get_match($question)
 
     foreach($subquestions as $subquestion)
     {
-        $table[] =
-        "<tr class='r0'>
-            <td class='text'>
-                <p>".$subquestion->questiontext."</p>
-            </td>
-            <td class='control'>
-                <label class='subq accesshide' for='q0:".$question->id."_sub".$i." answer'>
-                Answer
-                </label>
-                <select id='menuq0:".$question->id."_sub".$i."' class='select menuq0:".$question->id."_sub".$i."' name='q0:".$question->id."_sub".$i."'>".$options_fetched.
-                "</select>
-            </td>
-        </tr>";
+        $tdselect = html_writer::tag('select', $options_fetched, array('id' => 'menuq0:'.$question->id.'_sub'.$i, 'class' => 'select menuq0:'.$question->id.'_sub'.$i, 'name' => 'q0:'.$question->id.'_sub'.$i));
+        $tdcontrol = html_writer::tag('label', 'Answer :', array('for' => 'q0:'.$question->id.'_sub'.$i.'_answer', 'class' => 'subq accesshide')) . $tdselect;
+        $rowcontent = html_writer::tag('td', '<p>'.$subquestion->questiontext.'</p>', array('class' => 'text')) . html_writer::tag('td', $tdcontrol, array('class' => 'control'));
 
+        $table[] = html_writer::tag('tr', $rowcontent, array('class' => 'r0'));
         $i++;
     }
 
     $table_fetched = implode("", $table);
 
-    $display =
-    "<div class='qtext'>
-        <p>".$question->questiontext."</p>
-    </div>
-    <table class='answer'>
-        <tbody>"
-            .$table_fetched.
-        "</tbody>
-    </table>";
+    $output = html_writer::tag('div', '<p>'.$question->questiontext.'</p>', array('class'=>'qtext'));
+    $output .= html_writer::tag('table', '<tbody>'.$table_fetched.'</tbody>', array('class' => 'answer'));
 
-    return $display;
+    return $output;
 }
 
 /*----------------- RESULTATS ----------------*/
-
-//Génère l'affichage des résultats aux questions de saisie
-function get_inputresult($question, $post)
+/* This function retrives only right answers */
+function get_right_answers($qnum, $resource_type)
 {
-    $answer = get_right_answers($question->id);
+    global $CFG, $DB;
 
-    if($post['q0:'.$question->id.'_answer'] != $answer->answer)
+    if($resource_type == "scorm")
     {
-
-    echo"<div class'qtext'>
-            <p>".$question->questiontext."</p>
-        </div>
-        <div class='ablock'>
-            <label for = 'q0:".$question->id."_answer'>Answer :</label>
-            <span class='answer'>
-                <input class='incorrect' id='q0:".$question->id."_answer' type='text' value='".$post['q0:'.$question->id.'_answer']."' readonly='readonly' size='80' name='q0:".$question->id."_answer'></input>
-            </span>
-        </div>
-        <div class='outcome'>
-            <div class='rightanswer'>The right answer is : ".$answer->answer.
-            "</div>
-        </div>";
-        $result = 0;
+        $sqlanswers = "SELECT ".$CFG->prefix."propositions.`content` as `answer` FROM ".$CFG->prefix."propositions
+                   INNER JOIN ".$CFG->prefix."proposition_lists
+                           ON ".$CFG->prefix."proposition_lists.`id` = ".$CFG->prefix."propositions.`proposition_list_id`
+                        WHERE ".$CFG->prefix."proposition_lists.`cell_question_id` = $qnum
+                          AND ".$CFG->prefix."propositions.`right` = 1";
     }
     else
     {
-
-    echo"<div class'qtext'>
-            <p>".$question->questiontext."</p>
-        </div>
-        <div class='ablock'>
-            <label for = 'q0:".$question->id."_answer'>Answer :</label>
-            <span class='answer'>
-                <input class='correct' id='q0:".$question->id."_answer' type='text' value='".$post['q0:'.$question->id.'_answer']."' readonly='readonly' size='80' name='q0:".$question->id."_answer'></input>
-            </span>
-        </div>
-        <div class='outcome'>
-            <div class='rightanswer'>The right answer is : ".$answer->answer.
-            "</div>
-        </div>";
-        $result = 100;
+        $sqlanswers = "SELECT *
+                         FROM ".$CFG->prefix."question_answers
+                        WHERE `question` = $qnum
+                          AND `fraction` = 1";
     }
+
+    $answers = $DB->get_record_sql($sqlanswers);
+    return $answers;
+}
+
+/*  Displays correction for simple text question */
+function get_inputresult($question, $post, $resource_type)
+{
+    $result = new stdClass;
+    $answer = get_right_answers($question->id, $resource_type);
+
+    if($post['q0:'.$question->id.'_answer'] != $answer->answer)
+    {
+        $class = 'incorrect';
+        $result->score = 0;
+    }
+    else
+    {
+        $class = 'correct';
+        $result->score = 100;
+    }
+    $qlabel = html_writer::tag('label', get_string('answer', 'domoscio'), array('for' => 'q0:'.$question->id.'_answer'));
+    $qspan = html_writer::start_span('answer')
+            .html_writer::tag('input', '', array('class' => $class, 'id' => 'q0:'.$question->id.'_answer', 'type' => 'text', 'value' => $post['q0:'.$question->id.'_answer'], 'readonly' => 'readonly', 'size' => '80', 'name' => 'q0:'.$question->id.'_answer'))
+            .html_writer::end_span();
+    $qablock = $qlabel . $qspan;
+    $divanswer = html_writer::tag('div', get_string('correction', 'domoscio').$answer->answer, array('class' => 'rightanswer'));
+
+    $output = html_writer::tag('div', '<p>'.$question->questiontext.'</p>', array('class' => 'qtext'));
+    $output .= html_writer::tag('div', $qablock, array('class' => 'ablock'));
+    $output .= html_writer::tag('div', $divanswer, array('class' => 'outcome'));
+
+    $result->output = $output;
     return $result;
 }
 
-//Génère l'affichage des résultats aux questions QCM
-function get_multichoiceresult($question, $post)
+/*  Displays correction for multi choice question */
+function get_multichoiceresult($question, $post, $resource_type)
 {
+    $result = new stdClass;
     $i = 0;
 
     $radio = array();
 
-    $answers_list = get_answers($question->id);
+    $answers_list = get_answers($question->id, $resource_type);
 
-    $rightanswer = get_right_answers($question->id);
+    $rightanswer = get_right_answers($question->id, $resource_type);
 
     foreach($answers_list as $answer)
     {
@@ -923,79 +1231,82 @@ function get_multichoiceresult($question, $post)
 
         if($i == $post['q0:'.$question->id.'_answer'])
         {
-            $checkradio = "checked='checked'";
+            $checkradio = "checked";
             if($answer->answer !== $rightanswer->answer)
             {
                 $class = "incorrect";
-                $result = 0;
+                $result->score = 0;
             }
             else
             {
                 $class = "correct";
-                $result = 100;
+                $result->score = 100;
             }
         }
         else
         {
             $checkradio = null;
         }
+        $qinput = html_writer::tag('input', '', array('disabled' => 'disabled', 'id' => 'q0:'.$question->id.'_answer', 'type' => 'radio', 'value' => $i, 'name' => 'q0:'.$question->id.'_answer ', 'checked' => $checkradio));
+        $qlabel = html_writer::tag('label', strip_tags($answer->answer), array('for' => 'q0:'.$question->id.'_answer'));
+        $radio[] = html_writer::tag('div', $qinput . $qlabel, array('class' => 'r0 '.$class));
 
-        $radio[] =
-            "<div class='r0 ".$class."''>
-                <input disabled='disabled' id='q0:".$question->id."_answer' type='radio' value='".$i."' name='q0:".$question->id."_answer'".$checkradio."></input>
-                <label for = 'q0:".$question->id."_answer'>".strip_tags($answer->answer)."</label>
-            </div>";
         $i++;
     }
     $radio_fetched = implode("", $radio);
 
-    echo
-    "<div class'qtext'>
-        <p>".$question->questiontext."</p>
-    </div>
-    <div class='ablock'>
-        <div class='prompt'>Select one :</div>
-        <div class='answer'>".$radio_fetched.
-        "</div>
-    </div>
-    <div class='outcome'>
-        <div class='rightanswer'>The right answer is : ".$rightanswer->answer.
-        "</div>
-    </div>";
+    $qablock = html_writer::tag('div', get_string('select_answer', 'domoscio'), array('class' => 'prompt')) . html_writer::tag('div', $radio_fetched, array('class' => 'answer'));
+    $divanswer = html_writer::tag('div', get_string('correction', 'domoscio').$rightanswer->answer, array('class' => 'rightanswer'));
 
+    $output = html_writer::tag('div', '<p>'.$question->questiontext.'</p>', array('class' => 'qtext'));
+    $output .= html_writer::tag('div', $qablock, array('class' => 'ablock'));
+    $output .= html_writer::tag('div', $divanswer, array('class' => 'outcome'));
+
+    $result->output = $output;
     return $result;
 }
 
-/* Génère l'affichage des résultats aux questions de type texte à trous*/
-function get_multiresult($question, $post)
+/*  Displays correction for multi answer question */
+function get_multiresult($question, $post, $resource_type)
 {
     global $CFG, $DB;
-
+    $result = new stdClass;
     // Récupère les sous-questions d'un texte à trous
-    $sqlanswers = "SELECT `id`, `qtype`, `questiontext`
-                    FROM `mdl_question`
-                    WHERE `parent` =".$question->id;
-
-    $answers = $DB->get_records_sql($sqlanswers);
-
+    $response = array();
     $i = 1;
-    $result = array();
-    foreach($answers as $answer)
+
+    if($resource_type == "scorm")
     {
-        preg_match("/%100%(.*?)#/", $answer->questiontext, $matchesOK);
-        $result[$answer->qtype.$i][] = $matchesOK[1];
-        $i++;
+        $answers = $DB->get_records_sql("SELECT ".$CFG->prefix."propositions.`content` as `answer`, ".$CFG->prefix."propositions.`proposition_list_id`, ".$CFG->prefix."proposition_lists.`cell_question_type` FROM ".$CFG->prefix."propositions
+                                     INNER JOIN ".$CFG->prefix."proposition_lists
+                                             ON ".$CFG->prefix."proposition_lists.`id` = ".$CFG->prefix."propositions.`proposition_list_id`
+                                          WHERE ".$CFG->prefix."proposition_lists.`cell_question_id` = $question->id
+                                            AND ".$CFG->prefix."propositions.`right` = 1");
+
+        $j = reset($answers);
+
+        foreach($answers as $answer)
+        {
+            $response[$answer->cell_question_type.$answer->proposition_list_id][] = $answer->answer;
+        }
+    }
+    else
+    {
+        $answers = $DB->get_records_sql("SELECT ".$CFG->prefix."question_answers.`id`, ".$CFG->prefix."question.`qtype`, ".$CFG->prefix."question_answers.`answer`, ".$CFG->prefix."question_answers.`question`
+                                           FROM ".$CFG->prefix."question INNER JOIN ".$CFG->prefix."question_answers
+                                             ON ".$CFG->prefix."question.`id` = ".$CFG->prefix."question_answers.`question`
+                                          WHERE ".$CFG->prefix."question.`parent` = $question->id");
+
+        $j = reset($answers);
+
+        foreach($answers as $answer)
+        {
+            $response[$answer->qtype.$answer->question][] = $answer->answer;
+        }
     }
 
-    // Retrouve le texte de la question
-    $sql_qtext = "SELECT `questiontext`
-                FROM `mdl_question`
-                WHERE `id` =".$question->id;
-
-    $qtext = $DB->get_record_sql($sql_qtext);
-
     // Parse the text for each holes and replace by HTML select
-    preg_match_all("/({#.*?})/", $qtext->questiontext, $patterns);
+    preg_match_all("/({#.*?})/", $question->questiontext, $patterns);
     $i = 0;
     foreach($patterns[0] as $pattern)
     {
@@ -1004,14 +1315,15 @@ function get_multiresult($question, $post)
     }
 
     $replacements = array();
-    $i = $j = 1;
+    $i = 1;
+    if($resource_type == "scorm"){$j = $j->proposition_list_id;}else{$j = $j->question;}
     $subresult = 0;
-    foreach($result as $key => $hole)
+    foreach($response as $key => $answer)
     {
-        if(($post['q0:'.$question->id.'_sub'.$i.'_answer']) == $hole[0])
+        if(($post['q0:'.$question->id.'_sub'.$i.'_answer']) == $answer[0])
         {
             $class = "correct";
-            $subresult += 100;
+            $subresult += 1;
         }
         else
         {
@@ -1021,52 +1333,65 @@ function get_multiresult($question, $post)
 
         if($key == "multichoice".$j)
         {
-            $replacements[] =
-                "<span class='subquestion'>
-                    <label class='subq accesshide' for='q0:".$question->id."_sub".$i."_answer'>
-                    Answer
-                    </label>
-                    <select id='q0:".$question->id."_sub".$i."_answer' class='select menuq0:".$question->id."_sub".$i."_answer ".$class."' name='q0:".$question->id."_sub".$i."_answer' disabled='disabled'>
-                        <option>".$post['q0:'.$question->id.'_sub'.$i.'_answer']."</option>
-                    </select>
-                </span>";
+            $qlabel = html_writer::tag('label', 'Answer :', array('for' => 'q0:'.$question->id.'_sub'.$i.'_answer', 'class' => 'subq accesshide'));
+            $qselect = html_writer::tag('select', '<option>'.$post['q0:'.$question->id.'_sub'.$i.'_answer'].'</option>', array('id' => 'q0:'.$question->id.'_sub'.$i.'_answer', 'class' => 'select menuq0:'.$question->id.'_sub'.$i.'_answer '.$class, 'name' => 'q0:'.$question->id.'_sub'.$i.'_answer', 'disabled' => 'disabled'));
+
+            $replacements[] = html_writer::start_span('subquestion') . $qlabel . $qselect . html_writer::end_span();
         }
         elseif($key == "shortanswer".$j)
         {
-            $replacements[] =
-            "<span class='subquestion'>
-                <label class='subq accesshide' for='q0:".$question->id."_sub".$i." answer'>
-                Answer
-                </label>
-                <input class='".$class."' id='q0:".$question->id."_sub".$i."_answer' type='text' size='7' name='q0:".$question->id."_sub".$i."_answer' value='".$post['q0:'.$question->id.'_sub'.$i.'_answer']."' readonly='readonly'></input>
-            </span>";
+            $qlabel = html_writer::tag('label', 'Answer :', array('for' => 'q0:'.$question->id.'_sub'.$i.'_answer', 'class' => 'subq accesshide'));
+            $qinput = html_writer::tag('input', '', array('class' => $class, 'id' => 'q0:'.$question->id.'_sub'.$i.'_answer', 'value' => $post['q0:'.$question->id.'_sub'.$i.'_answer'], 'type' => 'text', 'size' => '7', 'name' => 'q0:'.$question->id.'_sub'.$i.'_answer', 'readonly' => 'readonly', ));
+            $replacements[] = html_writer::start_span('subquestion') . $qlabel . $qinput . html_writer::end_span();
         }
         $i++;
         $j++;
 
 
     }
-    if(count($answers) != $subresult){$result = 0;}else{$result = 1;}
+    if(count($response) != $subresult){$result->score = 0;}else{$result->score = 100;}
 
-    $display = preg_replace($patterns[0], $replacements, $qtext->questiontext);
+    $display = preg_replace($patterns[0], $replacements, $question->questiontext);
 
-    echo $display;
+    $result->output = $display;
     return $result;
 }
 
-// Génère l'affichage des réponses aux questions de type Match (drag and drop)
-function get_matchresult($question, $post)
+/*  Displays correction for match question */
+function get_matchresult($question, $post, $resource_type)
 {
     global $CFG, $DB;
-    $sqlquestions = "SELECT *
-                    FROM `mdl_qtype_match_subquestions`
-                    WHERE `questionid` =".$question->id;
+    $result = new stdClass;
+    $options = $lists = $subquestions = $table = array();
+    if($resource_type == "scorm")
+    {
+        $proplists = $DB->get_records_sql("SELECT ".$CFG->prefix."propositions.`id`, ".$CFG->prefix."propositions.`content` as `answertext`, ".$CFG->prefix."propositions.`proposition_list_id`
+                                             FROM ".$CFG->prefix."propositions
+                                       INNER JOIN ".$CFG->prefix."proposition_lists
+                                               ON ".$CFG->prefix."proposition_lists.`id` = ".$CFG->prefix."propositions.`proposition_list_id`
+                                            WHERE ".$CFG->prefix."proposition_lists.`cell_question_id` = $question->id");
 
-    $subquestions = $DB->get_records_sql($sqlquestions);
+        foreach($proplists as $proplist)
+        {
+            $lists[$proplist->proposition_list_id][] = $proplist->answertext;
+        }
 
-    $options = array();
+        foreach($lists as $list)
+        {
+            $pairs = new stdClass;
+            $pairs->questiontext = $list[0];
+            $pairs->answertext = $list[1];
+            $subquestions[] = $pairs;
+        }
 
-    $table = array();
+    }
+    else
+    {
+        $subquestions = $DB->get_records_sql("SELECT *
+                                                FROM ".$CFG->prefix."qtype_match_subquestions
+                                               WHERE `questionid` =".$question->id);
+    }
+
     $i = 1;
     $subresult = 0;
 
@@ -1076,7 +1401,7 @@ function get_matchresult($question, $post)
         if(($post['q0:'.$question->id.'_sub'.$i]) == $subquestion->answertext)
         {
             $class = "correct";
-            $subresult += 100;
+            $subresult += 1;
         }
         else
         {
@@ -1084,41 +1409,28 @@ function get_matchresult($question, $post)
             $subresult += 0;
         }
 
-        $table[] =
-        "<tr class='r0'>
-            <td class='text'>
-                <p>".$subquestion->questiontext."</p>
-            </td>
-            <td class='control'>
-                <label class='subq accesshide' for='q0:".$question->id."_sub".$i." answer'>
-                Answer
-                </label>
-                <select id='q0:".$question->id."_answer' class='select menu q0:".$question->id."_sub".$i." answer ".$class."' name='q0:".$question->id."_answer' disabled='disabled'>
-                    <option>".$post['q0:'.$question->id.'_sub'.$i]."</option>
-                </select>
-            </td>
-        </tr>";
+        $tdselect = html_writer::tag('select', '<option>'.$post['q0:'.$question->id.'_sub'.$i].'</option>', array('id' => 'menuq0:'.$question->id.'_sub'.$i, 'class' => 'select '.$class.' menuq0:'.$question->id.'_sub'.$i, 'name' => 'q0:'.$question->id.'_sub'.$i, 'disabled' => 'disabled'));
+        $tdcontrol = html_writer::tag('label', 'Answer :', array('for' => 'q0:'.$question->id.'_sub'.$i.'_answer', 'class' => 'subq accesshide')) . $tdselect;
+        $rowcontent = html_writer::tag('td', '<p>'.$subquestion->questiontext.'</p>', array('class' => 'text')) . html_writer::tag('td', $tdcontrol, array('class' => 'control'));
+
+        $table[] = html_writer::tag('tr', $rowcontent, array('class' => 'r0'));
+
         $i++;
     }
 
     $table_fetched = implode("", $table);
 
-    echo
-    "<div class='qtext'>
-        <p>".$question->questiontext."</p>
-    </div>
-    <table class='answer'>
-        <tbody>"
-            .$table_fetched.
-        "</tbody>
-    </table>";
+    $output = html_writer::tag('div', '<p>'.$question->questiontext.'</p>', array('class'=>'qtext'));
+    $output .= html_writer::tag('table', '<tbody>'.$table_fetched.'</tbody>', array('class' => 'answer'));
 
-    if(count($subquestions) != $subresult){$result = 0;}else{$result = 1;}
+    $result->output = $output;
+
+    if(count($subquestions) != $subresult){$result->score = 0;}else{$result->score = 100;}
 
     return $result;
 }
 
-// Créé un rappel dans le calendrier Moodle
+/*  Add or update event in users Moodle calendar  */
 function create_event($domoscio, $course, $kn_student)
 {
     global $DB, $CGF, $USER;
@@ -1136,5 +1448,27 @@ function create_event($domoscio, $course, $kn_student)
     $event->visible     = instance_is_visible('domoscio', $domoscio);
     $event->timeduration    = 60;
 
-    calendar_event::create($event);
+    $check = $DB->get_record('event', array('instance' => $domoscio->id), '*');
+
+    if(!empty($check))
+    {
+        $reminder = calendar_event::load($check->id);
+        $reminder->update($event);
+    }
+    else
+    {
+        calendar_event::create($event);
+    }
+}
+
+function plural($count)
+{
+    if(count($count) > 1)
+    {
+        return $plural = "s";
+    }
+    else
+    {
+        return $plural = "";
+    }
 }

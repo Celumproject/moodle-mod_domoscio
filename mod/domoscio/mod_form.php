@@ -85,7 +85,7 @@ class mod_domoscio_mod_form extends moodleform_mod {
         global $COURSE, $CFG, $DB;
 
         // Recherche les course modules à afficher
-        $query = "SELECT * FROM `mdl_course_modules` WHERE `module` IN (3,14,16,18)";
+        $query = "SELECT * FROM ".$CFG->prefix."course_modules WHERE `module` IN (3,14,16,18)";
 
         $modules = $DB->get_records_sql($query);
 
@@ -107,25 +107,23 @@ class mod_domoscio_mod_form extends moodleform_mod {
 
         switch($module) {
             case 3:
-                $modulename = "mdl_book";
+                $modulename = "book";
                 break;
 
             case 14:
-                $modulename = "mld_lesson";
+                $modulename = "lesson";
                 break;
 
             case 16:
-                $modulename = "mdl_page";
+                $modulename = "page";
                 break;
 
             case 18:
-                $modulename = "mdl_resource";
+                $modulename = "scorm";
                 break;
         }
 
-        $query = "SELECT name FROM $modulename WHERE id = $instance";
-
-        $moduleinfo = $DB->get_record_sql($query);
+        $moduleinfo = $DB->get_record_sql("SELECT name FROM ".$CFG->prefix.$modulename." WHERE id = $instance");
 
         return $moduleinfo->name;
     }
