@@ -12,9 +12,9 @@
 class domoscio_client
 {
     private $_url;
-    public function setUrl($url)
+    public function setUrl($config, $feature, $var)
     {
-        $this->_url = $url;
+        $this->_url = $config->domoscio_apiurl."/companies/".$config->domoscio_id."/".$feature."/".$var."?token=".$config->domoscio_apikey;
         return $this;
     }
 

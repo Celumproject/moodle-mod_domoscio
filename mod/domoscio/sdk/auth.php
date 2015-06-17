@@ -13,7 +13,7 @@ $config=get_config('domoscio');
 $ch = curl_init();
 
 //curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
-curl_setopt($ch, CURLOPT_URL, "http://stats-engine.domoscio.com/v1/companies/".$config->domoscio_id."?token=".$config->domoscio_apikey  );
+curl_setopt($ch, CURLOPT_URL, "$config->domoscio_apiurl/companies/".$config->domoscio_id."?token=".$config->domoscio_apikey  );
 curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
 
 curl_setopt($ch, CURLOPT_HEADER, true);
