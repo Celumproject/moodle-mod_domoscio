@@ -676,8 +676,9 @@ function manage_student($config, $domoscio, $check) {
             // Le plugin récupère le knowledge_node_student id créé par l'api et l'inscrit en DB
             $record = new stdClass();
             $record->user = $USER->id;
-            $record->kn_student_id = $kn_student->id;
             $record->instance = $domoscio->id;
+            $record->knowledge_node_id = $domoscio->resource_id;
+            $record->kn_student_id = $kn_student->id;
             $insert = $DB->insert_record('knowledge_node_students', $record, false);
 
             $active_notions = $DB->get_records('knowledge_nodes', array('instance' => $domoscio->id, 'active' => '1'), '', 'knowledge_node_id');

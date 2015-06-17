@@ -77,7 +77,7 @@ if($domoscio->resource_type == "scorm")
     include('player.php');
 
     $content = "<input type='hidden' value=$scoid name=scoid></input><input type='hidden' value=$attempt name=attempt></input>";
-    $params = "id=$temp&scorm=$resource->instance";
+    $params = "id=$temp&scorm=$resource->instance&kn=$kn";
 }
 else
 {

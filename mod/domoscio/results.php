@@ -121,12 +121,13 @@ elseif($scorm)
 
     if($score)
     {
-        $result = $score->value * 100;
+        $result = new stdClass;
+        $result->score = $score->value * 100;
         unset($_SESSION['scoid'], $_SESSION['attempt']);
     }
     else
     {
-        redirect("$CFG->wwwroot/mod/domoscio/results.php?id=$id&scorm=$scorm");
+        redirect("$CFG->wwwroot/mod/domoscio/results.php?id=$id&scorm=$scorm&kn=$kn");
     }
 }
 
