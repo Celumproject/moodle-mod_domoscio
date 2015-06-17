@@ -96,7 +96,7 @@ if (user_has_role_assignment($USER->id,3)) {
                 html_writer::link($linked_resource->url, $linked_resource->display);
     echo html_writer::tag('div', $introbox, array('class' => 'block'));
 
-    $def_notion_link = html_writer::link($CFG->wwwroot.'/mod/domoscio/select_notions.php?id='.$cm->id, html_writer::tag('button', '1. '.get_string('def_notions', 'domoscio'), array('class' => 'btn btn-primary btn-block')),
+    $def_notion_link = html_writer::link($CFG->wwwroot.'/mod/domoscio/select_notions.php?id='.$cm->id, html_writer::tag('button', '1. '.get_string('def_notions', 'domoscio'), array('class' => 'btn btn-primary btn-large')),
                         array('class' => 'span6'));
 
     echo html_writer::tag('div', $def_notion_link.'<br/><hr/>');
