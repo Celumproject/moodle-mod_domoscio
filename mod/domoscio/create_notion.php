@@ -72,7 +72,7 @@ echo $OUTPUT->heading(get_string('add_notion_btn', 'domoscio'));
 
 $rest = new domoscio_client();
 
-$resource = json_decode($rest->setUrl("$config->domoscio_apiurl/companies/$config->domoscio_id/knowledge_nodes/$domoscio->resource_id?token=$config->domoscio_apikey")->get());
+$resource = json_decode($rest->setUrl($config, 'knowledge_nodes', $domoscio->resource_id)->get());
 
 $linked_resource = get_resource_info($resource->id);
 

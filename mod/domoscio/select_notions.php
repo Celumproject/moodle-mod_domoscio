@@ -79,46 +79,47 @@ $linked_resource = get_resource_info($resource->id);
 
 if (user_has_role_assignment($USER->id,3)) {
 
-        echo html_writer::tag('div', html_writer::tag('b', get_string('notions_intro', 'domoscio'), array('class' => 'mod_introbox')), array('class' => 'block'));
+    echo html_writer::tag('div', html_writer::tag('b', get_string('notions_intro', 'domoscio'), array('class' => 'mod_introbox')), array('class' => 'block'));
 
-        $mform = new select_notion_form("$CFG->wwwroot/mod/domoscio/select_notions.php?id=$cm->id", array('instance' => $domoscio->id, 'parent' => $domoscio->resource_id));
-        echo html_writer::tag('button', get_string('add_notion_btn', 'domoscio'), array('type' => 'button','onclick'=>"javascript:location.href='$CFG->wwwroot/mod/domoscio/create_notion.php?id=$cm->id'"));
+    $mform = new select_notion_form("$CFG->wwwroot/mod/domoscio/select_notions.php?id=$cm->id", array('instance' => $domoscio->id, 'parent' => $domoscio->resource_id));
+    echo html_writer::link("$CFG->wwwroot/mod/domoscio/view.php?id=$cm->id", '<< '.get_string('back_btn', 'domoscio')."&nbsp");
+    echo html_writer::tag('button', get_string('add_notion_btn', 'domoscio'), array('type' => 'button', 'class' => 'offset2', 'onclick'=>"javascript:location.href='$CFG->wwwroot/mod/domoscio/create_notion.php?id=$cm->id'"));
+    
+    if ($mform->is_cancelled()) {
 
-        if ($mform->is_cancelled()) {
+        redirect("$CFG->wwwroot/mod/domoscio/view.php?id=".$cm->id);
+        exit;
 
-            redirect("$CFG->wwwroot/mod/domoscio/view.php?id=".$cm->id);
-            exit;
+    } else if ($fromform = $mform->get_data()) {
 
-        } else if ($fromform = $mform->get_data()) {
-
-            foreach($fromform as $k => $value)
+        foreach($fromform as $k => $value)
+        {
+            if(is_numeric($k))
             {
-                if(is_numeric($k))
+                if($value == 1)
                 {
-                    if($value == 1)
-                    {
-                        $entry = new stdClass;
-                        $entry->id = $k;
-                        $entry->active = 1;
-                        $write = $DB->update_record('knowledge_nodes', $entry, $bulk=false);
-                    }
-                    elseif($value == 0)
-                    {
-                        $entry = new stdClass;
-                        $entry->id = $k;
-                        $entry->active = 0;
-                        $write = $DB->update_record('knowledge_nodes', $entry, $bulk=false);
-                    }
+                    $entry = new stdClass;
+                    $entry->id = $k;
+                    $entry->active = 1;
+                    $write = $DB->update_record('knowledge_nodes', $entry, $bulk=false);
+                }
+                elseif($value == 0)
+                {
+                    $entry = new stdClass;
+                    $entry->id = $k;
+                    $entry->active = 0;
+                    $write = $DB->update_record('knowledge_nodes', $entry, $bulk=false);
                 }
             }
-
-            redirect("$CFG->wwwroot/mod/domoscio/select_notions.php?id=".$cm->id);
-            exit;
-
-        } else {
-
-            $mform->display();
         }
+
+        redirect("$CFG->wwwroot/mod/domoscio/select_notions.php?id=".$cm->id);
+        exit;
+
+    } else {
+
+        $mform->display();
+    }
 
 /*
       echo html_writer::tag('div', '<b class="mod_introbox">'.get_string('questions_assigned').'</b>', array('class' => 'block'));
