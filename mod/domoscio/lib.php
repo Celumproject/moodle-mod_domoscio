@@ -635,9 +635,10 @@ function manage_student($config, $domoscio, $check) {
     // Check if knowledge_node_student already exists for this plugin
     $check_knstudent = $DB->get_records('knowledge_node_students', array('user' => $USER->id, 'instance' => $domoscio->id), '', '*');
 
+    $kn_student = array();
+
     if(!empty($check_knstudent)) //if true, send a requests to API and retrives datas foreach active knowledge_node_student
     {
-        $kn_student = array();
         foreach($check_knstudent as $notion)
         {
             $api_return = json_decode($rest->setUrl($config, 'knowledge_node_students', $notion->kn_student_id)->get());
@@ -647,8 +648,6 @@ function manage_student($config, $domoscio, $check) {
                 $kn_student[] = $api_return;
             }
         }
-
-        return $kn_student;
     }
     else
     {
@@ -671,7 +670,7 @@ function manage_student($config, $domoscio, $check) {
         {
             $jsonkn = json_encode(array('knowledge_node_id' => intval($domoscio->resource_id), 'student_id' => intval($student->id)));
 
-            $kn_student = json_decode($rest->setUrl($config, 'knowledge_node_students', null)->post($jsonkn));
+            $kn_student[] = json_decode($rest->setUrl($config, 'knowledge_node_students', null)->post($jsonkn));
 
             // Le plugin récupère le knowledge_node_student id créé par l'api et l'inscrit en DB
             $record = new stdClass();
@@ -687,7 +686,7 @@ function manage_student($config, $domoscio, $check) {
             {
                 $jsonkn = json_encode(array('knowledge_node_id' => intval($active_notion->knowledge_node_id), 'student_id' => intval($student->id)));
 
-                $kn_student = json_decode($rest->setUrl($config, 'knowledge_node_students', null)->post($jsonkn));
+                $kn_student[] = json_decode($rest->setUrl($config, 'knowledge_node_students', null)->post($jsonkn));
 
                 $record = new stdClass();
                 $record->user = $USER->id;
@@ -697,7 +696,10 @@ function manage_student($config, $domoscio, $check) {
                 $insert = $DB->insert_record('knowledge_node_students', $record, false);
             }
         }
+
     }
+
+    return $kn_student;
 
 }
 
