@@ -35,6 +35,7 @@ $string['domoscioname_help'] = 'This is the content of the help tooltip associat
 $string['domoscio'] = 'domoscio';
 $string['pluginadministration'] = 'domoscio administration';
 $string['welcome'] = 'Bienvenue, ';
+$string['notions_empty'] = "Vous n'avez pas défini de notions. Veuillez sélectionner une ou des notions pour associer des questions.";
 $string['notions_intro'] = "Choisir les notions à proposer pour l'ancrage : ";
 $string['add_notion_btn'] = "Ajouter une notion";
 $string['new_notion_intro'] = 'Créer une nouvelle notion';

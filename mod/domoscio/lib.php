@@ -692,6 +692,7 @@ function manage_student($config, $domoscio, $check) {
                 $record = new stdClass();
                 $record->user = $USER->id;
                 $record->kn_student_id = $kn_student->id;
+                $record->knowledge_node_id = $domoscio->resource_id;
                 $record->instance = $domoscio->id;
                 $insert = $DB->insert_record('knowledge_node_students', $record, false);
             }

@@ -132,6 +132,11 @@ if (user_has_role_assignment($USER->id,3)) {
         echo $accordion = html_writer::tag('div', $accordion_group, array('class' => 'accordion', 'id' => 'accordion'));
     }
 
+    if(empty($notions))
+    {
+        echo html_writer::tag('blockquote', get_string('notions_empty', 'domoscio'), array('class' => 'muted'));
+    }
+
 }
 
 // --- STUDENT VIEW ---
