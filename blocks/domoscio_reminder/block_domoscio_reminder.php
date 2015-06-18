@@ -57,7 +57,13 @@ class block_domoscio_reminder extends block_base {
     {
         global $DB, $USER, $CFG;
 
-        $kn_students = $DB->get_records_sql("SELECT kn_student_id FROM ".$CFG->prefix."knowledge_node_students WHERE user = $USER->id");
+        $kn_students = $DB->get_records_sql("SELECT *
+                                               FROM ".$CFG->prefix."knowledge_node_students
+                                         INNER JOIN ".$CFG->prefix."knowledge_nodes
+                                                 ON ".$CFG->prefix."knowledge_nodes.`knowledge_node_id` = ".$CFG->prefix."knowledge_node_students.`knowledge_node_id`
+                                              WHERE ".$CFG->prefix."knowledge_node_students.`user` = $USER->id
+                                                AND ".$CFG->prefix."knowledge_nodes.`active` IS NULL
+                                                 OR ".$CFG->prefix."knowledge_nodes.`active` = '1'");
         $i = 0;
         $list = array();
         foreach($kn_students as $kn_student)
