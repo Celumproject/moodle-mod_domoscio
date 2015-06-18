@@ -97,9 +97,9 @@ if (user_has_role_assignment($USER->id,3)) {
     echo html_writer::tag('div', $introbox, array('class' => 'block'));
 
     $def_notion_link = html_writer::link($CFG->wwwroot.'/mod/domoscio/select_notions.php?id='.$cm->id, html_writer::tag('button', '1. '.get_string('def_notions', 'domoscio'), array('class' => 'btn btn-primary btn-large')),
-                        array('class' => 'span6'));
+                        array('class' => 'span4'));
 
-    echo html_writer::tag('div', $def_notion_link.'<br/><hr/>');
+    echo html_writer::tag('div', $def_notion_link.'<br/><br/>').html_writer::tag('div', '<h6>Les notions que vous avez définies :</h6><hr/>');
 
     foreach($notions as $notion)
     {
@@ -172,7 +172,7 @@ elseif (user_has_role_assignment($USER->id,5)) {
 
     if(!empty($check) && $kn_student)
     {
-        $_SESSION['todo'] = array();
+        $_SESSION['todo'] = $_SESSION['results'] = array();
 
         foreach($kn_student as $notion)
         {
@@ -188,7 +188,7 @@ elseif (user_has_role_assignment($USER->id,5)) {
                                                                   html_writer::end_span(), array(
                                                                                               'class' => 'accordion-toggle',
                                                                                               'data-toggle' => 'collapse',
-                                                                                              'data-parent' => '#accordion2'));
+                                                                                              'data-parent' => '#accordion'));
             $accordion_heading = html_writer::tag('div', $togglers, array('class' => 'well well-small' , 'style' => 'margin-bottom:0px'));
             $accordion_group = html_writer::tag('div', $accordion_heading.$accordion_collapse, array('class' => 'accordion-group'));
             echo $accordion = html_writer::tag('div', $accordion_group, array('class' => 'accordion', 'id' => 'accordion'));

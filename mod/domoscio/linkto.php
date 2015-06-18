@@ -32,6 +32,9 @@ require_once(dirname(dirname(dirname(__FILE__))).'/config.php');
 require_once(dirname(__FILE__).'/lib.php');
 require_once(dirname(__FILE__).'/classes/linkto_form.php');
 
+//$PAGE->requires->js('/mod/domoscio/jquery-1.11.3.min.js', true);
+//$PAGE->requires->js('/mod/domoscio/bootstrap-tab.js', true);
+
 $config = get_config('domoscio');
 $id = optional_param('id', 0, PARAM_INT); // Course_module ID, or
 $q = optional_param('q', 0, PARAM_INT);
@@ -67,8 +70,9 @@ $linked_module = get_resource_info($resource->id);
 
 echo html_writer::tag('div', get_string('linkto_intro', 'domoscio').html_writer::tag('b', $linked_module->display." - ".$notion->name, array('class' => '')), array('class' => 'block mod_introbox'));
 
-$mform = new linkto_form("$CFG->wwwroot/mod/domoscio/linkto.php?id=$cm->id&notion=$kn", array('course' => $course->id, 'kn_id' => $notion->id));
+/* ----- MOODLE QUIZ QUESTIONS -----*/
 
+$mform = new linkto_form("$CFG->wwwroot/mod/domoscio/linkto.php?id=$cm->id&notion=$kn", array('course' => $course->id, 'kn_id' => $notion->id));
 
 if ($mform->is_cancelled()) {
 
@@ -109,7 +113,11 @@ if ($mform->is_cancelled()) {
 
 } else {
 
-$mform->display();
+    $mform->display();
 
 }
+
+/* ----- CELLTESTS QUESTIONS -----*/
+
+
 echo $OUTPUT->footer();

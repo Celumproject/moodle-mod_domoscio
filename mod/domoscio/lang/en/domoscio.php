@@ -64,6 +64,7 @@ $string['running_time'] = "Time elapsed : ";
 $string['next_btn'] = "Next";
 $string['home_btn'] = "Home";
 $string['back_btn'] = "Back";
+$string['end_btn'] = "Finish";
 
 $string['proxy_login_required'] = 'You must be logged in to access this url. Please log in and retry.';
 $string['proxy_permission_required'] = 'You don\'t have the permission to access this url.';

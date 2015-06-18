@@ -29,6 +29,7 @@ defined('MOODLE_INTERNAL') || die();
 
 require_once("$CFG->libdir/formslib.php");
 
+//$PAGE->requires->js('/mod/domoscio/bootstrap-collapse.js', true);
 
 /**
 * Module instance settings form
@@ -50,15 +51,18 @@ class linkto_form extends moodleform {
 
         foreach($quizzes as $quiz)
         {
-
-            $mform->addElement('html', "<h5 class='coursebox'>".$icon.$quiz->name."</h5>");
-
-            $sqlquestions = "SELECT ".$CFG->prefix."question.`id`, ".$CFG->prefix."question.`name`, ".$CFG->prefix."question.`questiontext` FROM ".$CFG->prefix."question INNER JOIN ".$CFG->prefix."quiz_slots ON ".$CFG->prefix."question.`id` = ".$CFG->prefix."quiz_slots.`questionid` WHERE ".$CFG->prefix."quiz_slots.`quizid` = ".$quiz->id;
+            $sqlquestions = "SELECT ".$CFG->prefix."question.`id`, ".$CFG->prefix."question.`name`, ".$CFG->prefix."question.`questiontext`
+                               FROM ".$CFG->prefix."question
+                         INNER JOIN ".$CFG->prefix."quiz_slots
+                                 ON ".$CFG->prefix."question.`id` = ".$CFG->prefix."quiz_slots.`questionid`
+                              WHERE ".$CFG->prefix."quiz_slots.`quizid` = ".$quiz->id;
 
             $questions = $DB->get_records_sql($sqlquestions);
 
             //requetes sur les questions déjà sélectionnées le cas échéant
-            $selectedquestions = $DB->get_records_sql("SELECT * FROM ".$CFG->prefix."knowledge_node_questions WHERE `knowledge_node`=".$this->_customdata['kn_id']);
+            $selectedquestions = $DB->get_records_sql("SELECT *
+                                                         FROM ".$CFG->prefix."knowledge_node_questions
+                                                        WHERE `knowledge_node`=".$this->_customdata['kn_id']);
 
             $selected = array();
 
@@ -67,12 +71,21 @@ class linkto_form extends moodleform {
                 $selected[] = $selectedquestion->question_id;
             }
 
+            //$mform->addElement('html', "<div class='accordion' id='accordion'>");
+            $mform->addElement('html', "<h5 class='well well-small accordion-toggle' data-toggle='collapse' data-parent='#accordion'><a href='#collapse-".$quiz->id."'>".$icon.$quiz->name."</a></h5>");
+
+
+            //$mform->addElement('html', "<div class='accordion-body collapse' id='collapse-".$quiz->id."'>");
+            //$mform->addElement('html', "<div class='accordion-inner'>");
+
             foreach($questions as $question)
             {
                 if(in_array($question->id, $selected)){$check = true;}else{$check = false;}
 
                 $mform->addElement('advcheckbox', $question->id, $question->id." ".$question->name, "<hr/>".$question->questiontext, array('group' => 1), array(0, 1))->setChecked($check);
             }
+
+            //$mform->addElement('html', "</div></div></div>");
         }
 
         $this->add_action_buttons();

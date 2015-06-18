@@ -40,6 +40,7 @@ $id = optional_param('id', 0, PARAM_INT); // Course_module ID, or
 $q = optional_param('q', 0, PARAM_INT); // Course_module ID, or
 $kn = optional_param('kn', 0, PARAM_INT);
 $scorm = optional_param('scorm', '', PARAM_INT);
+$end = optional_param('end', false, PARAM_INT);
 
 //$course = $DB->get_record('course', array('id' => $id), '*', MUST_EXIST);
 
@@ -67,6 +68,8 @@ echo $OUTPUT->header();
 
 
 echo $OUTPUT->heading("Résultats");
+
+$rest = new domoscio_client();
 
 if($q)
 {
@@ -130,34 +133,7 @@ elseif($scorm)
         redirect("$CFG->wwwroot/mod/domoscio/results.php?id=$id&scorm=$scorm&kn=$kn");
     }
 }
-
-//Génère le résultat en json à retourner à l'api
-
-$kn_student = $DB->get_record('knowledge_node_students', array('user' => $USER->id,
-                                                  'knowledge_node_id' => $kn), '*');
-
-$json = json_encode(array('knowledge_node_student_id' => intval($kn_student->kn_student_id),
-                                              'value' => intval($result->score)));
-
-$rest = new domoscio_client();
-
-$api_return = json_decode($rest->setUrl($config, 'results', null)->post($json));
-
-//print_r($api_return);
-
-// Inscrit un rappel dans le calendrier
-$rest = new domoscio_client();
-
-$kn_student = json_decode($rest->setUrl($config, 'knowledge_node_students', $kn_student->kn_student_id)->get());
-
-$new_event = create_event($domoscio, $course, $kn_student);
-
-if($_SESSION['todo'])
-{
-    echo html_writer::tag('button', get_string('next_btn', 'domoscio'), array('type' => 'button',
-                                                        'onclick'=>"javascript:location.href='$CFG->wwwroot/mod/domoscio/doquiz.php?kn=".array_shift($_SESSION['todo'])."'"));
-}
-else if(empty($_SESSION['todo']))
+elseif($end = true)
 {
     if(isset($_SESSION['start']))
     {
@@ -167,14 +143,68 @@ else if(empty($_SESSION['todo']))
         echo html_writer::tag('div', html_writer::tag('h5', get_string('running_time', 'domoscio').date('i:s', $running_time), array('class' => 'mod_introbox')), array('class' => 'block'));
 
         unset($_SESSION['start']);
+
+        foreach($_SESSION['results'] as $rapport)
+        {
+            $kns = $DB->get_record('knowledge_node_students', array('kn_student_id' => $rapport->knowledge_node_student_id), '*');
+
+            $resource = get_resource_info($kns->knowledge_node_id);
+
+            $kn_info = json_decode($rest->setUrl($config, 'knowledge_nodes', $kns->knowledge_node_id)->get());
+
+            if($rapport->value == 100)
+            {
+                $state = "Notion connue";
+                $class = "alert-success";
+            }
+            else
+            {
+                $state = "<a href=$resource->url><i class='icon-book'></i>Revoir la ressource</a>";
+                $class = "alert-danger";
+            }
+
+            echo html_writer::tag('div', html_writer::tag('span', $resource->display." - ".$kn_info->name, array('class' => 'mod_introbox')).html_writer::tag('span', $state, array('class' => 'pull-right')), array('class' => 'que '.$class));
+
+        }
+
+        unset($_SESSION['results']);
+        unset($_SESSION['todo']);
     }
+
     echo html_writer::tag('button', get_string('home_btn', 'domoscio'), array('type' => 'button',
                                                                            'onclick'=>"javascript:location.href='$CFG->wwwroot/'"));
 }
-else
+
+if($q || $scorm)
 {
-    echo html_writer::tag('button', get_string('back_btn', 'domoscio'), array('type' => 'button',
-                                                  'onclick'=>"javascript:location.href='$CFG->wwwroot/mod/domoscio/view.php?id=$cm->id'"));
+    //Génère le résultat en json à retourner à l'api
+
+    $kn_student = $DB->get_record('knowledge_node_students', array('user' => $USER->id,
+                                                      'knowledge_node_id' => $kn), '*');
+
+    $json = json_encode(array('knowledge_node_student_id' => intval($kn_student->kn_student_id),
+                                                  'value' => intval($result->score)));
+
+
+
+    $_SESSION['results'][] = json_decode($rest->setUrl($config, 'results', null)->post($json));
+
+
+    // Inscrit un rappel dans le calendrier
+    $kn_student = json_decode($rest->setUrl($config, 'knowledge_node_students', $kn_student->kn_student_id)->get());
+
+    $new_event = create_event($domoscio, $course, $kn_student);
+}
+
+if(!empty($_SESSION['todo']))
+{
+    echo html_writer::tag('button', get_string('next_btn', 'domoscio'), array('type' => 'button',
+                                                        'onclick'=>"javascript:location.href='$CFG->wwwroot/mod/domoscio/doquiz.php?kn=".array_shift($_SESSION['todo'])."'"));
+}
+else if(empty($_SESSION['todo']) && $end == false)
+{
+    echo html_writer::tag('button', get_string('end_btn', 'domoscio'), array('type' => 'button',
+                                                                           'onclick'=>"javascript:location.href='$CFG->wwwroot/mod/domoscio/results.php?end=true'"));
 }
 
 echo $OUTPUT->footer();

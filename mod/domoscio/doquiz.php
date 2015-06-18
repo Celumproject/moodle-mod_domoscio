@@ -111,6 +111,9 @@ else
         echo html_writer::tag('blockquote', get_string('tests_empty', 'domoscio'), array('class' => 'muted'));
     }
 }
+echo html_writer::tag('button', get_string('end_btn', 'domoscio'), array('type' => 'button',
+                                                                       'onclick'=>"javascript:location.href='$CFG->wwwroot/mod/domoscio/results.php?end=true'"));
+
 
 
 echo $OUTPUT->footer();
