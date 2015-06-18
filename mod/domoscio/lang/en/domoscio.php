@@ -57,6 +57,7 @@ $string['module'] = 'Course module';
 $string['do_test'] = 'Do test';
 $string['see_notion'] = 'Show notion';
 $string['stats'] = 'Results';
+$string['tests_empty'] = "No question have been linked to this notion by the course creator.";
 $string['start_tests'] = 'Start session';
 $string['no_test'] = "You don't have to review something";
 $string['running_time'] = "Time elapsed : ";

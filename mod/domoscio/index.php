@@ -71,9 +71,9 @@ if(!empty($todo_tests))
     $kn_info = json_decode($rest->setUrl($config, 'knowledge_nodes', $kn)->get());
 
     $trows .= html_writer::tag('tr', html_writer::tag('td', $resource->display." - ".$kn_info->name).
-                                     html_writer::tag('td', html_writer::link($CFG->wwwroot.'/mod/domoscio/doquiz.php?kn='.$kn.'&solo=true', '<i class="icon-edit"></i>')).
-                                     html_writer::tag('td', html_writer::link($resource->url, '<i class="icon-book"></i>')).
-                                     html_writer::tag('td', html_writer::link($CFG->wwwroot.'/mod/domoscio/view.php?d='.$domoscio_id->instance, "<i class='icon-signal'></i>"))
+                                     html_writer::tag('td', html_writer::link($CFG->wwwroot.'/mod/domoscio/doquiz.php?kn='.$kn.'&solo=true', '<i class="icon-edit"></i>', array('target' => 'popup'))).
+                                     html_writer::tag('td', html_writer::link($resource->url, '<i class="icon-book"></i>', array('target' => 'popup'))).
+                                     html_writer::tag('td', html_writer::link($CFG->wwwroot.'/mod/domoscio/view.php?d='.$domoscio_id->instance, "<i class='icon-signal'></i>", array('target' => 'popup')))
                               );
   }
   $th = html_writer::tag('tr', html_writer::tag('th', get_string('module', 'domoscio')).

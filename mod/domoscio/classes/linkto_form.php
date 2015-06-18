@@ -40,15 +40,18 @@ require_once("$CFG->libdir/formslib.php");
 class linkto_form extends moodleform {
 
     public function definition() {
-        global $DB, $CFG;
+        global $DB, $CFG, $OUTPUT;
 
         $quizzes = $DB->get_records('quiz', array('course' => $this->_customdata['course']), '', 'id,name');
+
+        $icon = html_writer::tag('img', '', array('src'=>$OUTPUT->pix_url('icon','quiz','quiz',array('class'=>'icon')), 'class'=>'activityicon', 'alt'=>'disable'));
 
         $mform = $this->_form;
 
         foreach($quizzes as $quiz)
         {
-            $mform->addElement('html', "<h5 class='coursebox'>".$quiz->name."</h5>");
+
+            $mform->addElement('html', "<h5 class='coursebox'>".$icon.$quiz->name."</h5>");
 
             $sqlquestions = "SELECT ".$CFG->prefix."question.`id`, ".$CFG->prefix."question.`name`, ".$CFG->prefix."question.`questiontext` FROM ".$CFG->prefix."question INNER JOIN ".$CFG->prefix."quiz_slots ON ".$CFG->prefix."question.`id` = ".$CFG->prefix."quiz_slots.`questionid` WHERE ".$CFG->prefix."quiz_slots.`quizid` = ".$quiz->id;
 

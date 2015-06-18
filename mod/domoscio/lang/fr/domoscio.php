@@ -58,6 +58,7 @@ $string['module'] = 'Ressource';
 $string['do_test'] = 'Passer le test';
 $string['see_notion'] = 'Voir la notion';
 $string['stats'] = 'Statistiques';
+$string['tests_empty'] = "Aucune question n'a été définie par le créateur de cours pour cette notion.";
 $string['start_tests'] = 'Commencer la session';
 $string['no_test'] = "Vous n'avez pas de rappel";
 $string['running_time'] = "Durée de la session : ";

@@ -64,6 +64,7 @@ $PAGE->set_pagelayout('incourse');
 $url_r = "$CFG->wwwroot/mod/domoscio/results.php";
 // Récupère les identifiants des questions sélectionnées par le concepteur
 
+
 if($domoscio->resource_type == "scorm")
 {
     $resource = get_resource_info($domoscio->resource_id);
@@ -87,20 +88,29 @@ else
     echo $OUTPUT->heading("Evaluation");
 
     $lists = $DB->get_records('knowledge_node_questions', array('instance' => $domoscio->id, 'knowledge_node' => $kn), '', 'question_id');
-    $selected = array_rand($lists, 1);
 
-    // Récupère les informations relatives aux questions sélectionnées
-    if($domoscio->resource_type == "scorm"){$table = "celltests";}else{$table = "question";}
-    $question = $DB->get_record($table, array('id' => $selected), '*');
-    $qinstance = "kn_q".$question->id;
+    if(!empty($lists))
+    {
+        $selected = array_rand($lists, 1);
 
-    $content = html_writer::tag('input', '', array('type' => 'hidden', 'value' => $domoscio->id, 'name' => $qinstance))
-              .display_questions($question, $domoscio->resource_type);
-    $params = "kn=$kn&q=$selected";
+        // Récupère les informations relatives aux questions sélectionnées
+        if($domoscio->resource_type == "scorm"){$table = "celltests";}else{$table = "question";}
+        $question = $DB->get_record($table, array('id' => $selected), '*');
+        $qinstance = "kn_q".$question->id;
+
+        $content = html_writer::tag('input', '', array('type' => 'hidden', 'value' => $domoscio->id, 'name' => $qinstance))
+                  .display_questions($question, $domoscio->resource_type);
+        $params = "kn=$kn&q=$selected";
+
+        $content .= html_writer::tag('input', '', array('type' => 'submit', 'value' => get_string('validate_btn', 'domoscio'), 'name' => 'next'));
+        $output = html_writer::tag('form', $content, array('method' => 'POST', 'action' => $url_r.'?'.$params, 'id' => 'responseform'));
+        echo $output;
+    }
+    else
+    {
+        echo html_writer::tag('blockquote', get_string('tests_empty', 'domoscio'), array('class' => 'muted'));
+    }
 }
 
-$content .= html_writer::tag('input', '', array('type' => 'submit', 'value' => get_string('validate_btn', 'domoscio'), 'name' => 'next'));
-$output = html_writer::tag('form', $content, array('method' => 'POST', 'action' => $url_r.'?'.$params, 'id' => 'responseform'));
 
-echo $output;
 echo $OUTPUT->footer();

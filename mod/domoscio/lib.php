@@ -621,9 +621,9 @@ function create_student() {
     $insert = $DB->insert_record('userapi', $record, false);
 }
 
-/*  Assuming the student already logged in the Domoscio plugin, this function retrieves his knowledge_node_student
-    or create a new knowledge_node_student if student never reviewed the plugin
-    or retrieves his knowledge_node_student if another Domoscio instance is linked to the same resource
+/*  Assuming the student already logged in the Domoscio plugin, this function retrieves his knowledge_node_students
+    or create a new knowledge_node_students if student never reviewed the plugin
+    or retrieves his knowledge_node_students if another Domoscio instance is linked to the same resource
 */
 function manage_student($config, $domoscio, $check) {
     global $USER, $CFG, $DB;
@@ -632,75 +632,32 @@ function manage_student($config, $domoscio, $check) {
 
     $student = json_decode($rest->setUrl($config, 'students', $check->uniq_id)->get());
 
-    // Check if knowledge_node_student already exists for this plugin
-    $check_knstudent = $DB->get_records('knowledge_node_students', array('user' => $USER->id, 'instance' => $domoscio->id), '', '*');
+    $knowledge_nodes = $DB->get_records_select('knowledge_nodes', "instance = $domoscio->id AND active <> 0");
 
     $kn_student = array();
 
-    if(!empty($check_knstudent)) //if true, send a requests to API and retrives datas foreach active knowledge_node_student
+    foreach($knowledge_nodes as $kn)
     {
-        foreach($check_knstudent as $notion)
+        if(!$kns_query = $DB->get_record('knowledge_node_students', array('knowledge_node_id' => $kn->knowledge_node_id, 'user' => $USER->id)))
         {
-            $api_return = json_decode($rest->setUrl($config, 'knowledge_node_students', $notion->kn_student_id)->get());
+            $jsonkn = json_encode(array('knowledge_node_id' => intval($kn->knowledge_node_id), 'student_id' => intval($student->id)));
 
-            if($api_return->active == 'true')
-            {
-                $kn_student[] = $api_return;
-            }
-        }
-    }
-    else
-    {
-        //if false, check if there is already an existing knowledge_node_student for the ressource reviewed
-        $check_node = $DB->get_records('domoscio', array('resource_id' => $domoscio->resource_id), '', '*');
-        $rest = new domoscio_client();
+            $kndata = json_decode($rest->setUrl($config, 'knowledge_node_students', null)->post($jsonkn));
 
-        if(count($check_node) > 1) //if knowledge_node_student exists :
-        {
-            $kns_id = $DB->get_record_sql("SELECT `kn_student_id`
-                                           FROM ".$CFG->prefix."knowledge_node_students
-                                     INNER JOIN ".$CFG->prefix."domoscio
-                                             ON ".$CFG->prefix."knowledge_node_students.`instance` = ".$CFG->prefix."domoscio.`id`
-                                          WHERE ".$CFG->prefix."domoscio.`resource_id` = $domoscio->resource_id
-                                          LIMIT 1")->kn_student_id;
-
-            $kn_student = json_decode($rest->setUrl($config, 'knowledge_node_students', $kns_id)->get());
-        }
-        else // else, create a new Knowledge_node_student, its child Knowledge_node_students, and store them into database
-        {
-            $jsonkn = json_encode(array('knowledge_node_id' => intval($domoscio->resource_id), 'student_id' => intval($student->id)));
-
-            $kn_student[] = json_decode($rest->setUrl($config, 'knowledge_node_students', null)->post($jsonkn));
-
-            // Le plugin récupère le knowledge_node_student id créé par l'api et l'inscrit en DB
+            // Get knowledge_node_student created and store it into database
             $record = new stdClass();
             $record->user = $USER->id;
             $record->instance = $domoscio->id;
-            $record->knowledge_node_id = $domoscio->resource_id;
-            $record->kn_student_id = $kn_student->id;
+            $record->knowledge_node_id = $kn->knowledge_node_id;
+            $record->kn_student_id = $kndata->id;
             $insert = $DB->insert_record('knowledge_node_students', $record, false);
-
-            $active_notions = $DB->get_records('knowledge_nodes', array('instance' => $domoscio->id, 'active' => '1'), '', 'knowledge_node_id');
-
-            foreach ($active_notions as $active_notion)
-            {
-                $jsonkn = json_encode(array('knowledge_node_id' => intval($active_notion->knowledge_node_id), 'student_id' => intval($student->id)));
-
-                $kn_student[] = json_decode($rest->setUrl($config, 'knowledge_node_students', null)->post($jsonkn));
-
-                $record = new stdClass();
-                $record->user = $USER->id;
-                $record->kn_student_id = $kn_student->id;
-                $record->knowledge_node_id = $domoscio->resource_id;
-                $record->instance = $domoscio->id;
-                $insert = $DB->insert_record('knowledge_node_students', $record, false);
-            }
+            $kns_query = $DB->get_record('knowledge_node_students', array('knowledge_node_id' => $kn->knowledge_node_id, 'user' => $USER->id));
         }
 
+        $kn_student[] = json_decode($rest->setUrl($config, 'knowledge_node_students', $kns_query->kn_student_id)->get());
     }
 
     return $kn_student;
-
 }
 
 /*  Retrives course modules data and retrun display and useful datas*/
