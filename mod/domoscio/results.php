@@ -156,14 +156,24 @@ elseif($end = true)
             {
                 $state = "Notion connue";
                 $class = "alert-success";
+                $feedbackclass = "correct";
             }
             else
             {
                 $state = "<a href=$resource->url><i class='icon-book'></i>Revoir la ressource</a>";
                 $class = "alert-danger";
+                $feedbackclass = "incorrect";
             }
 
-            echo html_writer::tag('div', html_writer::tag('span', $resource->display." - ".$kn_info->name, array('class' => 'mod_introbox')).html_writer::tag('span', $state, array('class' => 'pull-right')), array('class' => 'que '.$class));
+            $attributes = array(
+                'src' => $OUTPUT->pix_url('i/grade_' . $feedbackclass),
+                'alt' => get_string($feedbackclass, 'question'),
+                'class' => 'questioncorrectnessicon',
+            );
+
+            echo html_writer::tag('div', html_writer::empty_tag('img', $attributes).
+                                         html_writer::tag('span', $resource->display." - ".$kn_info->name, array('class' => 'mod_introbox')).
+                                         html_writer::tag('span', $state, array('class' => 'pull-right')), array('class' => 'que '.$class));
 
         }
 
@@ -178,7 +188,6 @@ elseif($end = true)
 if($q || $scorm)
 {
     //Génère le résultat en json à retourner à l'api
-
     $kn_student = $DB->get_record('knowledge_node_students', array('user' => $USER->id,
                                                       'knowledge_node_id' => $kn), '*');
 

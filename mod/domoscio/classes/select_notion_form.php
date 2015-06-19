@@ -46,7 +46,6 @@ class select_notion_form extends moodleform {
         $mform = $this->_form;
 
         $notions = $DB->get_records('knowledge_nodes', array('instance' => $this->_customdata['instance']), '', '*');
-        //array_shift($notions); //the first element is the parent knowledge_node, it doesn't have to be displayed in list
 
         //fill the checkbox if already selected
         $selected_notions = $DB->get_records_sql("SELECT * FROM ".$CFG->prefix."knowledge_nodes WHERE `instance`=".$this->_customdata['instance']." AND `active` = '1'");
@@ -68,15 +67,17 @@ class select_notion_form extends moodleform {
 
             if(intval($notion->knowledge_node_id) == intval($this->_customdata['parent']))
             {
+                $mform->addElement('html', '<blockquote class="muted"><small>'.get_string('whole_expl', 'domoscio').'</small></blockquote>');
                 $notion_name = html_writer::tag('span', "Ressouce entière", array('class' => 'alert alert-info'));
                 $parent_id = $notion->id;
                 $parent = $mform->addElement('advcheckbox', $notion->id, '', $notion_name, array('group' => 1, 'class' => 'parent_notion'), array(0, 1))->setChecked($check);
+
+                $mform->addElement('html', '<blockquote class="muted"><small>'.get_string('each_expl', 'domoscio').'</small></blockquote>');
             }
             else
             {
                 $notion_name = $title->name;
                 $mform->addElement('advcheckbox', $notion->id, '', $notion_name, array('group' => 1, 'class' => 'children_notions'), array(0, 1))->setChecked($check);
-                //$mform->disabledIf($notion->id, $parent_id, 'checked');
             }
 
         }

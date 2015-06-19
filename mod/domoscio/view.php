@@ -112,9 +112,18 @@ if (user_has_role_assignment($USER->id,3)) {
 
         foreach($qids as $qid)
         {
-            $question = $DB->get_record('question', array('id' => $qid->question_id), '*');
+            if($linked_resource->modulename == "scorm")
+            {
+                $sco = $DB->get_record('scorm_scoes', array('id' => $qid->question_id), '*');
 
-            $render_q .= html_writer::tag('b',$question->name." : ").strip_tags($question->questiontext).html_writer::tag('hr', '');
+                $render_q .= html_writer::tag('b',$linked_resource->display)." - ".$sco->title.html_writer::tag('hr', '');
+            }
+            else
+            {
+                $question = $DB->get_record('question', array('id' => $qid->question_id), '*');
+
+                $render_q .= html_writer::tag('b',$question->name." : ").strip_tags($question->questiontext).html_writer::tag('hr', '');
+            }
         }
         $accordion_inner = html_writer::tag('div', $render_q, array('class' => 'accordion-inner'));
         $accordion_collapse = html_writer::tag('div', $accordion_inner, array('class' => 'accordion-body collapse', 'id' => 'collapse-'.$notion->id));
@@ -160,7 +169,7 @@ elseif (user_has_role_assignment($USER->id,5)) {
     $count = count_tests($config);
     $url2=new moodle_url("$CFG->wwwroot/mod/domoscio/index.php");
 
-    echo html_writer::start_span('badge badge-important').html_writer::tag('h4', count($count)).html_writer::end_span().get_string('text2', 'domoscio').plural($count).get_string('text3', 'domoscio')." - ";
+    echo html_writer::start_span('badge badge-important').html_writer::tag('h4', count($count)).html_writer::end_span().get_string('text2', 'domoscio').plural($count).get_string('text3', 'domoscio')." ";
 
     if(!empty($count)){echo $OUTPUT->action_link( $url2, "Faire les rappels");}
 
@@ -177,10 +186,10 @@ elseif (user_has_role_assignment($USER->id,5)) {
         foreach($kn_student as $notion)
         {
             $item = json_decode($rest->setUrl($config, 'knowledge_nodes', $notion->knowledge_node_id)->get());
-            $reminder = date('d/m/Y à H:i',strtotime($notion->next_review_at));
+            $reminder = date('d/m/Y '.get_string('at', 'domoscio').' H:i',strtotime($notion->next_review_at));
             $_SESSION['todo'][] = $item->id;
 
-            $accordion_inner = html_writer::tag('div', "Prochain rappel sur cet item : ".$reminder, array('class' => 'accordion-inner'));
+            $accordion_inner = html_writer::tag('div', get_string('next_due', 'domoscio').$reminder, array('class' => 'accordion-inner'));
             $accordion_collapse = html_writer::tag('div', $accordion_inner, array('class' => 'accordion-body collapse', 'id' => 'collapse-'.$notion->id));
             $togglers = html_writer::link('#collapse-'.$notion->id, html_writer::start_span('mod_introbox').
                                                                   html_writer::tag('i', '', array('class' => 'icon-chevron-down')).

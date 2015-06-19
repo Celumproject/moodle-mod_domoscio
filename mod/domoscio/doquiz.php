@@ -64,21 +64,31 @@ $PAGE->set_pagelayout('incourse');
 $url_r = "$CFG->wwwroot/mod/domoscio/results.php";
 // Récupère les identifiants des questions sélectionnées par le concepteur
 
+$lists = $DB->get_records('knowledge_node_questions', array('instance' => $domoscio->id, 'knowledge_node' => $kn), '', 'question_id');
 
 if($domoscio->resource_type == "scorm")
 {
-    $resource = get_resource_info($domoscio->resource_id);
+    if(!empty($lists))
+    {
+        $selected = array_rand($lists, 1);
 
-    $_GET['domoscioid'] = $temp = $cm->id;
+        $resource = get_resource_info($domoscio->resource_id);
 
-    $_GET['a'] = $resource->instance;
+        $_GET['domoscioid'] = $temp = $cm->id;
 
-    $_GET['scoid'] = $resource->scoid;
+        $_GET['a'] = $resource->instance;
 
-    include('player.php');
+        $_GET['scoid'] = $selected;
 
-    $content = "<input type='hidden' value=$scoid name=scoid></input><input type='hidden' value=$attempt name=attempt></input>";
-    $params = "id=$temp&scorm=$resource->instance&kn=$kn";
+        include('player.php');
+
+        $content = "<input type='hidden' value=$scoid name=scoid></input><input type='hidden' value=$attempt name=attempt></input>";
+        $params = "id=$temp&scorm=$resource->instance&kn=$kn";
+    }
+    else
+    {
+        echo html_writer::tag('blockquote', get_string('tests_empty', 'domoscio'), array('class' => 'muted'));
+    }
 }
 else
 {
@@ -86,8 +96,6 @@ else
     $PAGE->set_title('Evaluation');
 
     echo $OUTPUT->heading("Evaluation");
-
-    $lists = $DB->get_records('knowledge_node_questions', array('instance' => $domoscio->id, 'knowledge_node' => $kn), '', 'question_id');
 
     if(!empty($lists))
     {

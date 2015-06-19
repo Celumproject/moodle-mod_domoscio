@@ -72,7 +72,7 @@ echo html_writer::tag('div', get_string('linkto_intro', 'domoscio').html_writer:
 
 /* ----- MOODLE QUIZ QUESTIONS -----*/
 
-$mform = new linkto_form("$CFG->wwwroot/mod/domoscio/linkto.php?id=$cm->id&notion=$kn", array('course' => $course->id, 'kn_id' => $notion->id));
+$mform = new linkto_form("$CFG->wwwroot/mod/domoscio/linkto.php?id=$cm->id&notion=$kn", array('course' => $course->id, 'kn_id' => $notion->id, 'module' => $linked_module->modulename));
 
 if ($mform->is_cancelled()) {
 
@@ -80,7 +80,7 @@ if ($mform->is_cancelled()) {
   exit;
 
 } else if ($fromform = $mform->get_data()) {
-
+    
     foreach($fromform as $k => $value)
     {
         if(is_numeric($k))

@@ -1,7 +1,7 @@
 <?php
 
 
-$string['pluginname'] = 'Domoscio plugin';
+$string['pluginname'] = 'Domoscio for Moodle';
 
 
 $string['domscio:addinstance'] = 'Add a new quiz';
@@ -25,7 +25,9 @@ $string['settings_apiurl_helptext'] = "Enter API URL provided by our customer su
 //TEST
 $string['modulename'] = 'Domoscio';
 $string['modulenameplural'] = 'Domoscios';
-$string['modulename_help'] = 'Use the domoscio module for... | The domoscio module allows...';
+$string['modulename_help'] = 'To learn is good, to know is better. <br/><br/>Link the plugin with any Moodle course module or SCORM package,
+ add questions from your quiz module or create from scratch, or use your SCORM package activites. You can also fetch datas from your
+  students to evaluate their progress.';
 $string['domoscioresourceset'] = 'Link to a ressource';
 $string['resourceset_resource'] = 'Course module';
 $string['domoscioresourceset_help'] = 'The Domoscio plugin need to be linked to a resource from your course in order to display right questions to right people';
@@ -36,6 +38,7 @@ $string['pluginadministration'] = 'Admin Domoscio';
 $string['welcome'] = 'Welcome, ';
 $string['notions_empty'] = "You didn't select any notion. Add one or more notions first to select questions to display.";
 $string['notions_intro'] = "Select which notion to link to the plugin : ";
+$string['add_notion_expl'] = "Create a new notion if you don't find the one you desired :";
 $string['add_notion_btn'] = "Add a notion";
 $string['new_notion_intro'] = 'Create new notion';
 $string['questions_assigned'] = 'This plugin displays the following questions : ';
@@ -43,7 +46,10 @@ $string['resource_assigned'] = 'This plugin is linked to the following module : 
 $string['linkto_intro'] = "Select below the questions you want to add for this notion : ";
 $string['def_notions'] = 'Set notions';
 $string['choose_q'] = 'Select questions';
+$string['whole_expl'] = 'Select the whole notion (1 notion, 1 test)';
+$string['each_expl'] = 'or select notions one by one (n notion, n test) :';
 $string['reviewed'] = 'Module reviewed : ';
+$string['next_due'] = 'Next review on : ';
 $string['notion_title'] = 'Title : ';
 $string['text2'] = ' test';
 $string['text3'] = ' to do';
@@ -65,6 +71,7 @@ $string['next_btn'] = "Next";
 $string['home_btn'] = "Home";
 $string['back_btn'] = "Back";
 $string['end_btn'] = "Finish";
+$string['at'] = ', ';
 
 $string['proxy_login_required'] = 'You must be logged in to access this url. Please log in and retry.';
 $string['proxy_permission_required'] = 'You don\'t have the permission to access this url.';

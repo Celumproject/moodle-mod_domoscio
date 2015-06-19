@@ -630,12 +630,15 @@ function manage_student($config, $domoscio, $check) {
 
     $rest = new domoscio_client();
 
+    // Retrive student data from API
     $student = json_decode($rest->setUrl($config, 'students', $check->uniq_id)->get());
 
+    // Retrive all active knowledge nodes relative to this instance of Domoscio
     $knowledge_nodes = $DB->get_records_select('knowledge_nodes', "instance = $domoscio->id AND active <> 0");
 
     $kn_student = array();
 
+    // Check if kn student exist for each knowledge_node, retrive data if so or create new one if not set
     foreach($knowledge_nodes as $kn)
     {
         if(!$kns_query = $DB->get_record('knowledge_node_students', array('knowledge_node_id' => $kn->knowledge_node_id, 'user' => $USER->id)))
@@ -655,6 +658,55 @@ function manage_student($config, $domoscio, $check) {
         }
 
         $kn_student[] = json_decode($rest->setUrl($config, 'knowledge_node_students', $kns_query->kn_student_id)->get());
+
+        // Check if API has results for this kn student, if not, search for results on Moddle DB, or invite to pass a first test
+        $last_kn = end($kn_student);
+
+        if($last_kn->history == "")
+        {
+            if($domoscio->resource_type == "scorm")
+            {
+                $score = $DB->get_record('scorm_scoes_track', array('scormid' => $scorm,
+                                                                     'userid' => $USER->id,
+                                                                      'scoid' => $_SESSION['scoid'],
+                                                                    'element' => "cmi.score.scaled"));
+            }
+            else
+            {
+                $questions = $DB->get_records('knowledge_node_questions', array('instance' => $domoscio->id, 'knowledge_node' => $kn->knowledge_node_id), '', 'question_id');
+                $list = array();
+
+                foreach($questions as $question)
+                {
+                    $list[] = $question->question_id;
+                }
+
+                $list = join(',', $list);
+
+                $scoredata = $DB->get_records_sql("SELECT AVG(".$CFG->prefix."question_attempt_steps.`fraction`) AS score
+                                                     FROM ".$CFG->prefix."question_attempt_steps
+                                               INNER JOIN ".$CFG->prefix."question_attempts
+                                                       ON ".$CFG->prefix."question_attempts.`id` = ".$CFG->prefix."question_attempt_steps.`questionattemptid`
+                                                    WHERE ".$CFG->prefix."question_attempt_steps.`userid` = $USER->id
+                                                      AND ".$CFG->prefix."question_attempt_steps.`sequencenumber` = 2
+                                                      AND ".$CFG->prefix."question_attempts.`questionid` IN ($list)
+                                                      AND ".$CFG->prefix."question_attempts.`timemodified` =
+                                                          (SELECT MAX(`timemodified`)
+                                                           FROM ".$CFG->prefix."question_attempts)");
+
+                $score = (round(array_shift($scoredata)->score))*100;
+            }
+
+            $json = json_encode(array('knowledge_node_student_id' => intval($last_kn->id),
+                                                          'value' => intval($score)));
+
+            $sending = $rest->setUrl($config, 'results', null)->post($json);
+
+            array_pop($kn_student);
+
+            $kn_student[] = json_decode($rest->setUrl($config, 'knowledge_node_students', $last_kn->id)->get());
+        }
+
     }
 
     return $kn_student;
@@ -731,11 +783,11 @@ function get_resource_info($knowledge_node) {
 }
 
 /* Récupère les scoes inclus dans un package SCORM */
-function get_scorm_scoes($cm)
+function get_scorm_scoes($kn)
 {
     global $DB, $CFG;
 
-    $instance = get_resource_info($cm)->instance;
+    $instance = get_resource_info($kn)->instance;
 
     $scoes = $DB->get_records_sql("SELECT *
                                    FROM ".$CFG->prefix."scorm_scoes
