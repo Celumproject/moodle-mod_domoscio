@@ -30,36 +30,35 @@
 require_once(dirname(dirname(dirname(__FILE__))).'/config.php');
 require_once(dirname(__FILE__).'/lib.php');
 require_once(dirname(__FILE__).'/sdk/client.php');
+require_once(dirname(__FILE__).'/classes/select_notion_form.php');
+
+$PAGE->requires->js('/mod/domoscio/jquery-1.11.3.min.js', true);
+$PAGE->requires->js('/mod/domoscio/bootstrap-collapse.js', true);
 
 $config = get_config('domoscio');
 $id = optional_param('id', 0, PARAM_INT); // Course_module ID, or
 $n  = optional_param('d', 0, PARAM_INT);  // ... domoscio instance ID - it should be named as the first character of the module.
-
+$kn = optional_param('kn', 0, PARAM_INT); // Knowledge_node ID (Rappels)
 
 if ($id) {
     $cm         = $DB->get_record('course_modules', array('id' => $id), '*', MUST_EXIST);
-    $course     = $DB->get_record('course', array('id' => $cm->course), '*', MUST_EXIST);
+    $course     = get_course($cm->course);
     $domoscio  = $DB->get_record('domoscio', array('id' => $cm->instance), '*', MUST_EXIST);
 } else if ($n) {
     $domoscio  = $DB->get_record('domoscio', array('id' => $n), '*', MUST_EXIST);
-    $course     = $DB->get_record('course', array('id' => $domoscio->course), '*', MUST_EXIST);
+    $course     = get_course($domoscio->course);
     $cm         = get_coursemodule_from_instance('domoscio', $domoscio->id, $course->id, false, MUST_EXIST);
+} else if ($kn) {
+    $module     = $DB->get_record('modules', array('name' => 'domoscio'), '*', MUST_EXIST);
+    $domoscio   = $DB->get_record('domoscio', array('resource_id' => $kn), '*', MUST_EXIST);
+    $course     = get_course($domoscio->course);
+    $cm         = $DB->get_record('course_modules', array('instance' => $domoscio->id, 'module' => $module->id), '*', MUST_EXIST);
+    $id         = $cm->id;
 } else {
     error('You must specify a course_module ID or an instance ID');
 }
 
 require_login($course, true, $cm);
-
-
-
-/*$event = \mod_domoscio\event\course_module_viewed::create(array(
-    'objectid' => $PAGE->cm->instance,
-    'context' => $PAGE->context,
-));
-$event->add_record_snapshot('course', $PAGE->course);
-$event->add_record_snapshot($PAGE->cm->modname, $domoscio);
-$event->trigger();*/
-
 
 
 // Print the page header.
@@ -68,16 +67,6 @@ $PAGE->set_url('/mod/domoscio/view.php', array('id' => $cm->id));
 $PAGE->set_title(format_string($domoscio->name));
 $PAGE->set_heading("Domoscio for Moodle");
 
-
-//REDIRIGE DIRECTEMENT VERS l'index
-//redirect("$CFG->wwwroot/mod/domoscio/index.php?id=".$COURSE->id);
-
-/*
- * Other things you may want to set - remove if not needed.
- * $PAGE->set_cacheable(false);
- * $PAGE->set_focuscontrol('some-html-id');
- * $PAGE->add_body_class('domoscio-'.$somevar);
- */
 
 // Output starts here.
 
@@ -93,140 +82,171 @@ if ($domoscio->intro) {
 
 $rest = new domoscio_client();
 
-$resource = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/knowledge_nodes/$domoscio->resource_id?token=$config->domoscio_apikey")->get());
-// --- VUE PROFESSEUR ---
+$resource = json_decode($rest->setUrl($config, 'knowledge_nodes', $domoscio->resource_id)->get());
+
+$linked_resource = get_resource_info($resource->id);
+
+// --- TEACHER VIEW ---
 
 if (user_has_role_assignment($USER->id,3)) {
 
-    echo "<div class='block'><b class='mod_introbox'>Le plugin est lié à la ressource suivante :</b></div>";
+    $notions = $DB->get_records('knowledge_nodes', array('instance' => $domoscio->id, 'active' => '1'), '', '*');
 
-    echo get_resource_info($resource->id);
-    echo "<hr/><div class='block'><b class='mod_introbox'>Le plugin propose les questions suivantes :</b></div>";
+    $introbox = html_writer::tag('b', get_string('resource_assigned', 'domoscio'), array('class' => 'mod_introbox')).
+                html_writer::link($linked_resource->url, $linked_resource->display);
+    echo html_writer::tag('div', $introbox, array('class' => 'block'));
 
-    $questions = $DB->get_records_sql("SELECT `question_id` FROM `mdl_knowledge_node_questions` WHERE `instance` = $domoscio->id");
+    $def_notion_link = html_writer::link($CFG->wwwroot.'/mod/domoscio/select_notions.php?id='.$cm->id, html_writer::tag('button', '1. '.get_string('def_notions', 'domoscio'), array('class' => 'btn btn-primary btn-large')),
+                        array('class' => 'span4'));
 
-    foreach($questions as $question){echo $question->question_id.", ";}
+    echo html_writer::tag('div', $def_notion_link.'<br/><br/>').html_writer::tag('div', '<h6>Les notions que vous avez définies :</h6><hr/>');
 
-    echo "<hr/><div class='block'><b class='mod_introbox'>Inscrivez les questions que vous souhaitez proposer aux étudiants.</b></div>
-    Sélectionnez l'un des quiz ci-dessous pour associer les questions pour l'ancrage :";
-
-    $quizzes = $DB->get_records_sql("SELECT `id`, `name` FROM `mdl_quiz` WHERE `course` = ".$course->id);
-
-    foreach($quizzes as $quiz)
+    foreach($notions as $notion)
     {
-        $url = new moodle_url("$CFG->wwwroot/mod/domoscio/linkto.php?id=".$cm->id."&q=".$quiz->id);
-        echo "<div class='coursebox'>";
-        echo $OUTPUT->action_link( $url, "<h5>".$quiz->name."</h5>" );
-        echo "</div>";
+        $render_q = '';
+        $rest = new domoscio_client();
+
+        $title = json_decode($rest->setUrl($config, 'knowledge_nodes', $notion->knowledge_node_id)->get());
+
+        $qids = $DB->get_records_sql("SELECT * FROM ".$CFG->prefix."knowledge_node_questions WHERE `knowledge_node`= $notion->knowledge_node_id");
+
+        foreach($qids as $qid)
+        {
+            if($linked_resource->modulename == "scorm")
+            {
+                $sco = $DB->get_record('scorm_scoes', array('id' => $qid->question_id), '*');
+
+                $render_q .= html_writer::tag('b',$linked_resource->display)." - ".$sco->title.html_writer::tag('hr', '');
+            }
+            else
+            {
+                $question = $DB->get_record('question', array('id' => $qid->question_id), '*');
+
+                $render_q .= html_writer::tag('b',$question->name." : ").strip_tags($question->questiontext).html_writer::tag('hr', '');
+            }
+        }
+        $accordion_inner = html_writer::tag('div', $render_q, array('class' => 'accordion-inner'));
+        $accordion_collapse = html_writer::tag('div', $accordion_inner, array('class' => 'accordion-body collapse', 'id' => 'collapse-'.$notion->id));
+        $togglers = html_writer::link('#collapse-'.$notion->id, html_writer::start_span('mod_introbox').
+                                                                html_writer::tag('i', '', array('class' => 'icon-chevron-down')).
+                                                                " $title->name (".count($qids)." question".plural($qids).")".
+                                                                html_writer::end_span(), array(
+                                                                                            'class' => 'accordion-toggle',
+                                                                                            'data-toggle' => 'collapse',
+                                                                                            'data-parent' => '#accordion2'));
+        $togglers .= html_writer::link($CFG->wwwroot.'/mod/domoscio/linkto.php?id='.$cm->id.'&notion='.$notion->knowledge_node_id,
+                                        html_writer::tag('button', '2. '.get_string('choose_q', 'domoscio'), array('type' => 'button', 'class' => 'btn btn-link pull-right')));
+        $accordion_heading = html_writer::tag('div', $togglers, array('class' => 'well well-small' , 'style' => 'margin-bottom:0px'));
+        $accordion_group = html_writer::tag('div', $accordion_heading.$accordion_collapse, array('class' => 'accordion-group'));
+        echo $accordion = html_writer::tag('div', $accordion_group, array('class' => 'accordion', 'id' => 'accordion'));
     }
 
+    if(empty($notions))
+    {
+        echo html_writer::tag('blockquote', get_string('notions_empty', 'domoscio'), array('class' => 'muted'));
+    }
 
 }
 
-// --- VUE ETUDIANT ---
+// --- STUDENT VIEW ---
 
 elseif (user_has_role_assignment($USER->id,5)) {
 
-    echo "Vous révisez la ressource du cours suivante :<br/>";
-    echo get_resource_info($resource->id);
-    echo "<hr/>";
-
     // Vérifie si l'étudiant s'est déjà connecté au plugin Domoscio
-    $check = $DB->get_record_sql("SELECT * FROM `mdl_userapi` WHERE `user_id` =".$USER->id);
+    $check = $DB->get_record('userapi', array('user_id' => $USER->id), '*');
 
     if(!empty($check))
     {
-        // Si oui, le plugin récupère les données de l'étudiant
-        $rest = new domoscio_client();
-
-        $student = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/students/$check->uniq_id?token=$config->domoscio_apikey")->get());
-
-        echo "Utilisateur inscrit n°".$student->id."<br/>";
-
-        // Vérifie si un knowledge_node_student est créé
-        $check_knstudent = $DB->get_record_sql("SELECT * FROM `mdl_knowledge_node_students` WHERE `user` = $USER->id AND `instance` = $domoscio->id");
-
-        if(!empty($check_knstudent))
-        {
-            //Si oui, le plugin récupère les données du KN student
-            $rest = new domoscio_client();
-
-            $kn_student = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/knowledge_node_students/$check_knstudent->kn_student_id?token=$config->domoscio_apikey")->get());
-        }
-        else
-        {
-          $check_node = $DB->get_records_sql("SELECT * FROM `mdl_domoscio` WHERE `resource_id` = $domoscio->resource_id");
-
-          $rest = new domoscio_client();
-
-          if(count($check_node) > 1) //Si un knowledge_node_student_id existe déjà :
-          {
-            $kns_id = $DB->get_record_sql("SELECT `kn_student_id` FROM `mdl_knowledge_node_students` INNER JOIN `mdl_domoscio` ON `mdl_knowledge_node_students`.`instance` = `mdl_domoscio`.`id` WHERE `mdl_domoscio`.`resource_id` = $domoscio->resource_id LIMIT 1")->kn_student_id;
-
-            $kn_student = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/knowledge_node_students/$kns_id?token=$config->domoscio_apikey")->get());
-          }
-          else // Sinon
-          {
-            $jsonkn = json_encode(array('knowledge_node_id' => intval($domoscio->resource_id), 'student_id' => intval($student->id)));
-
-            $kn_student = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/knowledge_node_students/?token=$config->domoscio_apikey")->post($jsonkn));
-          }
-
-            // Le plugin récupère le knowledge_node_student id créé par l'api et l'inscrit en DB
-            $record = new stdClass();
-            $record->user = $USER->id;
-            $record->kn_student_id = $kn_student->id;
-            $record->instance = $domoscio->id;
-            $insert = $DB->insert_record('knowledge_node_students', $record, false);
-        }
+        $kn_student = manage_student($config, $domoscio, $check);
     }
     else
     {
         // Sinon, le plugin demande à l'api de créer un nouvel étudiant
         echo "Première visite<br/>";
 
-        $json = json_encode(array(
-            'student_group_id' => strval("0"),
-            'civil_profile_attributes' => array(
-                                                'name' => strval($USER->firstname." ".$USER->lastname),
-                                                'sexe' => strval("male"),
-                                                'day_of_birth' => strval("11-05-1989"),
-                                                'place_of_birth' => strval("FR"),
-                                                'country_of_residence' => strval($USER->country),
-                                                'city_of_residence' => strval($USER->city)
-                                                ),
-            'learning_profile_attributes' => array(
-                                                    'forgetting_parameters' => strval("[1,2,3]")
-                                                    )
-        ));
+        create_student();
+    }
+    $count = count_tests($config);
+    $url2=new moodle_url("$CFG->wwwroot/mod/domoscio/index.php");
 
-        $rest = new domoscio_client();
+    echo html_writer::start_span('badge badge-important').html_writer::tag('h4', count($count)).html_writer::end_span().get_string('text2', 'domoscio').plural($count).get_string('text3', 'domoscio')." ";
 
-        $student = json_decode($rest->setUrl("http://stats-engine.domoscio.com/v1/companies/$config->domoscio_id/students/?token=$config->domoscio_apikey")->post($json));
+    if(!empty($count)){echo $OUTPUT->action_link( $url2, "Faire les rappels");}
 
-        echo $student->id;
+    $introbox = html_writer::tag('b', get_string('reviewed', 'domoscio'), array('class' => 'mod_introbox')).
+                html_writer::link($linked_resource->url, $linked_resource->display);
+    echo html_writer::tag('div', $introbox, array('class' => 'block'));
 
-        // Le plugin récupère l'uniq_id créé par l'api et l'inscrit en DB
-        $record = new stdClass();
-        $record->user_id = $USER->id;
-        $record->uniq_id = $student->id;
-        $insert = $DB->insert_record('userapi', $record, false);
+    echo "<hr/>";
+
+    if(!empty($check) && $kn_student)
+    {
+        $_SESSION['todo'] = $_SESSION['results'] = array();
+
+        foreach($kn_student as $notion)
+        {
+            $item = json_decode($rest->setUrl($config, 'knowledge_nodes', $notion->knowledge_node_id)->get());
+            $reminder = date('d/m/Y '.get_string('at', 'domoscio').' H:i',strtotime($notion->next_review_at));
+            $_SESSION['todo'][] = $item->id;
+
+            $accordion_inner = html_writer::tag('div', get_string('next_due', 'domoscio').$reminder, array('class' => 'accordion-inner'));
+            $accordion_collapse = html_writer::tag('div', $accordion_inner, array('class' => 'accordion-body collapse', 'id' => 'collapse-'.$notion->id));
+            $togglers = html_writer::link('#collapse-'.$notion->id, html_writer::start_span('mod_introbox').
+                                                                  html_writer::tag('i', '', array('class' => 'icon-chevron-down')).
+                                                                  $item->name.
+                                                                  html_writer::end_span(), array(
+                                                                                              'class' => 'accordion-toggle',
+                                                                                              'data-toggle' => 'collapse',
+                                                                                              'data-parent' => '#accordion'));
+            $accordion_heading = html_writer::tag('div', $togglers, array('class' => 'well well-small' , 'style' => 'margin-bottom:0px'));
+            $accordion_group = html_writer::tag('div', $accordion_heading.$accordion_collapse, array('class' => 'accordion-group'));
+            echo $accordion = html_writer::tag('div', $accordion_group, array('class' => 'accordion', 'id' => 'accordion'));
+        }
 
     }
 
-    echo "<br/>";
-    $url1=new moodle_url("$CFG->wwwroot/mod/domoscio/doquiz.php?id=$cm->id");
-    $url2=new moodle_url("$CFG->wwwroot/mod/domoscio/doquiz.php");
-    echo $OUTPUT->action_link( $url1, "Passer le test de positionnement");
+    echo html_writer::tag('button', get_string('do_test', 'domoscio'), array('type' => 'button',
+                                                                           'onclick'=>"javascript:location.href='$CFG->wwwroot/mod/domoscio/doquiz.php?kn=".array_shift($_SESSION['todo'])."&t=".time()."'"));
 
-    $count = count_tests($config);
-    echo "<hr/>Vous avez ".count($count)." rappels à faire :<br/>";
-    if(!empty($count)){echo $OUTPUT->action_link( $url2, "Faire les rappels");}
+/*
+    echo "<hr/>Statistiques :<br/>";
+    echo "<canvas id='historyChart' width='800' height='400'></canvas>";
 
-    $reminder = date('d/m/Y à H:i',strtotime($kn_student->next_review_at));
-    echo "<hr/>Prochain rappel sur cet item : ".$reminder;
+    $formatted = implode(',',str_split($kn_student->history));
+    $attempts = array();
+    foreach(str_split($kn_student->history) as $k=>$result)
+    {
+      $attempts[] = '"'.$k.'"';
+    }
+    $attempts = implode(',', $attempts);
+?>
+<script type="text/javascript" src="Chart.min.js"></script>
+<script type="text/javascript">
+var ctx = document.getElementById("historyChart").getContext("2d");
 
+var data = {
+    labels: [<?php print_r($attempts);?>],
+    datasets: [
+        {
+            label: "Results",
+            fillColor: "rgba(0,220,0,0.2)",
+            strokeColor: "rgba(0,180,0,1)",
+            pointColor: "rgba(0,220,0,1)",
+            pointStrokeColor: "#fff",
+            pointHighlightFill: "#fff",
+            pointHighlightStroke: "rgba(220,220,220,1)",
+            data: [<?php echo $formatted;?>]
+        },
+    ]
+};
+var options = {
+  ///Boolean - Whether grid lines are shown across the chart
+  scaleShowGridLines : true,
+};
+var historyChart = new Chart(ctx).Line(data, options);
+</script>
+<?php
+*/
 }
-
 // Finish the page.
 echo $OUTPUT->footer();

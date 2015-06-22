@@ -21,193 +21,70 @@
  * if you like, and it can span multiple lines.
  *
  * @package    mod_domoscio
- * @copyright  2015 Your Name
+ * @copyright  2015 Domoscio
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-// Replace domoscio with the name of your module and remove this line.
-
 require_once(dirname(dirname(dirname(__FILE__))).'/config.php');
 require_once(dirname(__FILE__).'/lib.php');
+require_once(dirname(__FILE__).'/sdk/client.php');
 
-
-$id = required_param('id', PARAM_INT); // Course.
-
-$course = $DB->get_record('course', array('id' => $id), '*', MUST_EXIST);
-
-require_course_login($course);
-
-
-/*$params = array(
-    'context' => context_course::instance($course->id)
-);
-$event = \mod_domoscio\event\course_module_instance_list_viewed::create($params);
-$event->add_record_snapshot('course', $course);
-$event->trigger();*/
+$config = get_config('domoscio');
+$PAGE->set_context(context_system::instance());
+require_login();
 
 $strname = get_string('modulename', 'mod_domoscio');
-$PAGE->set_url('/mod/domoscio/index.php', array('id' => $id));
+$PAGE->set_url('/mod/domoscio/index.php');
 $PAGE->navbar->add($strname);
-$PAGE->set_title("$course->shortname: $strname");
-$PAGE->set_heading($course->fullname);
+$PAGE->set_title(format_string("Rappels"));
+$PAGE->set_heading("Domoscio for Moodle");
 $PAGE->set_pagelayout('incourse');
 
+$date = usergetdate(time());
+list($d, $m, $y, $h, $min) = array($date['mday'], $date['mon'], $date['year'], $date['hours'], $date['minutes']);
+
 echo $OUTPUT->header();
-echo $OUTPUT->heading($strname);
 
+$todo_tests = count_tests($config);
+$rest = new domoscio_client();
 
+echo $OUTPUT->heading(get_string('desk', 'domoscio'));
 
+$check = $DB->get_record('userapi', array('user_id' => $USER->id), '*');
+$student = json_decode($rest->setUrl($config, 'students', $check->uniq_id)->get());
 
-if (!$domoscios = get_all_instances_in_course('domoscio', $course)) {
-    notice(get_string('nodomoscios', 'domoscio'), new moodle_url('/course/view.php', array('id' => $course->id)));
+$display_user = html_writer::tag('p', get_string('welcome', 'domoscio').$student->id);
+$notification = userdate(make_timestamp($y, $m, $d, $h, $min))."<br/>".html_writer::start_span('badge badge-important').html_writer::tag('h4', count($todo_tests)).html_writer::end_span().get_string('text2', 'domoscio').plural($todo_tests).get_string('text3', 'domoscio');
+echo html_writer::tag('div', html_writer::tag('h5', $display_user.$notification, array('class' => 'mod_introbox')), array('class' => 'block'));
+
+if(!empty($todo_tests))
+{
+  $_SESSION['todo'] = array();
+  $trows = "";
+  $rest = new domoscio_client();
+  foreach($todo_tests as $kn)
+  {
+    $resource = get_resource_info($kn);
+    $domoscio_id = $DB->get_record('knowledge_nodes', array('knowledge_node_id' => $kn), '*');
+    $_SESSION['todo'][] = $kn;
+
+    $kn_info = json_decode($rest->setUrl($config, 'knowledge_nodes', $kn)->get());
+
+    $trows .= html_writer::tag('tr', html_writer::tag('td', $resource->display." - ".$kn_info->name).
+                                     html_writer::tag('td', html_writer::link($CFG->wwwroot.'/mod/domoscio/doquiz.php?kn='.$kn.'&solo=true', '<i class="icon-edit"></i>', array('target' => 'popup'))).
+                                     html_writer::tag('td', html_writer::link($resource->url, '<i class="icon-book"></i>', array('target' => 'popup'))).
+                                     html_writer::tag('td', html_writer::link($CFG->wwwroot.'/mod/domoscio/view.php?d='.$domoscio_id->instance, "<i class='icon-signal'></i>", array('target' => 'popup')))
+                              );
+  }
+  $th = html_writer::tag('tr', html_writer::tag('th', get_string('module', 'domoscio')).
+                               html_writer::tag('th', get_string('do_test', 'domoscio')).
+                               html_writer::tag('th', get_string('see_notion', 'domoscio')).
+                               html_writer::tag('th', get_string('stats', 'domoscio')));
+  echo html_writer::tag('table', $th.$trows, array('class' => 'table table-striped table-bordered table-hover'));
+
+  echo html_writer::tag('button', get_string('start_tests', 'domoscio'), array('type' => 'button','onclick'=>"javascript:location.href='$CFG->wwwroot/mod/domoscio/doquiz.php?kn=".array_shift($_SESSION['todo'])."&t=".time()."'"));
 }
 
-$usesections = course_format_uses_sections($course->format);
-
-
-//Affiche les activite de type Domoscio
-
-/*$table = new html_table();
-$table->attributes['class'] = 'generaltable mod_index';
-
-if ($usesections) {
-    $strsectionname = get_string('sectionname', 'format_'.$course->format);
-    $table->head  = array ($strsectionname, $strname);
-    $table->align = array ('center', 'left');
-} else {
-    $table->head  = array ($strname);
-    $table->align = array ('left');
-}
-
-$modinfo = get_fast_modinfo($course);
-$currentsection = '';
-foreach ($modinfo->instances['domoscio'] as $cm) {
-    $row = array();
-    if ($usesections) {
-        if ($cm->sectionnum !== $currentsection) {
-            if ($cm->sectionnum) {
-                $row[] = get_section_name($course, $cm->sectionnum);
-            }
-            if ($currentsection !== '') {
-                $table->data[] = 'hr';
-            }
-            $currentsection = $cm->sectionnum;
-        }
-    }
-
-    $class = $cm->visible ? null : array('class' => 'dimmed');
-
-    $row[] = html_writer::link(new moodle_url('view.php', array('id' => $cm->id)),
-                $cm->get_formatted_name(), $class);
-
-
-    $table->data[] = $row;
-
-}
-
-
-echo html_writer::table($table);*/
-
-// Affiche les activite seulement de type quiz
-
-
-/*$table = new html_table();
-$table->attributes['class'] = 'generaltable mod_index';
-
-if ($usesections) {
-    $strsectionname = get_string('sectionname', 'format_'.$course->format);
-    $table->head  = array ($strsectionname, $strname);
-    $table->align = array ('center', 'left');
-} else {
-    $table->head  = array ($strname);
-    $table->align = array ('left');
-}
-
-$modinfo = get_fast_modinfo($course);
-$currentsection = '';
-foreach ($modinfo->instances['quiz'] as $cm) {
-    $row = array();
-    if ($usesections) {
-        if ($cm->sectionnum !== $currentsection) {
-            if ($cm->sectionnum) {
-                $row[] = get_section_name($course, $cm->sectionnum);
-            }
-            if ($currentsection !== '') {
-                $table->data[] = 'hr';
-            }
-            $currentsection = $cm->sectionnum;
-        }
-    }
-
-    $class = $cm->visible ? null : array('class' => 'dimmed');
-
-    $row[] = html_writer::link(new moodle_url('view.php', array('id' => $cm->id)),
-                $cm->get_formatted_name(), $class);
-    $table->data[] = $row;
-}
-
-echo html_writer::table($table);*/
-
-
-//Affiche la liste des activites du cours et des ressources
-
-$table = new html_table();
-$table->attributes['class'] = 'generaltable mod_index';
-
-if ($usesections) {
-    $strsectionname = get_string('sectionname', 'format_'.$course->format);
-    $table->head  = array ($strsectionname);
-    $table->align = array ('center');
-    //$table->valign= arra
-} /*else {
-    $table->head  = array ($strname);
-    $table->align = array ('center');
-}*/
-
-
-$modinfo = get_fast_modinfo($course);
-$currentsection = '';
-
-
-foreach ($modinfo->cms as $cm) {
-
-    $row = array();
-
-    if ($usesections) {
-
-        if ($cm->sectionnum !== $currentsection) {
-
-            if ($cm->sectionnum) {
-                $row[] = get_section_name($course, $cm->sectionnum);
-
-            }
-            if ($currentsection !== '') {
-
-                //$table->data[] = 'hr';
-            }
-            $currentsection = $cm->sectionnum;
-
-        }
-    }
-
-    //$class = $cm->visible ? null : array('class' => 'dimmed');
-
-
-    /*$row[] = html_writer::link(new moodle_url('view.php', array('id' => $cm->id)),
-                $cm->get_formatted_name(), $class);*/
-    if($cm->modname !== "domoscio"){
-    $test[] = "<FORM>  <INPUT type=\"checkbox\" name=\"nom\" value=\"valeur attachée au bouton\"> </FORM>";
-    $row[] = html_writer::link(new moodle_url("$CFG->wwwroot/mod/".$cm->modname."/view.php?id=".$cm->id, array('id' => $cm->id)),$cm->get_formatted_name(), null);
-    }
-
-
-    $table->data[] = $row;
-
-
-}
-
-print_r($row);
-
-echo html_writer::table($table);
+else {echo get_string('no_test', 'domoscio');}
 
 echo $OUTPUT->footer();
