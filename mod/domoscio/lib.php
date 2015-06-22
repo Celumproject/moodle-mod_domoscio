@@ -112,36 +112,23 @@ function domoscio_add_instance(stdClass $domoscio, mod_domoscio_mod_form $mform 
         $knowledge_graph = $DB->insert_record('knowledge_graphs', $knowledge_graph);
     }
 
-    // Si la ressource n'est pas référencé en tant que knowledge_node, en créé un nouveau sur l'api
-    $check = $DB->get_records('knowledge_nodes', array('resource_id' => $domoscio->resource), '', '*');
 
     $rest = new domoscio_client();
 
-    if(count($check) > 0) // Récupère le knowledge_node_id existant
-    {
-        $knid = array();
-        $i = 0;
-        foreach($check as $result)
-        {
-          $knid[$i] = $result;
-          $i++;
-        }
-        $resource = json_decode($rest->setUrl($config, 'knowledge_nodes', $knid[0]->knowledge_node_id)->get());
-    }
-    else // Sinon créé un nouveau knowledge_node et l'inscrit en DB
-    {
-        $json = json_encode(array('knowledge_graph_id' => strval($graphid),
-                                  'name' => strval($domoscio->resource)));
+    // Create new parent knowledge node for this new instance
 
-        $resource = json_decode($rest->setUrl($config, 'knowledge_nodes', null)->post($json));
+    $json = json_encode(array('knowledge_graph_id' => strval($graphid),
+                              'name' => strval($domoscio->resource)));
 
-        $knowledge_node = new stdClass;
+    $resource = json_decode($rest->setUrl($config, 'knowledge_nodes', null)->post($json));
 
-        $knowledge_node->resource_id = $domoscio->resource;
-        $knowledge_node->knowledge_node_id = $resource->id;
-        $knowledge_node->instance = null;
-        $knowledge_node->id = $DB->insert_record('knowledge_nodes', $knowledge_node);
-    }
+    $knowledge_node = new stdClass;
+
+    $knowledge_node->resource_id = $domoscio->resource;
+    $knowledge_node->knowledge_node_id = $resource->id;
+    $knowledge_node->instance = null;
+    $knowledge_node->id = $DB->insert_record('knowledge_nodes', $knowledge_node);
+
 
     // Le plugin récupère le resource_id créé par l'api et l'inscrit en DB avec la nouvelle instance de plugin domoscio
 
@@ -152,16 +139,9 @@ function domoscio_add_instance(stdClass $domoscio, mod_domoscio_mod_form $mform 
 
     $domoscio->id = $DB->insert_record('domoscio', $domoscio);
 
-    if(count($check) > 0)
-    {
-        $knupd = new stdClass;
-        $knupd->id = $knid[0]->id;
-        $knupd->instance = $domoscio->id;
-        $addinstance = $DB->update_record('knowledge_nodes', $knupd, false);
-    }
 
     // Si la ressource à ancrer est un package SCORM, associe un nouveau knowledge node pour chaque SCO contenu dans le package
-    if($linked_resource->modulename == "scorm" && count($check) == 0)
+    if($linked_resource->modulename == "scorm")
     {
         $scoes = get_scorm_scoes($resource->id);
 
@@ -194,7 +174,7 @@ function domoscio_add_instance(stdClass $domoscio, mod_domoscio_mod_form $mform 
         //$import = write_scorm_content($domoscio->id, $linked_resource->cm);
     }
 
-    if($linked_resource->modulename == "book" && count($check) == 0)
+    if($linked_resource->modulename == "book")
     {
         $chapters = get_book_chapters($resource->id);
 
@@ -690,9 +670,11 @@ function manage_student($config, $domoscio, $check) {
                                                       AND `userid` = $USER->id
                                                       AND `scoid` = $scoid
                                                       AND `element` = 'cmi.score.scaled'
-                                                      AND `timemodified` =
-                                                          (SELECT MAX(`timemodified`)
-                                                           FROM ".$CFG->prefix."scorm_scoes_track)");
+                                                      AND `attempt` =
+                                                          (SELECT MAX(`attempt`)
+                                                           FROM ".$CFG->prefix."scorm_scoes_track
+                                                           WHERE `userid` = $USER->id
+                                                           AND `scoid` = $scoid)");
 
                 if(!empty($scoredata))
                 {
@@ -727,7 +709,7 @@ function manage_student($config, $domoscio, $check) {
                 }
             }
 
-            if(isset($score))
+            if(!empty($scoredata))
             {
                 $json = json_encode(array('knowledge_node_student_id' => intval($last_kn->id),
                                                               'value' => intval($score)));
@@ -949,7 +931,7 @@ function count_tests($config)
             $rest = new domoscio_client();
             $result = json_decode($rest->setUrl($config, 'knowledge_node_students', $kn_student->kn_student_id)->get());
 
-            if(strtotime($result->next_review_at) < time())
+            if(strtotime($result->next_review_at) < time() && $result->next_review_at != null)
             {
                 $list[] = $result->knowledge_node_id;
             }

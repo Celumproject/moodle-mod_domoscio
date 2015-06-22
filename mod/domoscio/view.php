@@ -184,19 +184,33 @@ elseif (user_has_role_assignment($USER->id,5)) {
 
         if(!empty($check) && $kn_student)
         {
-            $_SESSION['todo'] = $_SESSION['results'] = array();
+            $_SESSION['todo'] = $_SESSION['results'] = $_SESSION['no_history'] = array();
 
             foreach($kn_student as $notion)
             {
                 $item = json_decode($rest->setUrl($config, 'knowledge_nodes', $notion->knowledge_node_id)->get());
-                $reminder = date('d/m/Y '.get_string('at', 'domoscio').' H:i',strtotime($notion->next_review_at));
                 $_SESSION['todo'][] = $item->id;
 
-                $accordion_inner = html_writer::tag('div', get_string('next_due', 'domoscio').$reminder, array('class' => 'accordion-inner'));
+                if($notion->next_review_at == null)
+                {
+                    $reminder = html_writer::tag('button', get_string('do_test', 'domoscio'), array('type' => 'button',
+                                                                                           'onclick'=>"javascript:location.href='$CFG->wwwroot/mod/domoscio/doquiz.php?kn=$notion->knowledge_node_id"."&t=".time()."'"));
+                    $accordion_inner = html_writer::tag('div', get_string('no_history', 'domoscio').$reminder, array('class' => 'accordion-inner'));
+                    $alert_icon = html_writer::tag('i', '', array('class' => 'icon-exclamation-sign'));
+                    $_SESSION['no_history'][] = $item->id;
+                }
+                else
+                {
+                    $reminder = date('d/m/Y '.get_string('at', 'domoscio').' H:i',strtotime($notion->next_review_at));
+                    $accordion_inner = html_writer::tag('div', get_string('next_due', 'domoscio').$reminder, array('class' => 'accordion-inner'));
+                    $alert_icon = '';
+                }
+
+
                 $accordion_collapse = html_writer::tag('div', $accordion_inner, array('class' => 'accordion-body collapse', 'id' => 'collapse-'.$notion->id));
                 $togglers = html_writer::link('#collapse-'.$notion->id, html_writer::start_span('mod_introbox').
                                                                       html_writer::tag('i', '', array('class' => 'icon-chevron-down')).
-                                                                      $item->name.
+                                                                      $item->name.$alert_icon.
                                                                       html_writer::end_span(), array(
                                                                                                   'class' => 'accordion-toggle',
                                                                                                   'data-toggle' => 'collapse',
@@ -208,9 +222,16 @@ elseif (user_has_role_assignment($USER->id,5)) {
 
         }
 
-        echo html_writer::tag('button', get_string('do_test', 'domoscio'), array('type' => 'button',
-                                                                               'onclick'=>"javascript:location.href='$CFG->wwwroot/mod/domoscio/doquiz.php?kn=".array_shift($_SESSION['todo'])."&t=".time()."'"));
+        if($_SESSION['no_history'] != null)
+        {
+            echo html_writer::tag('button', get_string('do_test', 'domoscio'), array('type' => 'button',
+                                                                                   'onclick'=>"javascript:location.href='$CFG->wwwroot/mod/domoscio/doquiz.php?kn=".array_shift($_SESSION['no_history'])."&t=".time()."'",
+                                                                                    'class' => 'btn btn-primary'));
+        }
 
+        echo html_writer::tag('button', get_string('do_training', 'domoscio'), array('type' => 'button',
+                                                                               'onclick'=>"javascript:location.href='$CFG->wwwroot/mod/domoscio/doquiz.php?kn=".array_shift($_SESSION['todo'])."&t=".time()."'",
+                                                                                'class' => 'btn btn-warning'));
     }
 
 /*
