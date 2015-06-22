@@ -95,9 +95,9 @@ if (user_has_role_assignment($USER->id,3)) {
       $json = json_encode(array('knowledge_graph_id' => strval($kngraph->knowledge_graph_id),
                                   'name' => strval($fromform->notion)));
 
-      $new_notion = json_decode($rest->setUrl("$config->domoscio_apiurl/companies/$config->domoscio_id/knowledge_nodes/?token=$config->domoscio_apikey")->post($json));
+      $new_notion = json_decode($rest->setUrl($config, 'knowledge_nodes', null)->post($json));
 
-      print_r($new_notion);
+      //print_r($new_notion);
 
       // Add new entry into knowledge_nodes table
       $record = new stdClass();
@@ -113,7 +113,9 @@ if (user_has_role_assignment($USER->id,3)) {
                                   'source_node_id' => strval($resource->id),
                                   'destination_node_id' => strval($new_notion->id)));
 
-      $knedge = json_decode($rest->setUrl("$config->domoscio_apiurl/companies/$config->domoscio_id/knowledge_edges/?token=$config->domoscio_apikey")->post($json));
+      $knedge = json_decode($rest->setUrl($config, 'knowledge_edges', null)->post($json));
+
+      echo "La notion a bien été créée.<hr/>".html_writer::link("$CFG->wwwroot/mod/domoscio/view.php?id=$cm->id", '<< '.get_string('back_btn', 'domoscio')."&nbsp");
 
   } else {
     $mform->display();
