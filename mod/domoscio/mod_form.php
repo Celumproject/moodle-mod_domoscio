@@ -71,8 +71,6 @@ class mod_domoscio_mod_form extends moodleform_mod {
 
         // Adding the rest of domoscio settings, spreading all them into this fieldset
         // ... or adding more fieldsets ('header' elements) if needed for better logic.
-        #$mform->addElement('static', 'label1', 'domosciosetting1', 'Your domoscio fields go here. Replace me!');
-
         $mform->addElement('header', 'domoscioresourceset', get_string('domoscioresourceset', 'domoscio'));
 
         $select = $mform->addElement('select', 'resource', get_string('resourceset_resource', 'domoscio'), $this->select_ressource(), NOGROUPS);
@@ -84,7 +82,7 @@ class mod_domoscio_mod_form extends moodleform_mod {
         $mform->addHelpButton('resource', 'domoscioresourceset', 'domoscio');
 
         // Add standard grading elements.
-        #$this->standard_grading_coursemodule_elements();
+        //$this->standard_grading_coursemodule_elements();
 
         // Add standard elements, common to all modules.
         $this->standard_coursemodule_elements();
@@ -98,7 +96,7 @@ class mod_domoscio_mod_form extends moodleform_mod {
         global $COURSE, $CFG, $DB;
 
         // Recherche les course modules à afficher
-        $query = "SELECT * FROM ".$CFG->prefix."course_modules WHERE `module` IN (3,14,16,18)";
+        $query = "SELECT * FROM ".$CFG->prefix."course_modules WHERE `module` IN (3,14,15,18)";
 
         $modules = $DB->get_records_sql($query);
 
@@ -106,7 +104,7 @@ class mod_domoscio_mod_form extends moodleform_mod {
 
         foreach($modules as $module)
         {
-            $datas[$module->id] = $this->get_resource_info($module->module, $module->instance);
+            $datas[$module->id] = $this->get_resource_info($module->module, $module->instance)->name;
         }
 
         return $datas;
@@ -127,7 +125,7 @@ class mod_domoscio_mod_form extends moodleform_mod {
                 $modulename = "lesson";
                 break;
 
-            case 16:
+            case 15:
                 $modulename = "page";
                 break;
 
@@ -138,7 +136,7 @@ class mod_domoscio_mod_form extends moodleform_mod {
 
         $moduleinfo = $DB->get_record($modulename, array('id' => $instance), 'name');
 
-        return $moduleinfo->name;
+        return $moduleinfo;
     }
 
     function get_resource_bykn($knowledge_node) {

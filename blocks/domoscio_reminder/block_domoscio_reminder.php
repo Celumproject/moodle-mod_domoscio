@@ -62,8 +62,8 @@ class block_domoscio_reminder extends block_base {
                                          INNER JOIN ".$CFG->prefix."knowledge_nodes
                                                  ON ".$CFG->prefix."knowledge_nodes.`knowledge_node_id` = ".$CFG->prefix."knowledge_node_students.`knowledge_node_id`
                                               WHERE ".$CFG->prefix."knowledge_node_students.`user` = $USER->id
-                                                AND ".$CFG->prefix."knowledge_nodes.`active` IS NULL
-                                                 OR ".$CFG->prefix."knowledge_nodes.`active` = '1'");
+                                                AND (".$CFG->prefix."knowledge_nodes.`active` IS NULL
+                                                 OR ".$CFG->prefix."knowledge_nodes.`active` = '1')");
         $i = 0;
         $list = array();
         foreach($kn_students as $kn_student)

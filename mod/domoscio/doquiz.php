@@ -83,7 +83,11 @@ if($domoscio->resource_type == "scorm")
         include('player.php');
 
         $content = "<input type='hidden' value=$scoid name=scoid></input><input type='hidden' value=$attempt name=attempt></input>";
+        $content .= html_writer::tag('input', '', array('type' => 'submit', 'value' => get_string('validate_btn', 'domoscio'), 'name' => 'next'));
         $params = "id=$temp&scorm=$resource->instance&kn=$kn";
+
+        $output = html_writer::tag('form', $content, array('method' => 'POST', 'action' => $url_r.'?'.$params, 'id' => 'responseform'));
+        echo $output;
     }
     else
     {

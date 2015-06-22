@@ -190,10 +190,8 @@ if($q || $scorm)
     //Génère le résultat en json à retourner à l'api
     $kn_student = $DB->get_record('knowledge_node_students', array('user' => $USER->id,
                                                       'knowledge_node_id' => $kn), '*');
-
     $json = json_encode(array('knowledge_node_student_id' => intval($kn_student->kn_student_id),
                                                   'value' => intval($result->score)));
-
 
 
     $_SESSION['results'][] = json_decode($rest->setUrl($config, 'results', null)->post($json));
@@ -202,8 +200,9 @@ if($q || $scorm)
     // Inscrit un rappel dans le calendrier
     $kn_student = json_decode($rest->setUrl($config, 'knowledge_node_students', $kn_student->kn_student_id)->get());
 
-    $new_event = create_event($domoscio, $course, $kn_student);
+    $new_event = create_event($domoscio, $course, $kn_student);    
 }
+
 
 if(!empty($_SESSION['todo']))
 {

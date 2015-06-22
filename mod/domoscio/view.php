@@ -155,58 +155,63 @@ elseif (user_has_role_assignment($USER->id,5)) {
     // Vérifie si l'étudiant s'est déjà connecté au plugin Domoscio
     $check = $DB->get_record('userapi', array('user_id' => $USER->id), '*');
 
-    if(!empty($check))
-    {
-        $kn_student = manage_student($config, $domoscio, $check);
-    }
-    else
+    if(empty($check))
     {
         // Sinon, le plugin demande à l'api de créer un nouvel étudiant
-        echo "Première visite<br/>";
+        echo html_writer::tag('div', html_writer::tag('h5', 'Bienvenue, '.$USER->firstname, array('class' => 'mod_introbox')), array('class' => 'block'));
+        echo "C'est votre première visite sur le plugin Domoscio. Nous en avons profité pour créer votre profil d'apprentissage. Cliquez sur le bouton
+        ci-dessous pour continuer :<br/>";
+        echo html_writer::tag('button', "Lancez-vous !", array('type' => 'button','onclick'=>"javascript:location.href='$CFG->wwwroot/mod/domoscio/view.php?id=$cm->id'"));
 
         create_student();
     }
-    $count = count_tests($config);
-    $url2=new moodle_url("$CFG->wwwroot/mod/domoscio/index.php");
-
-    echo html_writer::start_span('badge badge-important').html_writer::tag('h4', count($count)).html_writer::end_span().get_string('text2', 'domoscio').plural($count).get_string('text3', 'domoscio')." ";
-
-    if(!empty($count)){echo $OUTPUT->action_link( $url2, "Faire les rappels");}
-
-    $introbox = html_writer::tag('b', get_string('reviewed', 'domoscio'), array('class' => 'mod_introbox')).
-                html_writer::link($linked_resource->url, $linked_resource->display);
-    echo html_writer::tag('div', $introbox, array('class' => 'block'));
-
-    echo "<hr/>";
-
-    if(!empty($check) && $kn_student)
+    else
     {
-        $_SESSION['todo'] = $_SESSION['results'] = array();
+        $kn_student = manage_student($config, $domoscio, $check);
 
-        foreach($kn_student as $notion)
+        $count = count_tests($config);
+        $url2=new moodle_url("$CFG->wwwroot/mod/domoscio/index.php");
+
+        echo html_writer::start_span('badge badge-important').html_writer::tag('h4', count($count)).html_writer::end_span().get_string('text2', 'domoscio').plural($count).get_string('text3', 'domoscio')." ";
+
+        if(!empty($count)){echo $OUTPUT->action_link( $url2, "Faire les rappels");}
+
+        $introbox = html_writer::tag('b', get_string('reviewed', 'domoscio'), array('class' => 'mod_introbox')).
+                    html_writer::link($linked_resource->url, $linked_resource->display);
+        echo html_writer::tag('div', $introbox, array('class' => 'block'));
+
+        echo "<hr/>";
+
+        if(!empty($check) && $kn_student)
         {
-            $item = json_decode($rest->setUrl($config, 'knowledge_nodes', $notion->knowledge_node_id)->get());
-            $reminder = date('d/m/Y '.get_string('at', 'domoscio').' H:i',strtotime($notion->next_review_at));
-            $_SESSION['todo'][] = $item->id;
+            $_SESSION['todo'] = $_SESSION['results'] = array();
 
-            $accordion_inner = html_writer::tag('div', get_string('next_due', 'domoscio').$reminder, array('class' => 'accordion-inner'));
-            $accordion_collapse = html_writer::tag('div', $accordion_inner, array('class' => 'accordion-body collapse', 'id' => 'collapse-'.$notion->id));
-            $togglers = html_writer::link('#collapse-'.$notion->id, html_writer::start_span('mod_introbox').
-                                                                  html_writer::tag('i', '', array('class' => 'icon-chevron-down')).
-                                                                  $item->name.
-                                                                  html_writer::end_span(), array(
-                                                                                              'class' => 'accordion-toggle',
-                                                                                              'data-toggle' => 'collapse',
-                                                                                              'data-parent' => '#accordion'));
-            $accordion_heading = html_writer::tag('div', $togglers, array('class' => 'well well-small' , 'style' => 'margin-bottom:0px'));
-            $accordion_group = html_writer::tag('div', $accordion_heading.$accordion_collapse, array('class' => 'accordion-group'));
-            echo $accordion = html_writer::tag('div', $accordion_group, array('class' => 'accordion', 'id' => 'accordion'));
+            foreach($kn_student as $notion)
+            {
+                $item = json_decode($rest->setUrl($config, 'knowledge_nodes', $notion->knowledge_node_id)->get());
+                $reminder = date('d/m/Y '.get_string('at', 'domoscio').' H:i',strtotime($notion->next_review_at));
+                $_SESSION['todo'][] = $item->id;
+
+                $accordion_inner = html_writer::tag('div', get_string('next_due', 'domoscio').$reminder, array('class' => 'accordion-inner'));
+                $accordion_collapse = html_writer::tag('div', $accordion_inner, array('class' => 'accordion-body collapse', 'id' => 'collapse-'.$notion->id));
+                $togglers = html_writer::link('#collapse-'.$notion->id, html_writer::start_span('mod_introbox').
+                                                                      html_writer::tag('i', '', array('class' => 'icon-chevron-down')).
+                                                                      $item->name.
+                                                                      html_writer::end_span(), array(
+                                                                                                  'class' => 'accordion-toggle',
+                                                                                                  'data-toggle' => 'collapse',
+                                                                                                  'data-parent' => '#accordion'));
+                $accordion_heading = html_writer::tag('div', $togglers, array('class' => 'well well-small' , 'style' => 'margin-bottom:0px'));
+                $accordion_group = html_writer::tag('div', $accordion_heading.$accordion_collapse, array('class' => 'accordion-group'));
+                echo $accordion = html_writer::tag('div', $accordion_group, array('class' => 'accordion', 'id' => 'accordion'));
+            }
+
         }
 
-    }
+        echo html_writer::tag('button', get_string('do_test', 'domoscio'), array('type' => 'button',
+                                                                               'onclick'=>"javascript:location.href='$CFG->wwwroot/mod/domoscio/doquiz.php?kn=".array_shift($_SESSION['todo'])."&t=".time()."'"));
 
-    echo html_writer::tag('button', get_string('do_test', 'domoscio'), array('type' => 'button',
-                                                                           'onclick'=>"javascript:location.href='$CFG->wwwroot/mod/domoscio/doquiz.php?kn=".array_shift($_SESSION['todo'])."&t=".time()."'"));
+    }
 
 /*
     echo "<hr/>Statistiques :<br/>";

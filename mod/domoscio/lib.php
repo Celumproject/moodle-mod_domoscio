@@ -113,18 +113,20 @@ function domoscio_add_instance(stdClass $domoscio, mod_domoscio_mod_form $mform 
     }
 
     // Si la ressource n'est pas référencé en tant que knowledge_node, en créé un nouveau sur l'api
-    $check = $DB->get_records('knowledge_nodes', array('resource_id' => $domoscio->resource), '', 'knowledge_node_id');
+    $check = $DB->get_records('knowledge_nodes', array('resource_id' => $domoscio->resource), '', '*');
 
     $rest = new domoscio_client();
 
     if(count($check) > 0) // Récupère le knowledge_node_id existant
     {
+        $knid = array();
+        $i = 0;
         foreach($check as $result)
         {
-          $id = $result->knowledge_node_id;
+          $knid[$i] = $result;
+          $i++;
         }
-
-        $resource = json_decode($rest->setUrl($config, 'knowledge_nodes', $id)->get());
+        $resource = json_decode($rest->setUrl($config, 'knowledge_nodes', $knid[0]->knowledge_node_id)->get());
     }
     else // Sinon créé un nouveau knowledge_node et l'inscrit en DB
     {
@@ -150,15 +152,13 @@ function domoscio_add_instance(stdClass $domoscio, mod_domoscio_mod_form $mform 
 
     $domoscio->id = $DB->insert_record('domoscio', $domoscio);
 
-    if(isset($knowledge_node))
+    if(count($check) > 0)
     {
         $knupd = new stdClass;
-        $knupd->id = $knowledge_node->id;
+        $knupd->id = $knid[0]->id;
         $knupd->instance = $domoscio->id;
-        $addinstance = $DB->update_record('knowledge_nodes', $knupd, $bulk= false);
+        $addinstance = $DB->update_record('knowledge_nodes', $knupd, false);
     }
-    //domoscio_grade_item_update($domoscio);
-
 
     // Si la ressource à ancrer est un package SCORM, associe un nouveau knowledge node pour chaque SCO contenu dans le package
     if($linked_resource->modulename == "scorm" && count($check) == 0)
@@ -225,9 +225,9 @@ function domoscio_add_instance(stdClass $domoscio, mod_domoscio_mod_form $mform 
         }
     }
 
+    //domoscio_grade_item_update($domoscio);
 
     return $domoscio->id;
-
 }
 
 /**
@@ -591,7 +591,8 @@ function is_user_with_role($courseid, $rolename, $userid = 0) {
 }
 
 function create_student() {
-    global $USER;
+    global $USER, $DB;
+    $config = get_config('domoscio');
 
     $json = json_encode(array(
         'student_group_id' => strval("0"),
@@ -611,8 +612,6 @@ function create_student() {
     $rest = new domoscio_client();
 
     $student = json_decode($rest->setUrl($config, 'students', null)->post($json));
-
-    echo $student->id;
 
     // Le plugin récupère l'uniq_id créé par l'api et l'inscrit en DB
     $record = new stdClass();
@@ -666,10 +665,39 @@ function manage_student($config, $domoscio, $check) {
         {
             if($domoscio->resource_type == "scorm")
             {
-                $score = $DB->get_record('scorm_scoes_track', array('scormid' => $scorm,
-                                                                     'userid' => $USER->id,
-                                                                      'scoid' => $_SESSION['scoid'],
-                                                                    'element' => "cmi.score.scaled"));
+                $kn = $DB->get_records_sql("SELECT *
+                                             FROM ".$CFG->prefix."knowledge_nodes
+                                       INNER JOIN ".$CFG->prefix."knowledge_node_students
+                                               ON ".$CFG->prefix."knowledge_nodes.`knowledge_node_id` = ".$CFG->prefix."knowledge_node_students.`knowledge_node_id`
+                                            WHERE ".$CFG->prefix."knowledge_node_students.`knowledge_node_id` = $last_kn->knowledge_node_id");
+                if(empty($kn->child_id))
+                {
+                    $get_sco = get_scorm_scoes($last_kn->knowledge_node_id);
+
+                    foreach($get_sco as $sco)
+                    {
+                        $scoid = $sco->id;
+                    }
+                }
+                else
+                {
+                    $scoid = $kn->child_id;
+                }
+
+                $scoredata = $DB->get_records_sql("SELECT *
+                                                     FROM ".$CFG->prefix."scorm_scoes_track
+                                                    WHERE `scormid` = ". get_resource_info($last_kn->knowledge_node_id)->instance ."
+                                                      AND `userid` = $USER->id
+                                                      AND `scoid` = $scoid
+                                                      AND `element` = 'cmi.score.scaled'
+                                                      AND `timemodified` =
+                                                          (SELECT MAX(`timemodified`)
+                                                           FROM ".$CFG->prefix."scorm_scoes_track)");
+
+                if(!empty($scoredata))
+                {
+                   $score = (round(array_shift($scoredata)->value))*100;
+                }
             }
             else
             {
@@ -693,18 +721,23 @@ function manage_student($config, $domoscio, $check) {
                                                       AND ".$CFG->prefix."question_attempts.`timemodified` =
                                                           (SELECT MAX(`timemodified`)
                                                            FROM ".$CFG->prefix."question_attempts)");
-
-                $score = (round(array_shift($scoredata)->score))*100;
+                if(!empty($scoredata))
+                {
+                    $score = (round(array_shift($scoredata)->score))*100;
+                }
             }
 
-            $json = json_encode(array('knowledge_node_student_id' => intval($last_kn->id),
-                                                          'value' => intval($score)));
+            if(isset($score))
+            {
+                $json = json_encode(array('knowledge_node_student_id' => intval($last_kn->id),
+                                                              'value' => intval($score)));
 
-            $sending = $rest->setUrl($config, 'results', null)->post($json);
+                $sending = $rest->setUrl($config, 'results', null)->post($json);
 
-            array_pop($kn_student);
+                array_pop($kn_student);
 
-            $kn_student[] = json_decode($rest->setUrl($config, 'knowledge_node_students', $last_kn->id)->get());
+                $kn_student[] = json_decode($rest->setUrl($config, 'knowledge_node_students', $last_kn->id)->get());
+            }
         }
 
     }
@@ -736,7 +769,7 @@ function get_resource_info($knowledge_node) {
             $modulename = "lesson";
             break;
 
-        case 16:
+        case 15:
             $modulename = "page";
             break;
 
@@ -907,8 +940,8 @@ function count_tests($config)
                                          INNER JOIN ".$CFG->prefix."knowledge_nodes
                                          ON ".$CFG->prefix."knowledge_nodes.`knowledge_node_id` = ".$CFG->prefix."knowledge_node_students.`knowledge_node_id`
                                               WHERE ".$CFG->prefix."knowledge_node_students.`user` = $USER->id
-                                                AND ".$CFG->prefix."knowledge_nodes.`active` IS NULL
-                                                 OR ".$CFG->prefix."knowledge_nodes.`active` = '1'
+                                                AND (".$CFG->prefix."knowledge_nodes.`active` IS NULL
+                                                 OR ".$CFG->prefix."knowledge_nodes.`active` = '1')
                                                 AND ".$CFG->prefix."knowledge_node_students.`instance` IN ($instancelist)");
 
         foreach($kn_students as $kn_student)
