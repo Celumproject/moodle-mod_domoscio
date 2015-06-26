@@ -70,7 +70,7 @@ class block_domoscio_reminder extends block_base {
         {
             $result = json_decode($this->setUrl($config, 'knowledge_node_students', $kn_student->kn_student_id)->get());
 
-            if(strtotime($result->next_review_at) < time() && $result->active == 'true')
+            if(strtotime($result->next_review_at) < time() && $result->next_review_at != null && $result->active == 'true')
             {
                 $list[] = $kn_student->kn_student_id;
             }

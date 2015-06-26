@@ -131,6 +131,7 @@ elseif($scorm)
     else
     {
         redirect("$CFG->wwwroot/mod/domoscio/results.php?id=$id&scorm=$scorm&kn=$kn");
+        exit;
     }
 }
 elseif($end = true)
@@ -200,7 +201,7 @@ if($q || $scorm)
     // Inscrit un rappel dans le calendrier
     $kn_student = json_decode($rest->setUrl($config, 'knowledge_node_students', $kn_student->kn_student_id)->get());
 
-    $new_event = create_event($domoscio, $course, $kn_student);    
+    $new_event = create_event($domoscio, $course, $kn_student);
 }
 
 

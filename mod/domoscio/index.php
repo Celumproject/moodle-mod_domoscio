@@ -55,7 +55,7 @@ $student = json_decode($rest->setUrl($config, 'students', $check->uniq_id)->get(
 
 $display_user = html_writer::tag('p', get_string('welcome', 'domoscio').$student->id);
 $notification = userdate(make_timestamp($y, $m, $d, $h, $min))."<br/>".html_writer::start_span('badge badge-important').html_writer::tag('h4', count($todo_tests)).html_writer::end_span().get_string('text2', 'domoscio').plural($todo_tests).get_string('text3', 'domoscio');
-echo html_writer::tag('div', html_writer::tag('h5', $display_user.$notification, array('class' => 'mod_introbox')), array('class' => 'block'));
+echo html_writer::tag('div', html_writer::tag('h5', $display_user."<hr/>".$notification, array('class' => 'content')), array('class' => 'block'));
 
 if(!empty($todo_tests))
 {
@@ -71,9 +71,16 @@ if(!empty($todo_tests))
     $kn_info = json_decode($rest->setUrl($config, 'knowledge_nodes', $kn)->get());
 
     $trows .= html_writer::tag('tr', html_writer::tag('td', $resource->display." - ".$kn_info->name).
-                                     html_writer::tag('td', html_writer::link($CFG->wwwroot.'/mod/domoscio/doquiz.php?kn='.$kn.'&solo=true', '<i class="icon-edit"></i>', array('target' => 'popup'))).
-                                     html_writer::tag('td', html_writer::link($resource->url, '<i class="icon-book"></i>', array('target' => 'popup'))).
-                                     html_writer::tag('td', html_writer::link($CFG->wwwroot.'/mod/domoscio/view.php?d='.$domoscio_id->instance, "<i class='icon-signal'></i>", array('target' => 'popup')))
+                                     html_writer::tag('td', html_writer::link($CFG->wwwroot.'/mod/domoscio/doquiz.php?kn='.$kn.'&solo=true&t='.time(),
+                                                                              '<i class="icon-edit icon-white"></i>',
+                                                                              array('target' => '_blank',
+                                                                                     'class' => 'btn btn-danger')), array('style' => 'text-align:center')).
+                                     html_writer::tag('td', html_writer::link($resource->url,
+                                                                              '<i class="icon-book icon-white"></i>', array('target' => '_blank',
+                                                                                                                             'class' => 'btn btn-primary')), array('style' => 'text-align:center')).
+                                     html_writer::tag('td', html_writer::link($CFG->wwwroot.'/mod/domoscio/view.php?d='.$domoscio_id->instance,
+                                                                              "<i class='icon-signal icon-white'></i>", array('target' => '_blank',
+                                                                                                                               'class' => 'btn btn-success')), array('style' => 'text-align:center'))
                               );
   }
   $th = html_writer::tag('tr', html_writer::tag('th', get_string('module', 'domoscio')).

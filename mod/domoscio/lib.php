@@ -1489,6 +1489,59 @@ function create_event($domoscio, $course, $kn_student)
     }
 }
 
+function get_stats($kn)
+{
+    global $DB;
+    $config = get_config('domoscio');
+    $rest = new domoscio_client();
+    $stats = new stdClass();
+
+    $kn_students = $DB->get_records('knowledge_node_students', array('knowledge_node_id' => $kn), '', '*');
+    $stats->count_students = count($kn_students);
+
+    $history = $enrolled_students = array();
+    $attempts = $right_attempts = $todo_tests = 0;
+
+    foreach($kn_students as $kns)
+    {
+        $api_call = json_decode($rest->setUrl($config, 'knowledge_node_students', $kns->kn_student_id)->get());
+        $history[] = $api_call->history;
+
+        if(strtotime($api_call->next_review_at) < time())
+        {
+            $todo_tests++;
+        }
+
+        $enrolled_students[] = $api_call;
+    }
+    foreach($history as $student_history)
+    {
+        $attempts += count(str_split($student_history));
+        $right_attempts += count(array_filter(str_split($student_history)));
+    }
+
+    $stats->global_success = round(($right_attempts/$attempts)*100, 2);
+    $stats->attempts = $attempts;
+    $stats->todo = $todo_tests;
+    $stats->enrolled = $enrolled_students;
+
+    return $stats;
+}
+
+function get_student_by_kns($kns)
+{
+    global $DB, $CFG;
+    $config = get_config('domoscio');
+
+    $student = $DB->get_record_sql("SELECT *
+                                      FROM ".$CFG->prefix."user
+                                INNER JOIN ".$CFG->prefix."knowledge_node_students
+                                        ON ".$CFG->prefix."knowledge_node_students.`user` = ".$CFG->prefix."user.`id`
+                                     WHERE ".$CFG->prefix."knowledge_node_students.`kn_student_id` = $kns");
+
+    return $student;
+}
+
 function plural($count)
 {
     if(count($count) > 1)
@@ -1498,5 +1551,26 @@ function plural($count)
     else
     {
         return $plural = "";
+    }
+}
+
+function secondsToTime($seconds) {
+    $dtF = new DateTime("@0");
+    $dtT = new DateTime("@$seconds");
+    if($seconds <= 86400 && $seconds > 0)
+    {
+        return "Aujourd'hui";
+    }
+    else if ($seconds > 86400 && $seconds <= 172800)
+    {
+        return "Demain";
+    }
+    else if ($seconds <= 0)
+    {
+        return "Rappel à faire";
+    }
+    else
+    {
+        return $dtF->diff($dtT)->format('%a jours');
     }
 }

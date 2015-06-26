@@ -15,13 +15,13 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Prints a particular instance of domoscio
+ * Show a particular instance of domoscio
  *
- * You can have a rather longer description of the file as well,
- * if you like, and it can span multiple lines.
+ * Here are listed next review dates for each notion and
+ * knowledge stats are displayed.
  *
  * @package    mod_domoscio
- * @copyright  2015 Your Name
+ * @copyright  2015 Domoscio
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -34,6 +34,7 @@ require_once(dirname(__FILE__).'/classes/select_notion_form.php');
 
 $PAGE->requires->js('/mod/domoscio/jquery-1.11.3.min.js', true);
 $PAGE->requires->js('/mod/domoscio/bootstrap-collapse.js', true);
+$PAGE->requires->js('/mod/domoscio/Chart.min.js', true);
 
 $config = get_config('domoscio');
 $id = optional_param('id', 0, PARAM_INT); // Course_module ID, or
@@ -75,11 +76,6 @@ echo $OUTPUT->header();
 // Replace the following lines with you own code.
 echo $OUTPUT->heading($domoscio->name);
 
-// Conditions to show the intro can change to look for own settings or whatever.
-if ($domoscio->intro) {
-    echo $OUTPUT->box(format_module_intro('domoscio', $domoscio, $cm->id), 'generalbox mod_introbox', 'domosciointro');
-}
-
 $rest = new domoscio_client();
 
 $resource = json_decode($rest->setUrl($config, 'knowledge_nodes', $domoscio->resource_id)->get());
@@ -92,14 +88,16 @@ if (user_has_role_assignment($USER->id,3)) {
 
     $notions = $DB->get_records('knowledge_nodes', array('instance' => $domoscio->id, 'active' => '1'), '', '*');
 
-    $introbox = html_writer::tag('b', get_string('resource_assigned', 'domoscio'), array('class' => 'mod_introbox')).
+    $introbox = html_writer::tag('b', get_string('resource_assigned', 'domoscio'), array('class' => 'content')).
                 html_writer::link($linked_resource->url, $linked_resource->display);
     echo html_writer::tag('div', $introbox, array('class' => 'block'));
 
     $def_notion_link = html_writer::link($CFG->wwwroot.'/mod/domoscio/select_notions.php?id='.$cm->id, html_writer::tag('button', '1. '.get_string('def_notions', 'domoscio'), array('class' => 'btn btn-primary btn-large')),
                         array('class' => 'span4'));
+    $show_stats_link = html_writer::link($CFG->wwwroot.'/mod/domoscio/stats.php?id='.$cm->id, html_writer::tag('button', get_string('stats', 'domoscio'), array('class' => 'btn btn-default btn-large')),
+                        array('class' => 'span4'));
 
-    echo html_writer::tag('div', $def_notion_link.'<br/><br/>').html_writer::tag('div', '<h6>Les notions que vous avez définies :</h6><hr/>');
+    echo html_writer::tag('div', $def_notion_link.$show_stats_link.'<br/><br/>').html_writer::tag('div', '<h6>Les notions que vous avez définies :</h6><hr/>');
 
     foreach($notions as $notion)
     {
@@ -127,7 +125,7 @@ if (user_has_role_assignment($USER->id,3)) {
         }
         $accordion_inner = html_writer::tag('div', $render_q, array('class' => 'accordion-inner'));
         $accordion_collapse = html_writer::tag('div', $accordion_inner, array('class' => 'accordion-body collapse', 'id' => 'collapse-'.$notion->id));
-        $togglers = html_writer::link('#collapse-'.$notion->id, html_writer::start_span('mod_introbox').
+        $togglers = html_writer::link('#collapse-'.$notion->id, html_writer::start_span('content').
                                                                 html_writer::tag('i', '', array('class' => 'icon-chevron-down')).
                                                                 " $title->name (".count($qids)." question".plural($qids).")".
                                                                 html_writer::end_span(), array(
@@ -151,19 +149,17 @@ if (user_has_role_assignment($USER->id,3)) {
 // --- STUDENT VIEW ---
 
 elseif (user_has_role_assignment($USER->id,5)) {
-
     // Vérifie si l'étudiant s'est déjà connecté au plugin Domoscio
     $check = $DB->get_record('userapi', array('user_id' => $USER->id), '*');
 
     if(empty($check))
     {
-        // Sinon, le plugin demande à l'api de créer un nouvel étudiant
-        echo html_writer::tag('div', html_writer::tag('h5', 'Bienvenue, '.$USER->firstname, array('class' => 'mod_introbox')), array('class' => 'block'));
-        echo "C'est votre première visite sur le plugin Domoscio. Nous en avons profité pour créer votre profil d'apprentissage. Cliquez sur le bouton
-        ci-dessous pour continuer :<br/>";
-        echo html_writer::tag('button', "Lancez-vous !", array('type' => 'button','onclick'=>"javascript:location.href='$CFG->wwwroot/mod/domoscio/view.php?id=$cm->id'"));
-
         create_student();
+
+        // Sinon, le plugin demande à l'api de créer un nouvel étudiant
+        echo html_writer::tag('div', html_writer::tag('h5', 'Bienvenue, '.$USER->firstname, array('class' => 'content')), array('class' => 'block'));
+        echo get_string('student_first_visit', 'domoscio')."<br/>";
+        echo html_writer::tag('button', get_string('start_btn', 'domoscio'), array('type' => 'button','onclick'=>"javascript:location.href='$CFG->wwwroot/mod/domoscio/view.php?id=$cm->id'"));
     }
     else
     {
@@ -172,50 +168,72 @@ elseif (user_has_role_assignment($USER->id,5)) {
         $count = count_tests($config);
         $url2=new moodle_url("$CFG->wwwroot/mod/domoscio/index.php");
 
-        echo html_writer::start_span('badge badge-important').html_writer::tag('h4', count($count)).html_writer::end_span().get_string('text2', 'domoscio').plural($count).get_string('text3', 'domoscio')." ";
+        if(!empty($count)){$indexurl = $OUTPUT->action_link( $url2, "Faire les rappels");}else{$indexurl = '';}
+        $todo_counter = html_writer::start_span('badge badge-important').html_writer::tag('h4', count($count)).html_writer::end_span().get_string('text2', 'domoscio').plural($count).get_string('text3', 'domoscio')." ";
 
-        if(!empty($count)){echo $OUTPUT->action_link( $url2, "Faire les rappels");}
-
-        $introbox = html_writer::tag('b', get_string('reviewed', 'domoscio'), array('class' => 'mod_introbox')).
+        $introbox = html_writer::tag('div', $todo_counter.$indexurl, array('class' => 'content'))."<hr/>".
+                    html_writer::tag('b', get_string('reviewed', 'domoscio'), array('class' => 'content')).
                     html_writer::link($linked_resource->url, $linked_resource->display);
-        echo html_writer::tag('div', $introbox, array('class' => 'block'));
 
-        echo "<hr/>";
+        $divcanvas = html_writer::tag('canvas', '', array('id' => 'polarChart'));
+        $stats_header = html_writer::tag('p', get_string('stats', 'domoscio'), array('class' => 'content'));
+        $row = html_writer::tag('div', $introbox, array('class' => 'block span6')).
+               html_writer::tag('div', $stats_header . $divcanvas, array('class' => 'block span6'));
+
+        echo html_writer::tag('div', $row, array('class' => 'row mod_introbox'));
 
         if(!empty($check) && $kn_student)
         {
             $_SESSION['todo'] = $_SESSION['results'] = $_SESSION['no_history'] = array();
+            $kn_stats = array();
 
             foreach($kn_student as $notion)
             {
                 $item = json_decode($rest->setUrl($config, 'knowledge_nodes', $notion->knowledge_node_id)->get());
                 $_SESSION['todo'][] = $item->id;
+                $kn_stats_obj = new stdClass;
+                $kn_stats_obj->item = $item;
+                $kn_stats_obj->knstudent = $notion;
+                $kn_stats[] = $kn_stats_obj;
 
                 if($notion->next_review_at == null)
                 {
                     $reminder = html_writer::tag('button', get_string('do_test', 'domoscio'), array('type' => 'button',
                                                                                            'onclick'=>"javascript:location.href='$CFG->wwwroot/mod/domoscio/doquiz.php?kn=$notion->knowledge_node_id"."&t=".time()."'"));
                     $accordion_inner = html_writer::tag('div', get_string('no_history', 'domoscio').$reminder, array('class' => 'accordion-inner'));
-                    $alert_icon = html_writer::tag('i', '', array('class' => 'icon-exclamation-sign'));
+                    $alert_icon = " > ".html_writer::tag('i', '', array('class' => 'icon-exclamation-sign'));
                     $_SESSION['no_history'][] = $item->id;
                 }
                 else
                 {
+                    if(strtotime($notion->next_review_at) < time())
+                    {
+                        $alert_icon = " > ".html_writer::tag('i', '', array('class' => 'icon-edit'));
+                        $class = "alert-danger";
+                        $btn_test = html_writer::tag('button', get_string('do_review_btn', 'domoscio'), array('type' => 'button',
+                                                                                               'onclick'=>"javascript:location.href='$CFG->wwwroot/mod/domoscio/doquiz.php?kn=$notion->knowledge_node_id&solo=true&t=".time()."'",
+                                                                                                'class' => 'btn btn-danger'));
+                    }
+                    else
+                    {
+                        $alert_icon = '';
+                        $class = "";
+                        $btn_test = "";
+                    }
                     $reminder = date('d/m/Y '.get_string('at', 'domoscio').' H:i',strtotime($notion->next_review_at));
-                    $accordion_inner = html_writer::tag('div', get_string('next_due', 'domoscio').$reminder, array('class' => 'accordion-inner'));
-                    $alert_icon = '';
+                    $accordion_inner = html_writer::tag('div', get_string('next_due', 'domoscio').$reminder." ".$btn_test, array('class' => 'accordion-inner'));
                 }
 
 
                 $accordion_collapse = html_writer::tag('div', $accordion_inner, array('class' => 'accordion-body collapse', 'id' => 'collapse-'.$notion->id));
-                $togglers = html_writer::link('#collapse-'.$notion->id, html_writer::start_span('mod_introbox').
-                                                                      html_writer::tag('i', '', array('class' => 'icon-chevron-down')).
+                $togglers = html_writer::link('#collapse-'.$notion->id, html_writer::start_span('content').
+                                                                      html_writer::tag('i', '', array('class' => 'icon-chevron-down'))." ".
                                                                       $item->name.$alert_icon.
                                                                       html_writer::end_span(), array(
                                                                                                   'class' => 'accordion-toggle',
                                                                                                   'data-toggle' => 'collapse',
                                                                                                   'data-parent' => '#accordion'));
-                $accordion_heading = html_writer::tag('div', $togglers, array('class' => 'well well-small' , 'style' => 'margin-bottom:0px'));
+                $accordion_heading = html_writer::tag('div', $togglers, array('class' => 'well well-small '.$class , 'style' => 'margin-bottom:0px'));
                 $accordion_group = html_writer::tag('div', $accordion_heading.$accordion_collapse, array('class' => 'accordion-group'));
                 echo $accordion = html_writer::tag('div', $accordion_group, array('class' => 'accordion', 'id' => 'accordion'));
             }
@@ -234,45 +252,60 @@ elseif (user_has_role_assignment($USER->id,5)) {
                                                                                 'class' => 'btn btn-warning'));
     }
 
-/*
-    echo "<hr/>Statistiques :<br/>";
-    echo "<canvas id='historyChart' width='800' height='400'></canvas>";
-
-    $formatted = implode(',',str_split($kn_student->history));
-    $attempts = array();
-    foreach(str_split($kn_student->history) as $k=>$result)
-    {
-      $attempts[] = '"'.$k.'"';
-    }
-    $attempts = implode(',', $attempts);
 ?>
-<script type="text/javascript" src="Chart.min.js"></script>
 <script type="text/javascript">
-var ctx = document.getElementById("historyChart").getContext("2d");
+    var ctx = document.getElementById("polarChart").getContext("2d");
 
-var data = {
-    labels: [<?php print_r($attempts);?>],
-    datasets: [
+    var data = [];
+    <?php
+        foreach($kn_stats as $notion)
         {
-            label: "Results",
-            fillColor: "rgba(0,220,0,0.2)",
-            strokeColor: "rgba(0,180,0,1)",
-            pointColor: "rgba(0,220,0,1)",
-            pointStrokeColor: "#fff",
-            pointHighlightFill: "#fff",
-            pointHighlightStroke: "rgba(220,220,220,1)",
-            data: [<?php echo $formatted;?>]
-        },
-    ]
-};
-var options = {
-  ///Boolean - Whether grid lines are shown across the chart
-  scaleShowGridLines : true,
-};
-var historyChart = new Chart(ctx).Line(data, options);
+            $laps = (strtotime($notion->knstudent->next_review_at) - time());
+            if($laps >= 1296000)
+            {
+                $color = "#01DF01";
+                $highlight = "#40FF00";
+                $value = 1;
+            }
+            else if($laps < 1296000 && $laps >= 604800)
+            {
+                $color = "#BFFF00";
+                $highlight = "#D0FA58";
+                $value = ($laps/2592000)+0.3;
+            }
+            else if($laps < 604800 && $laps >= 86400)
+            {
+                $color = "#F7FE2E";
+                $highlight = "#FFFF00";
+                $value = ($laps/2592000)+0.2;
+            }
+            else
+            {
+                $color = "#F7464A";
+                $highlight = "#FF0000";
+                $value = 0.2;
+            }
+            echo 'var obj = {value: '.$value.', color:"'.$color.'", highlight: "'.$highlight.'", label: "'.$notion->item->name.'"};';
+            echo 'data.push(obj);';
+        }
+
+    ?>
+
+    var options = {
+          scaleShowLine : true,
+          scaleShowLabels: false,
+          scaleOverride : true,
+          scaleSteps : 10,
+          scaleStepWidth : 0.1,
+          scaleStartValue : 0,
+          align : 'center',
+          responsive : true,
+          tooltipTemplate: "<%if (label){%><%=label%><%}%>"
+    };
+    var historyChart = new Chart(ctx).PolarArea(data, options);
 </script>
 <?php
-*/
+
 }
 // Finish the page.
 echo $OUTPUT->footer();
