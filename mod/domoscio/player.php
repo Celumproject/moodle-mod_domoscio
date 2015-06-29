@@ -70,6 +70,7 @@ if (!empty($scoid)) {
     $scoid = scorm_check_launchable_sco($scorm, $scoid);
 }
 
+
 $url = new moodle_url('/mod/domoscio/player.php', array('scoid' => $scoid, 'cm' => $cm->id));
 if ($mode !== 'normal') {
     $url->param('mode', $mode);
@@ -127,6 +128,7 @@ if ($scorm->timeclose != 0) {
         die;
     }
 }
+
 // TOC processing
 $scorm->version = strtolower(clean_param($scorm->version, PARAM_SAFEDIR));   // Just to be safe.
 if (!file_exists($CFG->dirroot.'/mod/scorm/datamodels/'.$scorm->version.'lib.php')) {

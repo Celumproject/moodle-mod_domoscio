@@ -72,11 +72,11 @@ if($domoscio->resource_type == "scorm")
     {
         $selected = array_rand($lists, 1);
 
-        $resource = get_resource_info($domoscio->resource_id);
+        $scorm = $DB->get_record('scorm_scoes', array('id' => $selected), '*');
 
         $_GET['domoscioid'] = $temp = $cm->id;
 
-        $_GET['a'] = $resource->instance;
+        $_GET['a'] = $scorm->scorm;
 
         $_GET['scoid'] = $selected;
 
@@ -84,7 +84,7 @@ if($domoscio->resource_type == "scorm")
 
         $content = "<input type='hidden' value=$scoid name=scoid></input><input type='hidden' value=$attempt name=attempt></input>";
         $content .= html_writer::tag('input', '', array('type' => 'submit', 'value' => get_string('validate_btn', 'domoscio'), 'name' => 'next'));
-        $params = "id=$temp&scorm=$resource->instance&kn=$kn";
+        $params = "id=$temp&scorm=".$_GET['a']."&kn=$kn";
 
         $output = html_writer::tag('form', $content, array('method' => 'POST', 'action' => $url_r.'?'.$params, 'id' => 'responseform'));
         echo $output;

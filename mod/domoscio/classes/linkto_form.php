@@ -46,6 +46,18 @@ class linkto_form extends moodleform {
 
         $mform = $this->_form;
 
+        //requetes sur les questions déjà sélectionnées le cas échéant
+        $selectedquestions = $DB->get_records_sql("SELECT *
+                                                     FROM ".$CFG->prefix."knowledge_node_questions
+                                                    WHERE `knowledge_node`=".$this->_customdata['kn_id']);
+
+        $selected = array();
+
+        foreach($selectedquestions as $selectedquestion)
+        {
+            $selected[] = $selectedquestion->question_id;
+        }
+
         if($this->_customdata['module'] != 'scorm')
         {
             $quizzes = $DB->get_records('quiz', array('course' => $this->_customdata['course']), '', 'id,name');
@@ -61,18 +73,6 @@ class linkto_form extends moodleform {
                                   WHERE ".$CFG->prefix."quiz_slots.`quizid` = ".$quiz->id;
 
                 $questions = $DB->get_records_sql($sqlquestions);
-
-                //requetes sur les questions déjà sélectionnées le cas échéant
-                $selectedquestions = $DB->get_records_sql("SELECT *
-                                                             FROM ".$CFG->prefix."knowledge_node_questions
-                                                            WHERE `knowledge_node`=".$this->_customdata['kn_id']);
-
-                $selected = array();
-
-                foreach($selectedquestions as $selectedquestion)
-                {
-                    $selected[] = $selectedquestion->question_id;
-                }
 
                 //$mform->addElement('html', "<div class='accordion' id='accordion'>");
                 $mform->addElement('html', "<h5 class='well well-small accordion-toggle' data-toggle='collapse' data-parent='#accordion'><a href='#collapse-".$quiz->id."'>".$icon.$quiz->name."</a></h5>");
@@ -94,11 +94,25 @@ class linkto_form extends moodleform {
 
         else
         {
-            $scoes = get_scorm_scoes($this->_customdata['kn_id']);
+            $scoes = $DB->get_records('scorm_scoes', array('scormtype' => 'sco'), '', '*');
+
+            $icon = html_writer::tag('img', '', array('src'=>$OUTPUT->pix_url('icon','scorm','scorm',array('class'=>'icon')), 'class'=>'activityicon', 'alt'=>'disable'));
+
+            $scormflag = '';
 
             foreach($scoes as $sco)
             {
-                $mform->addElement('radio', $sco->id, '', $sco->title, 1, null);
+                if(in_array($sco->id, $selected)){$check = true;}else{$check = false;}
+
+                if($scormflag != $sco->scorm)
+                {
+                    $scorm_title = $DB->get_record('scorm', array('id' => $sco->scorm), 'name');
+                    $mform->addElement('html', "<h5 class='well well-small accordion-toggle' data-toggle='collapse' data-parent='#accordion'><a href='#collapse-".$sco->id."'>".$icon.$scorm_title->name."</a></h5>");
+
+                    $scormflag = $sco->scorm;
+                }
+
+                $mform->addElement('advcheckbox', $sco->id, '', $sco->title, array('group' => 1), array(0, 1))->setChecked($check);
             }
 
         }
