@@ -1557,11 +1557,11 @@ function plural($count)
 function secondsToTime($seconds) {
     $dtF = new DateTime("@0");
     $dtT = new DateTime("@$seconds");
-    if($seconds <= 86400 && $seconds > 0)
+    if($seconds <= (strtotime("tomorrow midnight")-strtotime("now")) && $seconds > 0)
     {
         return "Aujourd'hui";
     }
-    else if ($seconds > 86400 && $seconds <= 172800)
+    else if ($seconds > (strtotime("tomorrow midnight")-strtotime("now")) && $seconds <= (strtotime("+2 days midnight")-strtotime("now")))
     {
         return "Demain";
     }
