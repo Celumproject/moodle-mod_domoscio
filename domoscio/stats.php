@@ -31,7 +31,6 @@ require_once(dirname(__FILE__).'/lib.php');
 require_once(dirname(__FILE__).'/sdk/client.php');
 require_once(dirname(__FILE__).'/classes/select_notion_form.php');
 
-$PAGE->requires->js('/mod/domoscio/jquery-1.11.3.min.js', true);
 $PAGE->requires->js('/mod/domoscio/bootstrap-collapse.js', true);
 $PAGE->requires->js('/mod/domoscio/Chart.min.js', true);
 

@@ -90,9 +90,3 @@ $string['proxy_request_error'] = 'Error during request to MediaServer. Error:';
 $string['proxy_parsing_error'] = 'Response from MediaServer cannot be parsed.';
 
 ?>
-
-
-
-
-
-?>
