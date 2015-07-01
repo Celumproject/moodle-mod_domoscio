@@ -15,97 +15,117 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * This is a one-line short description of the file
+ * This view call tests for the student
  *
- * You can have a rather longer description of the file as well,
- * if you like, and it can span multiple lines.
+ * If linked exercise is SCORM package, the SCORM player is called.
+ * Else if Quiz questions, Quiz interface is called.
  *
  * @package    mod_domoscio
- * @copyright  2015 Your Name
+ * @copyright  2015 Domoscio
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-
-// Replace domoscio with the name of your module and remove this line.
 
 require_once(dirname(dirname(dirname(__FILE__))).'/config.php');
 require_once(dirname(__FILE__).'/lib.php');
 require_once(dirname(__FILE__).'/sdk/client.php');
 require_once($CFG->dirroot . '/mod/quiz/locallib.php');
 
-$id = optional_param('id', 0, PARAM_INT); // Course_module ID, or
 
+$id = optional_param('id', 0, PARAM_INT); // Course_module ID, or
+$kn = optional_param('kn', 0, PARAM_INT); // Knowledge_node ID (Rappels)
+$solo = optional_param('solo', false, PARAM_INT); // Si test unitaire
+$t = optional_param('t', null, PARAM_INT); // Start test timestamp
 //$course = $DB->get_record('course', array('id' => $id), '*', MUST_EXIST);
+
+if($solo == 'true'){$_SESSION['todo'] = null;};
+if($t){$_SESSION['start'] = $t;};
 
 if ($id) {
     $cm         = $DB->get_record('course_modules', array('id' => $id), '*', MUST_EXIST);
-    $course     = $DB->get_record('course', array('id' => $cm->course), '*', MUST_EXIST);
+    $course     = get_course($cm->course);
     $domoscio  = $DB->get_record('domoscio', array('id' => $cm->instance), '*', MUST_EXIST);
+} else if ($kn) {
+    $module     = $DB->get_record('modules', array('name' => 'domoscio'), '*', MUST_EXIST);
+    $instance   = $DB->get_record('knowledge_nodes', array('knowledge_node_id' => $kn), '*', MUST_EXIST);
+    $domoscio   = $DB->get_record('domoscio', array('id' => $instance->instance), '*', MUST_EXIST);
+    $course     = get_course($domoscio->course);
+    $cm         = $DB->get_record('course_modules', array('instance' => $domoscio->id, 'module' => $module->id), '*', MUST_EXIST);
+    $id         = $cm->id;
 }
 $config = get_config('domoscio');
-
+$PAGE->set_context(context_system::instance());
+require_login();
 $strname = get_string('modulename', 'mod_domoscio');
-$PAGE->set_url('/mod/domoscio/index.php', array('id' => $id));
+$PAGE->set_url('/mod/domoscio/doquiz.php', array('id' => $id));
 $PAGE->navbar->add($strname);
 $PAGE->set_heading("Domoscio for Moodle");
 $PAGE->set_pagelayout('incourse');
 
-echo $OUTPUT->header();
-
+$url_r = "$CFG->wwwroot/mod/domoscio/results.php";
 // Récupère les identifiants des questions sélectionnées par le concepteur
-if ($id) {
-    // TEST DE POSITIONNEMENT
-    $PAGE->set_title('Evaluation');
-    echo $OUTPUT->heading("Evaluation");
-    $lists = $DB->get_records_sql("SELECT `question_id` FROM `mdl_knowledge_node_questions` WHERE `instance` = $domoscio->id");
 
-    $selected = array_rand($lists, 1);
+$lists = $DB->get_records('knowledge_node_questions', array('instance' => $domoscio->id, 'knowledge_node' => $kn), '', 'question_id');
 
-    // Récupère les informations relatives aux questions sélectionnées
-
-    $question = $DB->get_record_sql("SELECT * FROM `mdl_question` WHERE `id` = $selected");
-
-// Créé un nouveau formulaire qui collectera toutes les données du test
-    echo "<form id='responseform' method='POST' action='$CFG->wwwroot/mod/domoscio/results.php?id=$cm->id&q=$selected'>";
-    echo display_questions($question);
-} else {
-    // RAPPELS
-    $PAGE->set_title('Rappels');
-    echo $OUTPUT->heading("Rappels");
-
-    $todo_tests = count_tests($config);
-    $qid = $batch = array();
-
-    echo "<form id='responseform' method='POST' action='$CFG->wwwroot/mod/domoscio/results.php'>";
-    foreach($todo_tests as $test)
+if($domoscio->resource_type == "scorm")
+{
+    if(!empty($lists))
     {
-        $instance = $DB->get_record_sql("SELECT `instance` FROM `mdl_knowledge_node_students` WHERE `kn_student_id` = $test");
-        $lists = $DB->get_records_sql("SELECT `question_id` FROM `mdl_knowledge_node_questions` WHERE `instance` = $instance->instance");
-
-        // Filtre les questions déjà proposées pour éviter les doublons
-        foreach($batch as $prevq)
-        {
-            unset($lists[$prevq]);
-        }
         $selected = array_rand($lists, 1);
-        $batch[] = $selected;
+
+        $scorm = $DB->get_record('scorm_scoes', array('id' => $selected), '*');
+
+        $_GET['domoscioid'] = $temp = $cm->id;
+
+        $_GET['a'] = $scorm->scorm;
+
+        $_GET['scoid'] = $selected;
+
+        include('player.php');
+
+        $content = "<input type='hidden' value=$scoid name=scoid></input><input type='hidden' value=$attempt name=attempt></input>";
+        $content .= html_writer::tag('input', '', array('type' => 'submit', 'value' => get_string('validate_btn', 'domoscio'), 'name' => 'next'));
+        $params = "id=$temp&scorm=".$_GET['a']."&kn=$kn";
+
+        $output = html_writer::tag('form', $content, array('method' => 'POST', 'action' => $url_r.'?'.$params, 'id' => 'responseform'));
+        echo $output;
+    }
+    else
+    {
+        echo html_writer::tag('blockquote', get_string('tests_empty', 'domoscio'), array('class' => 'muted'));
+    }
+}
+else
+{
+    echo $OUTPUT->header();
+    $PAGE->set_title('Evaluation');
+
+    echo $OUTPUT->heading("Evaluation");
+
+    if(!empty($lists))
+    {
+        $selected = array_rand($lists, 1);
 
         // Récupère les informations relatives aux questions sélectionnées
-
-        $question = $DB->get_record_sql("SELECT * FROM `mdl_question` WHERE `id` = $selected");
-        $qid[] = $question->id;
-
-        echo display_questions($question);
-        // Poste en masqué l'instance du plugin requise pour l'api
+        if($domoscio->resource_type == "scorm"){$table = "celltests";}else{$table = "question";}
+        $question = $DB->get_record($table, array('id' => $selected), '*');
         $qinstance = "kn_q".$question->id;
-        echo "<input type='hidden' value=$instance->instance name=$qinstance></input>";
 
+        $content = html_writer::tag('input', '', array('type' => 'hidden', 'value' => $domoscio->id, 'name' => $qinstance))
+                  .display_questions($question, $domoscio->resource_type);
+        $params = "kn=$kn&q=$selected";
+
+        $content .= html_writer::tag('input', '', array('type' => 'submit', 'value' => get_string('validate_btn', 'domoscio'), 'name' => 'next'));
+        $output = html_writer::tag('form', $content, array('method' => 'POST', 'action' => $url_r.'?'.$params, 'id' => 'responseform'));
+        echo $output;
     }
-    $qids = implode(',', $qid);
-    echo "<input type='hidden' value=$qids name='qids'></input>";
-    // Créé un nouveau formulaire qui collectera toutes les données du test
+    else
+    {
+        echo html_writer::tag('blockquote', get_string('tests_empty', 'domoscio'), array('class' => 'muted'));
+    }
 }
+echo html_writer::tag('button', get_string('end_btn', 'domoscio'), array('type' => 'button',
+                                                                       'onclick'=>"javascript:location.href='$CFG->wwwroot/mod/domoscio/results.php?end=true'"));
 
-echo "<input type='submit' value='Next' name='next'></input>";
-echo "</form>";
+
 
 echo $OUTPUT->footer();

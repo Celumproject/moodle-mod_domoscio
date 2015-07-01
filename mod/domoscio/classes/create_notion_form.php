@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
-* The form to be displayed when creating new questions
+* The class defining the form displayed on the create notion view
 *
 * It uses the standard core Moodle formslib. For more info about them, please
 * visit: http://docs.moodle.org/en/Development:lib/formslib.php
@@ -29,6 +29,7 @@ defined('MOODLE_INTERNAL') || die();
 
 require_once("$CFG->libdir/formslib.php");
 
+
 /**
 * Module instance settings form
 *
@@ -36,27 +37,18 @@ require_once("$CFG->libdir/formslib.php");
 * @copyright  2015 Your Name
 * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
 */
-class quiz_form extends moodleform {
+class create_notion_form extends moodleform {
 
     public function definition() {
-        global $CFG;
+        global $DB, $CFG;
 
-        $quiztypes = array("open"=>"Question ouverte","qcm"=>"QCM","hole"=>"Texte à trous","dragdrop"=>"Appairage","eval"=>"Barème");
+        $attributes = array('size'=>'30');
 
         $mform = $this->_form;
 
-    //    $editoroptions = $this->_customdata['editoroptions'];
-        $mform->addElement('hidden', 'knowledge_cell_id');
-        $mform->addElement('text', 'title', "Titre de la question");
-        $mform->addElement('textarea', 'question', 'Question');
-    //    $mform->addElement('editor', 'question', 'Enoncé', null, $editoroptions);
-        $mform->addElement('select', 'nature', 'Type de question', $quiztypes, $attributes);
-        $mform->addElement('textarea', 'answer', 'Réponse');
+        $mform->addElement('text', 'notion', get_string('notion_title', 'domoscio'), $attributes);
 
-        $mform->setType('knowledge_cell_id', PARAM_INT);
-        $mform->setType('title', PARAM_NOTAGS);
-        $mform->setType('enonce', PARAM_RAW);
-        $mform->setType('question', PARAM_RAW);
+        $mform->setType('notion', PARAM_TEXT);
 
         $this->add_action_buttons();
     }

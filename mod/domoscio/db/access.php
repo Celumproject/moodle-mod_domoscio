@@ -87,12 +87,24 @@ $capabilities = array(
     ),
 
 
-    'mod/domscio:submit' => array(
+    'mod/domoscio:submit' => array(
 
         'captype' => 'write',
         'contextlevel' => CONTEXT_MODULE,
         'legacy' => array(
             'student' => CAP_ALLOW
+        )
+    ),
+
+    'mod/domoscio:savetrack' => array(
+
+        'captype' => 'write',
+        'contextlevel' => CONTEXT_MODULE,
+        'archetypes' => array(
+            'student' => CAP_ALLOW,
+            'teacher' => CAP_ALLOW,
+            'editingteacher' => CAP_ALLOW,
+            'manager' => CAP_ALLOW
         )
     ),
 

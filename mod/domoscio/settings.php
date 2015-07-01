@@ -8,9 +8,12 @@ if ($ADMIN->fulltree) {
 
     $settings->add(new admin_setting_configtext('domoscio/domoscio_id', get_string('settings_id', 'domoscio'),
         get_string('settings_id_helptext', 'domoscio'), ''));
-    
+
     $settings->add(new admin_setting_configpasswordunmask('domoscio/domoscio_apikey', get_string('settings_apikey', 'domoscio'),
         get_string('settings_apikey_helptext', 'domoscio'), ''));
+
+    $settings->add(new admin_setting_configtext('domoscio/domoscio_apiurl', get_string('settings_apiurl', 'domoscio'),
+            get_string('settings_apiurl_helptext', 'domoscio'), ''));
 }
 
 
