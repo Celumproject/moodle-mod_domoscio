@@ -42,6 +42,13 @@ class mod_domoscio_mod_form extends moodleform_mod {
      * Defines forms elements
      */
     public function definition() {
+        global $DB;
+
+        if($this->_cm)
+        {
+            $domoscio = $DB->get_record('domoscio', array('id' => $this->_cm->instance), '*');
+            $module = $this->get_resource_bykn($domoscio->resource_id);
+        }
 
         $mform = $this->_form;
 
@@ -64,14 +71,18 @@ class mod_domoscio_mod_form extends moodleform_mod {
 
         // Adding the rest of domoscio settings, spreading all them into this fieldset
         // ... or adding more fieldsets ('header' elements) if needed for better logic.
-        #$mform->addElement('static', 'label1', 'domosciosetting1', 'Your domoscio fields go here. Replace me!');
-
         $mform->addElement('header', 'domoscioresourceset', get_string('domoscioresourceset', 'domoscio'));
-        $mform->addElement('select', 'resource', get_string('resourceset_resource', 'domoscio'), $this->select_ressource(), NOGROUPS);
+
+        $select = $mform->addElement('select', 'resource', get_string('resourceset_resource', 'domoscio'), $this->select_ressource(), NOGROUPS);
+
+        if($this->_cm)
+        {
+            $select->setSelected($module);
+        }
         $mform->addHelpButton('resource', 'domoscioresourceset', 'domoscio');
 
         // Add standard grading elements.
-        #$this->standard_grading_coursemodule_elements();
+        //$this->standard_grading_coursemodule_elements();
 
         // Add standard elements, common to all modules.
         $this->standard_coursemodule_elements();
@@ -85,7 +96,7 @@ class mod_domoscio_mod_form extends moodleform_mod {
         global $COURSE, $CFG, $DB;
 
         // Recherche les course modules à afficher
-        $query = "SELECT * FROM `mdl_course_modules` WHERE `module` IN (3,14,16,18)";
+        $query = "SELECT * FROM ".$CFG->prefix."course_modules WHERE `module` IN (3,14,15,18)";
 
         $modules = $DB->get_records_sql($query);
 
@@ -93,7 +104,7 @@ class mod_domoscio_mod_form extends moodleform_mod {
 
         foreach($modules as $module)
         {
-            $datas[$module->id] = $this->get_resource_info($module->module, $module->instance);
+            $datas[$module->id] = $this->get_resource_info($module->module, $module->instance)->name;
         }
 
         return $datas;
@@ -107,26 +118,39 @@ class mod_domoscio_mod_form extends moodleform_mod {
 
         switch($module) {
             case 3:
-                $modulename = "mdl_book";
+                $modulename = "book";
                 break;
 
             case 14:
-                $modulename = "mld_lesson";
+                $modulename = "lesson";
                 break;
 
-            case 16:
-                $modulename = "mdl_page";
+            case 15:
+                $modulename = "page";
                 break;
 
             case 18:
-                $modulename = "mdl_resource";
+                $modulename = "scorm";
                 break;
         }
 
-        $query = "SELECT name FROM $modulename WHERE id = $instance";
+        $moduleinfo = $DB->get_record($modulename, array('id' => $instance), 'name');
 
-        $moduleinfo = $DB->get_record_sql($query);
+        return $moduleinfo;
+    }
 
-        return $moduleinfo->name;
+    function get_resource_bykn($knowledge_node) {
+
+        global $DB, $CFG, $OUTPUT;
+
+        $query = "SELECT ".$CFG->prefix."course_modules.`module`,".$CFG->prefix."course_modules.`instance`, ".$CFG->prefix."course_modules.`id`
+                    FROM ".$CFG->prefix."course_modules
+              INNER JOIN ".$CFG->prefix."knowledge_nodes
+                      ON ".$CFG->prefix."course_modules.`id` = ".$CFG->prefix."knowledge_nodes.`resource_id`
+                   WHERE ".$CFG->prefix."knowledge_nodes.`knowledge_node_id` =".$knowledge_node;
+
+        $resource = $DB->get_record_sql($query);
+
+        return $resource->id;
     }
 }
