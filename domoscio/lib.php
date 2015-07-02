@@ -17,8 +17,15 @@
 /**
  * Library of interface functions and constants for module domoscio
  *
+ * All the core Moodle functions, neeeded to allow the module to work
+ * integrated in Moodle should be placed here.
+ *
+ * All the domoscio specific functions, needed to implement all the module
+ * logic, should go to locallib.php. This will help to save some memory when
+ * Moodle is performing actions across all modules.
+ *
  * @package    mod_domoscio
- * @copyright  2015 Domoscio
+ * @copyright  2015 Domoscio SA
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -678,7 +685,6 @@ function manage_student($config, $domoscio, $check) {
             {
                 $questions = $DB->get_records('knowledge_node_questions', array('instance' => $domoscio->id, 'knowledge_node' => $kn->knowledge_node_id), '', 'question_id');
                 $list = array();
-
                 foreach($questions as $question)
                 {
                     $list[] = $question->question_id;
@@ -696,13 +702,14 @@ function manage_student($config, $domoscio, $check) {
                                                       AND ".$CFG->prefix."question_attempts.`timemodified` =
                                                           (SELECT MAX(`timemodified`)
                                                            FROM ".$CFG->prefix."question_attempts)");
+
                 if(!empty($scoredata))
                 {
                     $score = (round(array_shift($scoredata)->score))*100;
                 }
             }
 
-            if(!empty($scoredata))
+            if(!empty($score))
             {
                 $json = json_encode(array('knowledge_node_student_id' => intval($last_kn->id),
                                                               'value' => intval($score)));
