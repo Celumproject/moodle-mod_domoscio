@@ -705,11 +705,12 @@ function manage_student($config, $domoscio, $check) {
 
                 if(!empty($scoredata))
                 {
+                    $score_exist = $scoredata;
                     $score = (round(array_shift($scoredata)->score))*100;
                 }
             }
 
-            if(!empty($score))
+            if(!empty($score_exist))
             {
                 $json = json_encode(array('knowledge_node_student_id' => intval($last_kn->id),
                                                               'value' => intval($score)));
