@@ -32,6 +32,7 @@ require_once(dirname(__FILE__).'/lib.php');
 require_once(dirname(__FILE__).'/sdk/client.php');
 require_once(dirname(__FILE__).'/classes/select_notion_form.php');
 
+//$PAGE->requires->js('/mod/domoscio/jquery-1.11.3.min.js', true);
 $PAGE->requires->js('/mod/domoscio/bootstrap-collapse.js', true);
 $PAGE->requires->js('/mod/domoscio/Chart.min.js', true);
 
@@ -201,6 +202,7 @@ elseif (user_has_role_assignment($USER->id,5)) {
                                                                                            'onclick'=>"javascript:location.href='$CFG->wwwroot/mod/domoscio/doquiz.php?kn=$notion->knowledge_node_id"."&t=".time()."'"));
                     $accordion_inner = html_writer::tag('div', get_string('no_history', 'domoscio').$reminder, array('class' => 'accordion-inner'));
                     $alert_icon = " > ".html_writer::tag('i', '', array('class' => 'icon-exclamation-sign'));
+                    $class = "alert-warning";
                     $_SESSION['no_history'][] = $item->id;
                 }
                 else
