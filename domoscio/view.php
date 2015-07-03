@@ -66,7 +66,7 @@ require_login($course, true, $cm);
 
 $PAGE->set_url('/mod/domoscio/view.php', array('id' => $cm->id));
 $PAGE->set_title(format_string($domoscio->name));
-$PAGE->set_heading("Domoscio for Moodle");
+$PAGE->set_heading(get_string('pluginname', 'domoscio'));
 
 
 // Output starts here.
@@ -97,7 +97,7 @@ if (user_has_role_assignment($USER->id,3)) {
     $show_stats_link = html_writer::link($CFG->wwwroot.'/mod/domoscio/stats.php?id='.$cm->id, html_writer::tag('button', get_string('stats', 'domoscio'), array('class' => 'btn btn-default btn-large')),
                         array('class' => 'span4'));
 
-    echo html_writer::tag('div', $def_notion_link.$show_stats_link.'<br/><br/>').html_writer::tag('div', '<h6>Les notions que vous avez définies :</h6><hr/>');
+    echo html_writer::tag('div', $def_notion_link.$show_stats_link.'<br/><br/>').html_writer::tag('div', '<h6>'.get_string('set_notions', 'domoscio').'</h6><hr/>');
 
     foreach($notions as $notion)
     {
@@ -149,26 +149,35 @@ if (user_has_role_assignment($USER->id,3)) {
 // --- STUDENT VIEW ---
 
 elseif (user_has_role_assignment($USER->id,5)) {
-    // Vérifie si l'étudiant s'est déjà connecté au plugin Domoscio
+    // Check if student already logged up the Domoscio plugin
     $check = $DB->get_record('userapi', array('user_id' => $USER->id), '*');
 
     if(empty($check))
     {
+        // If not, plugin calls API for creating new student profile
         create_student();
 
-        // Sinon, le plugin demande à l'api de créer un nouvel étudiant
-        echo html_writer::tag('div', html_writer::tag('h5', 'Bienvenue, '.$USER->firstname, array('class' => 'content')), array('class' => 'block'));
+        echo html_writer::tag('div', html_writer::tag('h5', get_string('welcome', 'domoscio').$USER->firstname, array('class' => 'content')), array('class' => 'block'));
         echo get_string('student_first_visit', 'domoscio')."<br/>";
         echo html_writer::tag('button', get_string('start_btn', 'domoscio'), array('type' => 'button','onclick'=>"javascript:location.href='$CFG->wwwroot/mod/domoscio/view.php?id=$cm->id'"));
     }
     else
     {
+        // If true, retrive student datas
         $kn_student = manage_student($config, $domoscio, $check);
 
         $count = count_tests($config);
         $url2=new moodle_url("$CFG->wwwroot/mod/domoscio/index.php");
 
-        if(!empty($count)){$indexurl = $OUTPUT->action_link( $url2, "Faire les rappels");}else{$indexurl = '';}
+        if(!empty($count))
+        {
+            $indexurl = $OUTPUT->action_link( $url2, get_string('do_review_btn', 'domoscio'));
+        }
+        else
+        {
+            $indexurl = '';
+        }
+
         $todo_counter = html_writer::start_span('badge badge-important').html_writer::tag('h4', count($count)).html_writer::end_span().get_string('text2', 'domoscio').plural($count).get_string('text3', 'domoscio')." ";
 
         $introbox = html_writer::tag('div', $todo_counter.$indexurl, array('class' => 'content'))."<hr/>".

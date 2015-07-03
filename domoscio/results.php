@@ -58,13 +58,13 @@ if ($id) {
 $strname = get_string('modulename', 'mod_domoscio');
 $PAGE->set_url('/mod/domoscio/index.php', array('id' => $id));
 $PAGE->navbar->add($strname);
-$PAGE->set_heading("Domoscio for Moodle");
+$PAGE->set_heading(get_string('pluginname', 'domoscio'));
 $PAGE->set_pagelayout('incourse');
 
 echo $OUTPUT->header();
 
 
-echo $OUTPUT->heading("Résultats");
+echo $OUTPUT->heading(get_string('results', 'domoscio'));
 
 $rest = new domoscio_client();
 
@@ -96,7 +96,7 @@ if($q)
     }
 
     $qspan = html_writer::start_span('qno') . $question->id . html_writer::end_span();
-    $qheader = html_writer::tag('h3', "Question ".$qspan, array('class' => 'no'));
+    $qheader = html_writer::tag('h3', get_string('question', 'domoscio').$qspan, array('class' => 'no'));
 
     $qcontent = html_writer::tag('div', $result->output, array('class' => 'formulation'));
 
@@ -154,13 +154,13 @@ elseif($end = true)
 
             if($rapport->value == 100)
             {
-                $state = "Notion connue";
+                $state = get_string('notion_ok', 'domoscio');
                 $class = "alert-success";
                 $feedbackclass = "correct";
             }
             else
             {
-                $state = "<a href=$resource->url><i class='icon-book'></i>Revoir la ressource</a>";
+                $state = html_writer::link($resource->url, "<i class='icon-book'></i>".get_string('notion_rvw', 'domoscio'));
                 $class = "alert-danger";
                 $feedbackclass = "incorrect";
             }

@@ -33,7 +33,7 @@ require_once(dirname(__FILE__).'/lib.php');
 require_once(dirname(__FILE__).'/classes/linkto_form.php');
 
 $PAGE->requires->js('/mod/domoscio/jquery-1.11.3.min.js', true);
-//$PAGE->requires->js('/mod/domoscio/bootstrap-tab.js', true);
+$PAGE->requires->js('/mod/domoscio/bootstrap-tab.js', true);
 
 $config = get_config('domoscio');
 $id = optional_param('id', 0, PARAM_INT); // Course_module ID, or
@@ -145,8 +145,8 @@ else
             }
         }
 
-        echo "La liste des questions est mise à jour.<hr/>";
-        echo html_writer::tag('button', 'Continue', array('type' => 'button','onclick'=>"javascript:location.href='$CFG->wwwroot/mod/domoscio/view.php?id=$cm->id'"));
+        echo get_string('upd_qlist', 'domoscio')."<hr/>";
+        echo html_writer::tag('button', get_string('next_btn', 'domoscio'), array('type' => 'button','onclick'=>"javascript:location.href='$CFG->wwwroot/mod/domoscio/view.php?id=$cm->id'"));
 
     } else {
         $mform->display();

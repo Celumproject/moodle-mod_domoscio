@@ -101,10 +101,10 @@ if (user_has_role_assignment($USER->id,3)) {
                                              html_writer::tag('td', $wrong_attempts, array('class' => 'alert-danger'))
                                       );
         }
-        $th = html_writer::tag('tr', html_writer::tag('th', "Etudiant").
-                                     html_writer::tag('th', "Prochain rappel").
-                                     html_writer::tag('th', "<i class='icon-ok'></i> Tests réussis", array('class' => 'alert-success')).
-                                     html_writer::tag('th', "<i class='icon-remove'></i> Test manqués", array('class' => 'alert-danger')));
+        $th = html_writer::tag('tr', html_writer::tag('th', get_string('student', 'domoscio')).
+                                     html_writer::tag('th', get_string('next_due_th', 'domoscio')).
+                                     html_writer::tag('th', "<i class='icon-ok'></i>".get_string('test_succeeded', 'domoscio'), array('class' => 'alert-success')).
+                                     html_writer::tag('th', "<i class='icon-remove'></i>".get_string('test_failed', 'domoscio'), array('class' => 'alert-danger')));
         echo html_writer::tag('table', $th.$trows, array('class' => 'table table-striped table-bordered table-hover'));
     }
 
