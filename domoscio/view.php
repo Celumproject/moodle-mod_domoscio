@@ -106,7 +106,7 @@ if (user_has_role_assignment($USER->id,3)) {
 
         $title = json_decode($rest->setUrl($config, 'knowledge_nodes', $notion->knowledge_node_id)->get());
 
-        $qids = $DB->get_records_sql("SELECT * FROM ".$CFG->prefix."knowledge_node_questions WHERE `knowledge_node`= $notion->knowledge_node_id");
+        $qids = $DB->get_records_sql("SELECT * FROM {knowledge_node_questions} WHERE `knowledge_node`= $notion->knowledge_node_id");
 
         foreach($qids as $qid)
         {

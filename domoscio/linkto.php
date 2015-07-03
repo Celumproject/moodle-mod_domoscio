@@ -118,7 +118,10 @@ else
         {
             if(is_numeric($k))
             {
-                $check = $DB->get_record_sql("SELECT * FROM ".$CFG->prefix."knowledge_node_questions WHERE `question_id` = $k AND knowledge_node = $notion->id");
+                $check = $DB->get_record_sql("SELECT *
+                                                FROM {knowledge_node_questions}
+                                               WHERE `question_id` = $k
+                                                 AND knowledge_node = $notion->id");
 
                 if($value == 1)
                 {
