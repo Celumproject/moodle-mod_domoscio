@@ -28,8 +28,10 @@ require_once(dirname(dirname(dirname(__FILE__))).'/config.php');
 require_once(dirname(__FILE__).'/lib.php');
 require_once(dirname(__FILE__).'/classes/quiz_form.php');
 
-$id = optional_param('id', 0, PARAM_INT); // Course_module ID, or
-
+$id = optional_param('id', 0, PARAM_INT);
+$q = optional_param('q', 0, PARAM_INT); // Course_module ID, or
+$update = optional_param('update', null, PARAM_BOOL);
+$delete = optional_param('delete', null, PARAM_BOOL);
 //$course = $DB->get_record('course', array('id' => $id), '*', MUST_EXIST);
 
 if ($id) {
@@ -57,7 +59,7 @@ if ($domoscio->intro) {
 // Formulaire d'inscription de questions
 
 // Inscription nouvelle question
-if($_GET["delete"] == null && $_GET['update'] == null)
+if($delete == null && $update == null)
 {
     echo $OUTPUT->heading(get_string('create_q', 'domoscio'));
 
@@ -67,7 +69,7 @@ if($_GET["delete"] == null && $_GET['update'] == null)
 
     if ($mform->is_cancelled()) {
 
-        redirect("$CFG->wwwroot/mod/domoscio/view.php?id=".$_GET['id']);
+        redirect("$CFG->wwwroot/mod/domoscio/view.php?id=$id");
         exit;
 
     } else if ($fromform = $mform->get_data()) {
@@ -85,15 +87,15 @@ if($_GET["delete"] == null && $_GET['update'] == null)
 // Mise à jour question existante
 
 
-elseif($_GET["update"] == true)
+elseif($update == true)
 {
     echo $OUTPUT->heading(get_string('create_q', 'domoscio'));
 
-    $qUpdate = $DB->get_record('cell_tests', array('id' => $_GET["q"]));
+    $qUpdate = $DB->get_record('cell_tests', array('id' => $q));
 
     $mform = new quiz_form();
 
-    $formdata = array('id' => $_GET['q'],
+    $formdata = array('id' => $q,
                     'knowledge_cell_id' => $id,
                     'title' => $qUpdate->title,
                     'question' => $qUpdate->question,
@@ -102,7 +104,7 @@ elseif($_GET["update"] == true)
 
     if ($mform->is_cancelled()) {
 
-        redirect("$CFG->wwwroot/mod/domoscio/quiz.php?id=".$_GET['id']);
+        redirect("$CFG->wwwroot/mod/domoscio/quiz.php?id=$id");
         exit;
 
     } else if ($fromform = $mform->get_data()) {
@@ -121,10 +123,10 @@ elseif($_GET["update"] == true)
 // Liste de questions
 
 
-elseif($_GET["delete"] == true)
+elseif($delete == true)
 {
-    $DB->delete_records('cell_tests', array('knowledge_cell_id' => $_GET["id"], 'id' => $_GET["q"]));
-    redirect("$CFG->wwwroot/mod/domoscio/quiz.php?id=".$_GET['id']);
+    $DB->delete_records('cell_tests', array('knowledge_cell_id' => $id, 'id' => $q));
+    redirect("$CFG->wwwroot/mod/domoscio/quiz.php?id=".$id);
     exit;
 }
 
