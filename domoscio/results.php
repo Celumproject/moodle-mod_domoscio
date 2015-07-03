@@ -72,7 +72,9 @@ if($q)
 {
     if($domoscio->resource_type == "scorm"){$table = "celltests";}else{$table = "question";}
 
-    $question = $DB->get_record_sql("SELECT * FROM ".$CFG->prefix.$table." WHERE `id` = $q");
+    $question = $DB->get_record_sql("SELECT *
+                                       FROM {".$table."}
+                                      WHERE `id` = $q");
 
     $qtype = $question->qtype;
 

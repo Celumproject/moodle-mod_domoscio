@@ -41,7 +41,7 @@ class linkto_form extends moodleform {
 
         //requetes sur les questions déjà sélectionnées le cas échéant
         $selectedquestions = $DB->get_records_sql("SELECT *
-                                                     FROM ".$CFG->prefix."knowledge_node_questions
+                                                     FROM {knowledge_node_questions}
                                                     WHERE `knowledge_node`=".$this->_customdata['kn_id']."
                                                       AND `type` = '".$this->_customdata['module']."'");
 
@@ -58,11 +58,11 @@ class linkto_form extends moodleform {
 
             $icon = html_writer::tag('img', '', array('src'=>$OUTPUT->pix_url('icon','quiz','quiz',array('class'=>'icon')), 'class'=>'activityicon', 'alt'=>'disable'));
 
-            $sqlquestions = "SELECT ".$CFG->prefix."question.`id`, ".$CFG->prefix."question.`name`, ".$CFG->prefix."question.`questiontext`
-                               FROM ".$CFG->prefix."question
-                         INNER JOIN ".$CFG->prefix."quiz_slots
-                                 ON ".$CFG->prefix."question.`id` = ".$CFG->prefix."quiz_slots.`questionid`
-                              WHERE ".$CFG->prefix."quiz_slots.`quizid` = ".$quiz->id;
+            $sqlquestions = "SELECT {question}.`id`, {question}.`name`, {question}.`questiontext`
+                               FROM {question}
+                         INNER JOIN {quiz_slots}
+                                 ON {question}.`id` = {quiz_slots}.`questionid`
+                              WHERE {quiz_slots}.`quizid` = ".$quiz->id;
 
             $questions = $DB->get_records_sql($sqlquestions);
 
