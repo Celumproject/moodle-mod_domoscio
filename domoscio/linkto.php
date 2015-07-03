@@ -32,9 +32,6 @@ require_once(dirname(dirname(dirname(__FILE__))).'/config.php');
 require_once(dirname(__FILE__).'/lib.php');
 require_once(dirname(__FILE__).'/classes/linkto_form.php');
 
-//$PAGE->requires->js('/mod/domoscio/jquery-1.11.3.min.js', true);
-//$PAGE->requires->js('/mod/domoscio/bootstrap-tab.js', true);
-
 $config = get_config('domoscio');
 $id = optional_param('id', 0, PARAM_INT); // Course_module ID, or
 $q = optional_param('q', 0, PARAM_INT);
@@ -118,7 +115,10 @@ else
         {
             if(is_numeric($k))
             {
-                $check = $DB->get_record_sql("SELECT * FROM ".$CFG->prefix."knowledge_node_questions WHERE `question_id` = $k AND knowledge_node = $notion->id");
+                $check = $DB->get_record_sql("SELECT *
+                                                FROM {knowledge_node_questions}
+                                               WHERE `question_id` = $k
+                                                 AND knowledge_node = $notion->id");
 
                 if($value == 1)
                 {

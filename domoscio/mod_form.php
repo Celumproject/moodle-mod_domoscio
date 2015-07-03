@@ -95,8 +95,11 @@ class mod_domoscio_mod_form extends moodleform_mod {
 
         global $COURSE, $CFG, $DB;
 
-        // Recherche les course modules à afficher
-        $query = "SELECT * FROM ".$CFG->prefix."course_modules WHERE `module` IN (3,14,15,18)";
+        // Search for course modules to display
+        $query = "SELECT *
+                    FROM {course_modules}
+                   WHERE `module`
+                      IN (3,14,15,18)";
 
         $modules = $DB->get_records_sql($query);
 
@@ -143,11 +146,11 @@ class mod_domoscio_mod_form extends moodleform_mod {
 
         global $DB, $CFG, $OUTPUT;
 
-        $query = "SELECT ".$CFG->prefix."course_modules.`module`,".$CFG->prefix."course_modules.`instance`, ".$CFG->prefix."course_modules.`id`
-                    FROM ".$CFG->prefix."course_modules
-              INNER JOIN ".$CFG->prefix."knowledge_nodes
-                      ON ".$CFG->prefix."course_modules.`id` = ".$CFG->prefix."knowledge_nodes.`resource_id`
-                   WHERE ".$CFG->prefix."knowledge_nodes.`knowledge_node_id` =".$knowledge_node;
+        $query = "SELECT {course_modules}.`module`, {course_modules}.`instance`, {course_modules}.`id`
+                    FROM {course_modules}
+              INNER JOIN {knowledge_nodes}
+                      ON {course_modules}.`id` = {knowledge_nodes}.`resource_id`
+                   WHERE {knowledge_nodes}.`knowledge_node_id` =".$knowledge_node;
 
         $resource = $DB->get_record_sql($query);
 

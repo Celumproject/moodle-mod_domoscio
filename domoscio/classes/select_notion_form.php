@@ -48,7 +48,10 @@ class select_notion_form extends moodleform {
         $notions = $DB->get_records('knowledge_nodes', array('instance' => $this->_customdata['instance']), '', '*');
 
         //fill the checkbox if already selected
-        $selected_notions = $DB->get_records_sql("SELECT * FROM ".$CFG->prefix."knowledge_nodes WHERE `instance`=".$this->_customdata['instance']." AND `active` = '1'");
+        $selected_notions = $DB->get_records_sql("SELECT *
+                                                    FROM {knowledge_nodes}
+                                                   WHERE `instance` = ".$this->_customdata['instance']."
+                                                     AND `active` = '1'");
 
         $selected = array();
 

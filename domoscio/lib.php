@@ -646,10 +646,10 @@ function manage_student($config, $domoscio, $check) {
             if($domoscio->resource_type == "scorm")
             {
                 $kn = $DB->get_records_sql("SELECT *
-                                             FROM ".$CFG->prefix."knowledge_nodes
-                                       INNER JOIN ".$CFG->prefix."knowledge_node_students
-                                               ON ".$CFG->prefix."knowledge_nodes.`knowledge_node_id` = ".$CFG->prefix."knowledge_node_students.`knowledge_node_id`
-                                            WHERE ".$CFG->prefix."knowledge_node_students.`knowledge_node_id` = $last_kn->knowledge_node_id");
+                                             FROM {knowledge_nodes}
+                                       INNER JOIN {knowledge_node_students}
+                                               ON {knowledge_nodes}.`knowledge_node_id` = {knowledge_node_students}.`knowledge_node_id`
+                                            WHERE {knowledge_node_students}.`knowledge_node_id` = $last_kn->knowledge_node_id");
                 if(empty($kn->child_id))
                 {
                     $get_sco = get_scorm_scoes($last_kn->knowledge_node_id);
@@ -665,14 +665,14 @@ function manage_student($config, $domoscio, $check) {
                 }
 
                 $scoredata = $DB->get_records_sql("SELECT *
-                                                     FROM ".$CFG->prefix."scorm_scoes_track
+                                                     FROM {scorm_scoes_track}
                                                     WHERE `scormid` = ". get_resource_info($last_kn->knowledge_node_id)->instance ."
                                                       AND `userid` = $USER->id
                                                       AND `scoid` = $scoid
                                                       AND `element` = 'cmi.score.scaled'
                                                       AND `attempt` =
                                                           (SELECT MAX(`attempt`)
-                                                           FROM ".$CFG->prefix."scorm_scoes_track
+                                                           FROM {scorm_scoes_track}
                                                            WHERE `userid` = $USER->id
                                                            AND `scoid` = $scoid)");
 
@@ -692,25 +692,25 @@ function manage_student($config, $domoscio, $check) {
 
                 $list = join(',', $list);
 
-                $scoredata = $DB->get_records_sql("SELECT AVG(".$CFG->prefix."question_attempt_steps.`fraction`) AS score
-                                                     FROM ".$CFG->prefix."question_attempt_steps
-                                               INNER JOIN ".$CFG->prefix."question_attempts
-                                                       ON ".$CFG->prefix."question_attempts.`id` = ".$CFG->prefix."question_attempt_steps.`questionattemptid`
-                                                    WHERE ".$CFG->prefix."question_attempt_steps.`userid` = $USER->id
-                                                      AND ".$CFG->prefix."question_attempt_steps.`sequencenumber` = 2
-                                                      AND ".$CFG->prefix."question_attempts.`questionid` IN ($list)
-                                                      AND ".$CFG->prefix."question_attempts.`timemodified` =
+                $scoredata = $DB->get_records_sql("SELECT AVG({question_attempt_steps}.`fraction`) AS score
+                                                     FROM {question_attempt_steps}
+                                               INNER JOIN {question_attempts}
+                                                       ON {question_attempts}.`id` = {question_attempt_steps}.`questionattemptid`
+                                                    WHERE {question_attempt_steps}.`userid` = $USER->id
+                                                      AND {question_attempt_steps}.`sequencenumber` = 2
+                                                      AND {question_attempts}.`questionid` IN ($list)
+                                                      AND {question_attempts}.`timemodified` =
                                                           (SELECT MAX(`timemodified`)
-                                                           FROM ".$CFG->prefix."question_attempts)");
+                                                           FROM {question_attempts})");
 
-                if(!empty($scoredata))
+                if($scoredata != null)
                 {
                     $score_exist = $scoredata;
                     $score = (round(array_shift($scoredata)->score))*100;
                 }
             }
 
-            if(!empty($score_exist))
+            if(isset($score_exist))
             {
                 $json = json_encode(array('knowledge_node_student_id' => intval($last_kn->id),
                                                               'value' => intval($score)));
@@ -733,11 +733,11 @@ function get_resource_info($knowledge_node) {
 
     global $DB, $CFG, $OUTPUT;
 
-    $query = "SELECT ".$CFG->prefix."course_modules.`module`,".$CFG->prefix."course_modules.`instance`, ".$CFG->prefix."course_modules.`id`
-                FROM ".$CFG->prefix."course_modules
-          INNER JOIN ".$CFG->prefix."knowledge_nodes
-                  ON ".$CFG->prefix."course_modules.`id` = ".$CFG->prefix."knowledge_nodes.`resource_id`
-               WHERE ".$CFG->prefix."knowledge_nodes.`knowledge_node_id` =".$knowledge_node;
+    $query = "SELECT {course_modules}.`module`, {course_modules}.`instance`, {course_modules}.`id`
+                FROM {course_modules}
+          INNER JOIN {knowledge_nodes}
+                  ON {course_modules}.`id` = {knowledge_nodes}.`resource_id`
+               WHERE {knowledge_nodes}.`knowledge_node_id` = ".$knowledge_node;
 
     $resource = $DB->get_record_sql($query);
 
@@ -774,10 +774,10 @@ function get_resource_info($knowledge_node) {
     if($modulename == "scorm")
     {
         $sco = $DB->get_record_sql("SELECT *
-                                    FROM ".$CFG->prefix."scorm_scoes
-                              INNER JOIN ".$CFG->prefix."knowledge_nodes
-                                      ON ".$CFG->prefix."knowledge_nodes.`child_id` = ".$CFG->prefix."scorm_scoes.`id`
-                                   WHERE ".$CFG->prefix."knowledge_nodes.`knowledge_node_id` = $knowledge_node");
+                                    FROM {scorm_scoes}
+                              INNER JOIN {knowledge_nodes}
+                                      ON {knowledge_nodes}.`child_id` = {scorm_scoes}.`id`
+                                   WHERE {knowledge_nodes}.`knowledge_node_id` = $knowledge_node");
 
         if(!empty($sco))
         {
@@ -798,7 +798,7 @@ function get_resource_info($knowledge_node) {
 
 }
 
-/* Récupère les scoes inclus dans un package SCORM */
+/* Retrive all SCOes in SCORM package */
 function get_scorm_scoes($kn)
 {
     global $DB, $CFG;
@@ -806,13 +806,14 @@ function get_scorm_scoes($kn)
     $instance = get_resource_info($kn)->instance;
 
     $scoes = $DB->get_records_sql("SELECT *
-                                   FROM ".$CFG->prefix."scorm_scoes
+                                   FROM {scorm_scoes}
                                   WHERE `scorm` = $instance
                                     AND `scormtype` = 'sco'");
 
     return $scoes;
 }
 
+/* Retrive all chapters in Moodle book module */
 function get_book_chapters($cm)
 {
     global $DB, $CFG;
@@ -820,7 +821,7 @@ function get_book_chapters($cm)
     $instance = get_resource_info($cm)->instance;
 
     $chapters = $DB->get_records_sql("SELECT *
-                                   FROM ".$CFG->prefix."book_chapters
+                                   FROM {book_chapters}
                                   WHERE `bookid` = $instance");
 
     return $chapters;
@@ -833,13 +834,14 @@ function write_scorm_content($instance, $cm)
     global $DB, $CFG;
 
     $context = $DB->get_record_sql("SELECT *
-                                    FROM ".$CFG->prefix."context WHERE `instanceid` = $cm
-                                     AND `contextlevel` = '70'");
+                                      FROM {context}
+                                     WHERE `instanceid` = $cm
+                                       AND `contextlevel` = '70'");
 
     $fileid = $DB->get_record_sql("SELECT `id`
-                                   FROM ".$CFG->prefix."files
-                                  WHERE `filename` = 'structure.xml'
-                                    AND `contextid` = $context->id");
+                                     FROM {files}
+                                    WHERE `filename` = 'structure.xml'
+                                      AND `contextid` = $context->id");
 
     $fs = get_file_storage();
 
@@ -891,10 +893,10 @@ function count_tests($config)
 
     //Check courses student is enrolled
     $course_enrol = $DB->get_records_sql("SELECT `courseid`
-                                          FROM ".$CFG->prefix."enrol
-                                    INNER JOIN ".$CFG->prefix."user_enrolments
-                                            ON ".$CFG->prefix."user_enrolments.`enrolid` = ".$CFG->prefix."enrol.`id`
-                                         WHERE ".$CFG->prefix."user_enrolments.`userid` = $USER->id");
+                                          FROM {enrol}
+                                    INNER JOIN {user_enrolments}
+                                            ON {user_enrolments}.`enrolid` = {enrol}.`id`
+                                         WHERE {user_enrolments}.`userid` = $USER->id");
 
     $courselist = array();
     foreach($course_enrol as $course)
@@ -908,7 +910,7 @@ function count_tests($config)
     {
         $courselist = join(',', $courselist);
         $instances = $DB->get_records_sql("SELECT id
-                                             FROM ".$CFG->prefix."domoscio
+                                             FROM {domoscio}
                                             WHERE course IN ($courselist)");
 
         $instancelist = array();
@@ -919,13 +921,13 @@ function count_tests($config)
 
         $instancelist = join(',', $instancelist);
         $kn_students = $DB->get_records_sql("SELECT *
-                                               FROM ".$CFG->prefix."knowledge_node_students
-                                         INNER JOIN ".$CFG->prefix."knowledge_nodes
-                                         ON ".$CFG->prefix."knowledge_nodes.`knowledge_node_id` = ".$CFG->prefix."knowledge_node_students.`knowledge_node_id`
-                                              WHERE ".$CFG->prefix."knowledge_node_students.`user` = $USER->id
-                                                AND (".$CFG->prefix."knowledge_nodes.`active` IS NULL
-                                                 OR ".$CFG->prefix."knowledge_nodes.`active` = '1')
-                                                AND ".$CFG->prefix."knowledge_node_students.`instance` IN ($instancelist)");
+                                               FROM {knowledge_node_students}
+                                         INNER JOIN {knowledge_nodes}
+                                                 ON {knowledge_nodes}.`knowledge_node_id` = {knowledge_node_students}.`knowledge_node_id`
+                                              WHERE {knowledge_node_students}.`user` = $USER->id
+                                                AND ({knowledge_nodes}.`active` IS NULL
+                                                     OR {knowledge_nodes}.`active` = '1')
+                                                AND {knowledge_node_students}.`instance` IN ($instancelist)");
 
         foreach($kn_students as $kn_student)
         {
@@ -981,16 +983,16 @@ function get_answers($qnum, $resource_type)
 
     if($resource_type == "scorm") // If question stored in cell test tables
     {
-        $sqlanswers = "SELECT ".$CFG->prefix."propositions.`content` as `answer`
-                         FROM ".$CFG->prefix."propositions
-                   INNER JOIN ".$CFG->prefix."proposition_lists
-                           ON ".$CFG->prefix."proposition_lists.`id` = ".$CFG->prefix."propositions.`proposition_list_id`
-                        WHERE ".$CFG->prefix."proposition_lists.`cell_question_id` = $qnum";
+        $sqlanswers = "SELECT {propositions}.`content` as `answer`
+                         FROM {propositions}
+                   INNER JOIN {proposition_lists}
+                           ON {proposition_lists}.`id` = {propositions}.`proposition_list_id`
+                        WHERE {proposition_lists}.`cell_question_id` = $qnum";
     }
     else // else if stored in Quiz Moodle tables
     {
         $sqlanswers = "SELECT *
-                         FROM ".$CFG->prefix."question_answers
+                         FROM {question_answers}
                         WHERE `question` = $qnum";
     }
     $answers = $DB->get_records_sql($sqlanswers);
@@ -1047,10 +1049,11 @@ function get_multianswer($question, $resource_type)
 
     if($resource_type == "scorm") // If data stored in cell test tables
     {
-        $answers = $DB->get_records_sql("SELECT ".$CFG->prefix."propositions.`content` as `answer`, ".$CFG->prefix."propositions.`proposition_list_id`, ".$CFG->prefix."proposition_lists.`cell_question_type` FROM ".$CFG->prefix."propositions
-                                     INNER JOIN ".$CFG->prefix."proposition_lists
-                                             ON ".$CFG->prefix."proposition_lists.`id` = ".$CFG->prefix."propositions.`proposition_list_id`
-                                          WHERE ".$CFG->prefix."proposition_lists.`cell_question_id` = $question->id");
+        $answers = $DB->get_records_sql("SELECT {propositions}.`content` as `answer`, {propositions}.`proposition_list_id`, {proposition_lists}.`cell_question_type`
+                                           FROM {propositions}
+                                     INNER JOIN {proposition_lists}
+                                             ON {proposition_lists}.`id` = {propositions}.`proposition_list_id`
+                                          WHERE {proposition_lists}.`cell_question_id` = $question->id");
 
         $j = reset($answers);
 
@@ -1061,11 +1064,11 @@ function get_multianswer($question, $resource_type)
     }
     else // else if stored in Moodle Quiz tables
     {
-        $answers = $DB->get_records_sql("SELECT ".$CFG->prefix."question_answers.`id`, ".$CFG->prefix."question.`qtype`, ".$CFG->prefix."question_answers.`answer`, ".$CFG->prefix."question_answers.`question`
-                                           FROM ".$CFG->prefix."question
-                                     INNER JOIN ".$CFG->prefix."question_answers
-                                             ON ".$CFG->prefix."question.`id` = ".$CFG->prefix."question_answers.`question`
-                                          WHERE ".$CFG->prefix."question.`parent` = $question->id");
+        $answers = $DB->get_records_sql("SELECT {question_answers}.`id`, {question}.`qtype`, {question_answers}.`answer`, {question_answers}.`question`
+                                           FROM {question}
+                                     INNER JOIN {question_answers}
+                                             ON {question}.`id` = {question_answers}.`question`
+                                          WHERE {question}.`parent` = $question->id");
 
         $j = reset($answers);
         foreach($answers as $answer)
@@ -1129,11 +1132,11 @@ function get_match($question, $resource_type)
     $options = $lists = $subquestions = array();
     if($resource_type == "scorm")
     {
-        $proplists = $DB->get_records_sql("SELECT ".$CFG->prefix."propositions.`id`, ".$CFG->prefix."propositions.`content` as `answertext`, ".$CFG->prefix."propositions.`proposition_list_id`
-                                             FROM ".$CFG->prefix."propositions
-                                       INNER JOIN ".$CFG->prefix."proposition_lists
-                                               ON ".$CFG->prefix."proposition_lists.`id` = ".$CFG->prefix."propositions.`proposition_list_id`
-                                            WHERE ".$CFG->prefix."proposition_lists.`cell_question_id` = $question->id");
+        $proplists = $DB->get_records_sql("SELECT {propositions}.`id`, {propositions}.`content` as `answertext`, {propositions}.`proposition_list_id`
+                                             FROM {propositions}
+                                       INNER JOIN {proposition_lists}
+                                               ON {proposition_lists}.`id` = {propositions}.`proposition_list_id`
+                                            WHERE {proposition_lists}.`cell_question_id` = $question->id");
 
     foreach($proplists as $proplist)
     {
@@ -1193,16 +1196,17 @@ function get_right_answers($qnum, $resource_type)
 
     if($resource_type == "scorm")
     {
-        $sqlanswers = "SELECT ".$CFG->prefix."propositions.`content` as `answer` FROM ".$CFG->prefix."propositions
-                   INNER JOIN ".$CFG->prefix."proposition_lists
-                           ON ".$CFG->prefix."proposition_lists.`id` = ".$CFG->prefix."propositions.`proposition_list_id`
-                        WHERE ".$CFG->prefix."proposition_lists.`cell_question_id` = $qnum
-                          AND ".$CFG->prefix."propositions.`right` = 1";
+        $sqlanswers = "SELECT {propositions}.`content` as `answer`
+                         FROM {propositions}
+                   INNER JOIN {proposition_lists}
+                           ON {proposition_lists}.`id` = {propositions}.`proposition_list_id`
+                        WHERE {proposition_lists}.`cell_question_id` = $qnum
+                          AND {propositions}.`right` = 1";
     }
     else
     {
         $sqlanswers = "SELECT *
-                         FROM ".$CFG->prefix."question_answers
+                         FROM {question_answers}
                         WHERE `question` = $qnum
                           AND `fraction` = 1";
     }
@@ -1306,11 +1310,12 @@ function get_multiresult($question, $post, $resource_type)
 
     if($resource_type == "scorm")
     {
-        $answers = $DB->get_records_sql("SELECT ".$CFG->prefix."propositions.`content` as `answer`, ".$CFG->prefix."propositions.`proposition_list_id`, ".$CFG->prefix."proposition_lists.`cell_question_type` FROM ".$CFG->prefix."propositions
-                                     INNER JOIN ".$CFG->prefix."proposition_lists
-                                             ON ".$CFG->prefix."proposition_lists.`id` = ".$CFG->prefix."propositions.`proposition_list_id`
-                                          WHERE ".$CFG->prefix."proposition_lists.`cell_question_id` = $question->id
-                                            AND ".$CFG->prefix."propositions.`right` = 1");
+        $answers = $DB->get_records_sql("SELECT {propositions}.`content` as `answer`, {propositions}.`proposition_list_id`, {proposition_lists}.`cell_question_type`
+                                           FROM {propositions}
+                                     INNER JOIN {proposition_lists}
+                                             ON {proposition_lists}.`id` = {propositions}.`proposition_list_id`
+                                          WHERE {proposition_lists}.`cell_question_id` = $question->id
+                                            AND {propositions}.`right` = 1");
 
         $j = reset($answers);
 
@@ -1321,10 +1326,11 @@ function get_multiresult($question, $post, $resource_type)
     }
     else
     {
-        $answers = $DB->get_records_sql("SELECT ".$CFG->prefix."question_answers.`id`, ".$CFG->prefix."question.`qtype`, ".$CFG->prefix."question_answers.`answer`, ".$CFG->prefix."question_answers.`question`
-                                           FROM ".$CFG->prefix."question INNER JOIN ".$CFG->prefix."question_answers
-                                             ON ".$CFG->prefix."question.`id` = ".$CFG->prefix."question_answers.`question`
-                                          WHERE ".$CFG->prefix."question.`parent` = $question->id");
+        $answers = $DB->get_records_sql("SELECT {question_answers}.`id`, {question}.`qtype`, {question_answers}.`answer`, {question_answers}.`question`
+                                           FROM {question}
+                                     INNER JOIN {question_answers}
+                                             ON {question}.`id` = {question_answers}.`question`
+                                          WHERE {question}.`parent` = $question->id");
 
         $j = reset($answers);
 
@@ -1394,11 +1400,11 @@ function get_matchresult($question, $post, $resource_type)
     $options = $lists = $subquestions = $table = array();
     if($resource_type == "scorm")
     {
-        $proplists = $DB->get_records_sql("SELECT ".$CFG->prefix."propositions.`id`, ".$CFG->prefix."propositions.`content` as `answertext`, ".$CFG->prefix."propositions.`proposition_list_id`
-                                             FROM ".$CFG->prefix."propositions
-                                       INNER JOIN ".$CFG->prefix."proposition_lists
-                                               ON ".$CFG->prefix."proposition_lists.`id` = ".$CFG->prefix."propositions.`proposition_list_id`
-                                            WHERE ".$CFG->prefix."proposition_lists.`cell_question_id` = $question->id");
+        $proplists = $DB->get_records_sql("SELECT {propositions}.`id`, {propositions}.`content` as `answertext`, {propositions}.`proposition_list_id`
+                                             FROM {propositions}
+                                       INNER JOIN {proposition_lists}
+                                               ON {proposition_lists}.`id` = {propositions}.`proposition_list_id`
+                                            WHERE {proposition_lists}.`cell_question_id` = $question->id");
 
         foreach($proplists as $proplist)
         {
@@ -1417,7 +1423,7 @@ function get_matchresult($question, $post, $resource_type)
     else
     {
         $subquestions = $DB->get_records_sql("SELECT *
-                                                FROM ".$CFG->prefix."qtype_match_subquestions
+                                                FROM {qtype_match_subquestions}
                                                WHERE `questionid` =".$question->id);
     }
 
@@ -1535,10 +1541,10 @@ function get_student_by_kns($kns)
     $config = get_config('domoscio');
 
     $student = $DB->get_record_sql("SELECT *
-                                      FROM ".$CFG->prefix."user
-                                INNER JOIN ".$CFG->prefix."knowledge_node_students
-                                        ON ".$CFG->prefix."knowledge_node_students.`user` = ".$CFG->prefix."user.`id`
-                                     WHERE ".$CFG->prefix."knowledge_node_students.`kn_student_id` = $kns");
+                                      FROM {user}
+                                INNER JOIN {knowledge_node_students}
+                                        ON {knowledge_node_students}.`user` = {user}.`id`
+                                     WHERE {knowledge_node_students}.`kn_student_id` = $kns");
 
     return $student;
 }
