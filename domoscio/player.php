@@ -22,13 +22,11 @@ require_once($CFG->dirroot.'/mod/scorm/locallib.php');
 require_once($CFG->libdir . '/completionlib.php');
 
 $id = optional_param('cm', '', PARAM_INT);                          // Course Module ID, or
-$a = optional_param('a', '', PARAM_INT);
-$domoscioid = optional_param('domoscioid', '', PARAM_INT);                           // scorm ID
-$scoid = optional_param('scoid', '', PARAM_INT);                        // sco ID
 $mode = optional_param('mode', 'normal', PARAM_ALPHA);              // navigation mode
 $currentorg = optional_param('currentorg', '', PARAM_RAW);          // selected organization
 $newattempt = optional_param('newattempt', 'on', PARAM_ALPHA);     // the user request to start a new attempt.
 $displaymode = optional_param('display', '', PARAM_ALPHA);
+
 if (!empty($id)) {
     if (! $cm = get_coursemodule_from_id('scorm', $id)) {
         print_error('invalidcoursemodule');

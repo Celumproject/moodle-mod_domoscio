@@ -74,17 +74,15 @@ if($domoscio->resource_type == "scorm")
 
         $scorm = $DB->get_record('scorm_scoes', array('id' => $selected), '*');
 
-        $_GET['domoscioid'] = $temp = $cm->id;
-
-        $_GET['a'] = $scorm->scorm;
-
-        $_GET['scoid'] = $selected;
+        $domoscioid = $temp = $cm->id;
+        $a = $scorm->scorm;
+        $scoid = $selected;
 
         include('player.php');
 
         $content = "<input type='hidden' value=$scoid name=scoid></input><input type='hidden' value=$attempt name=attempt></input>";
         $content .= html_writer::tag('input', '', array('type' => 'submit', 'value' => get_string('validate_btn', 'domoscio'), 'name' => 'next'));
-        $params = "id=$temp&scorm=".$_GET['a']."&kn=$kn";
+        $params = "id=$temp&scorm=".$a."&kn=$kn";
 
         $output = html_writer::tag('form', $content, array('method' => 'POST', 'action' => $url_r.'?'.$params, 'id' => 'responseform'));
         echo $output;
