@@ -95,7 +95,7 @@ if (empty($collapsetocwinsize)) {
     $collapsetocwinsize = intval($collapsetocwinsize);
 }
 
-//require_login($course, false, $cm);
+require_login($course, false, $cm);
 
 $strscorms = get_string('modulenameplural', 'scorm');
 $strscorm  = get_string('modulename', 'scorm');
