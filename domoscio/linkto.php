@@ -145,8 +145,8 @@ else
             }
         }
 
-        echo "La liste des questions est mise à jour.<hr/>";
-        echo html_writer::tag('button', 'Continue', array('type' => 'button','onclick'=>"javascript:location.href='$CFG->wwwroot/mod/domoscio/view.php?id=$cm->id'"));
+        echo get_string('upd_qlist', 'domoscio')."<hr/>";
+        echo html_writer::tag('button', get_string('next_btn', 'domoscio'), array('type' => 'button','onclick'=>"javascript:location.href='$CFG->wwwroot/mod/domoscio/view.php?id=$cm->id'"));
 
     } else {
         $mform->display();

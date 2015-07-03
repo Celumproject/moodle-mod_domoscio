@@ -58,7 +58,7 @@ require_login();
 $strname = get_string('modulename', 'mod_domoscio');
 $PAGE->set_url('/mod/domoscio/doquiz.php', array('id' => $id));
 $PAGE->navbar->add($strname);
-$PAGE->set_heading("Domoscio for Moodle");
+$PAGE->set_heading(get_string('pluginname', 'domoscio'));
 $PAGE->set_pagelayout('incourse');
 
 $url_r = "$CFG->wwwroot/mod/domoscio/results.php";
@@ -97,9 +97,9 @@ if($domoscio->resource_type == "scorm")
 else
 {
     echo $OUTPUT->header();
-    $PAGE->set_title('Evaluation');
+    $PAGE->set_title(get_string('test_session', 'domoscio'));
 
-    echo $OUTPUT->heading("Evaluation");
+    echo $OUTPUT->heading(get_string('test_session', 'domoscio'));
 
     if(!empty($lists))
     {
