@@ -59,7 +59,7 @@ if ($domoscio->intro) {
 // Inscription nouvelle question
 if($_GET["delete"] == null && $_GET['update'] == null)
 {
-    echo $OUTPUT->heading("Créer un quiz");
+    echo $OUTPUT->heading(get_string('create_q', 'domoscio'));
 
     $mform = new quiz_form();
 
@@ -87,7 +87,7 @@ if($_GET["delete"] == null && $_GET['update'] == null)
 
 elseif($_GET["update"] == true)
 {
-    echo $OUTPUT->heading("Modifier une question");
+    echo $OUTPUT->heading(get_string('create_q', 'domoscio'));
 
     $qUpdate = $DB->get_record('cell_tests', array('id' => $_GET["q"]));
 
@@ -128,7 +128,7 @@ elseif($_GET["delete"] == true)
     exit;
 }
 
-echo $OUTPUT->heading("Liste des questions");
+echo $OUTPUT->heading(get_string('create_q', 'domoscio'));
 
 $questions = $DB->get_records('cell_tests', array('knowledge_cell_id' => $id), '','*');
 
@@ -143,7 +143,7 @@ foreach($questions as $question)
 }
 
 $table = new html_table();
-$table->head = array('N°', 'Titre', 'Supprimer', 'Modifier');
+$table->head = array(get_string('num', 'domoscio'), get_string('notion_title', 'domoscio'), get_string('delete', 'domoscio'), get_string('edit', 'domoscio'));
 $table->data = $datas;
 
 

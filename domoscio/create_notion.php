@@ -112,7 +112,7 @@ if (user_has_role_assignment($USER->id,3)) {
 
       $knedge = json_decode($rest->setUrl($config, 'knowledge_edges', null)->post($json));
 
-      echo "La notion a bien été créée.<hr/>".html_writer::link("$CFG->wwwroot/mod/domoscio/select_notions.php?id=$cm->id", '<< '.get_string('back_btn', 'domoscio')."&nbsp");
+      echo get_string('notion_created', 'domoscio')."<hr/>".html_writer::link("$CFG->wwwroot/mod/domoscio/select_notions.php?id=$cm->id", '<< '.get_string('back_btn', 'domoscio')."&nbsp");
 
   } else {
     $mform->display();

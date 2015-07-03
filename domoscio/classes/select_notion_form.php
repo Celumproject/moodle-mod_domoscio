@@ -34,7 +34,7 @@ require_once("$CFG->libdir/formslib.php");
 * Module instance settings form
 *
 * @package    mod_domoscio
-* @copyright  2015 Your Name
+* @copyright  2015 Domoscio
 * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
 */
 class select_notion_form extends moodleform {
@@ -71,7 +71,7 @@ class select_notion_form extends moodleform {
             if(intval($notion->knowledge_node_id) == intval($this->_customdata['parent']))
             {
                 $mform->addElement('html', '<blockquote class="muted"><small>'.get_string('whole_expl', 'domoscio').'</small></blockquote>');
-                $notion_name = html_writer::tag('span', "Ressouce entière", array('class' => 'alert alert-info'));
+                $notion_name = html_writer::tag('span', get_string('global_module', 'domoscio'), array('class' => 'alert alert-info'));
                 $parent_id = $notion->id;
                 $parent = $mform->addElement('advcheckbox', $notion->id, '', $notion_name, array('group' => 1, 'class' => 'parent_notion'), array(0, 1))->setChecked($check);
 

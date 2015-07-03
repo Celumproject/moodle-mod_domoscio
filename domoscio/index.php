@@ -33,8 +33,8 @@ require_login();
 $strname = get_string('modulename', 'mod_domoscio');
 $PAGE->set_url('/mod/domoscio/index.php');
 $PAGE->navbar->add($strname);
-$PAGE->set_title(format_string("Rappels"));
-$PAGE->set_heading("Domoscio for Moodle");
+$PAGE->set_title(get_string('pluginname', 'domoscio'));
+$PAGE->set_heading(get_string('pluginname', 'domoscio'));
 $PAGE->set_pagelayout('incourse');
 
 $date = usergetdate(time());
