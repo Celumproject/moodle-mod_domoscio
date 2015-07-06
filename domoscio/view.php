@@ -59,6 +59,7 @@ if ($id) {
     error('You must specify a course_module ID or an instance ID');
 }
 
+$context = context_module::instance($cm->id);
 require_login($course, true, $cm);
 
 
@@ -84,7 +85,7 @@ $linked_resource = get_resource_info($resource->id);
 
 // --- TEACHER VIEW ---
 
-if (user_has_role_assignment($USER->id,3)) {
+if (has_capability('moodle/course:create', $context)) {
 
     $notions = $DB->get_records('knowledge_nodes', array('instance' => $domoscio->id, 'active' => '1'), '', '*');
 
@@ -148,7 +149,7 @@ if (user_has_role_assignment($USER->id,3)) {
 
 // --- STUDENT VIEW ---
 
-elseif (user_has_role_assignment($USER->id,5)) {
+elseif (is_enrolled($context)) {
     // Check if student already logged up the Domoscio plugin
     $check = $DB->get_record('userapi', array('user_id' => $USER->id), '*');
 

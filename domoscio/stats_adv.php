@@ -52,6 +52,7 @@ if ($id) {
     error('You must specify a course_module ID or an instance ID');
 }
 
+$context = context_module::instance($cm->id);
 require_login($course, true, $cm);
 
 
@@ -80,7 +81,7 @@ echo html_writer::link("$CFG->wwwroot/mod/domoscio/stats.php?id=$cm->id", '<< '.
 
 // --- TEACHER VIEW ---
 
-if (user_has_role_assignment($USER->id,3)) {
+if (has_capability('moodle/course:create', $context)) {
 
     if($stat = 'students')
     {
