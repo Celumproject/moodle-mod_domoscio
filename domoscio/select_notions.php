@@ -30,7 +30,7 @@ require_once(dirname(__FILE__).'/lib.php');
 require_once(dirname(__FILE__).'/sdk/client.php');
 require_once(dirname(__FILE__).'/classes/select_notion_form.php');
 
-$PAGE->requires->js('/mod/domoscio/jquery-1.11.3.min.js', true);
+//$PAGE->requires->js('/mod/domoscio/jquery-1.11.3.min.js', true);
 $PAGE->requires->js('/mod/domoscio/script.js', true);
 
 $config = get_config('domoscio');
@@ -56,6 +56,7 @@ if ($id) {
     error('You must specify a course_module ID or an instance ID');
 }
 
+$context = context_module::instance($cm->id);
 require_login($course, true, $cm);
 
 
@@ -75,7 +76,7 @@ $resource = json_decode($rest->setUrl($config, 'knowledge_nodes', $domoscio->res
 
 $linked_resource = get_resource_info($resource->id);
 
-if (user_has_role_assignment($USER->id,3)) {
+if (has_capability('moodle/course:create', $context)) {
 
     echo html_writer::tag('div', html_writer::tag('b', get_string('notions_intro', 'domoscio'), array('class' => 'mod_introbox')), array('class' => 'block'));
     echo html_writer::link("$CFG->wwwroot/mod/domoscio/view.php?id=$cm->id", '<< '.get_string('back_btn', 'domoscio')."&nbsp");
