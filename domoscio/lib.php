@@ -1015,23 +1015,42 @@ function domoscio_get_input_answers($question)
 /* Displays multichoice questions interface */
 function domoscio_get_multichoice_answer($question, $resource_type)
 {
+    global $DB;
     $i = 0;
 
-    $radio = array();
+    $single = $DB->get_record('qtype_multichoice_options', array('questionid' => $question->id), '*')->single;
 
+    $answers = array();
     $answers_list = domoscio_get_answers($question->id, $resource_type);
 
     foreach($answers_list as $answer)
     {
-        $qinput = html_writer::tag('input', '', array('id' => 'q0:'.$question->id.'_answer', 'type' => 'radio', 'value' => $i, 'name' => 'q0:'.$question->id.'_answer'));
-        $qlabel = html_writer::tag('label', strip_tags($answer->answer), array('for' => 'q0:'.$question->id.'_answer'));
+        if($single == 1)
+        {
+            $input_type = "radio";
+            $qinput = html_writer::tag('input', '', array('id' => 'q0:'.$question->id.'_answer',
+                                                          'type' => $input_type,
+                                                          'value' => $i,
+                                                          'name' => 'q0:'.$question->id.'_answer'));
+            $qlabel = html_writer::tag('label', strip_tags($answer->answer), array('for' => 'q0:'.$question->id.'_answer'));
 
-        $radio[] = html_writer::tag('div', $qinput . $qlabel, array('class' => 'r0'));
+        }
+        elseif($single == 0)
+        {
+            $input_type = "checkbox";
+            $qinput = html_writer::tag('input', '', array('id' => 'q0:'.$question->id.'_choice'.$i,
+                                                          'type' => $input_type,
+                                                          'value' => $i,
+                                                          'name' => 'q0:'.$question->id.'_choice'.$i));
+            $qlabel = html_writer::tag('label', strip_tags($answer->answer), array('for' => 'q0:'.$question->id.'_choice'.$i));
+        }
+
+        $answers[] = html_writer::tag('div', $qinput . $qlabel, array('class' => 'r0'));
         $i++;
     }
-    $radio_fetched = implode("", $radio);
+    $answers_fetched = implode("", $answers);
 
-    $qablock = html_writer::tag('div', get_string('select_answer', 'domoscio'), array('class' => 'prompt')) . html_writer::tag('div', $radio_fetched, array('class' => 'answer'));
+    $qablock = html_writer::tag('div', get_string('select_answer', 'domoscio'), array('class' => 'prompt')) . html_writer::tag('div', $answers_fetched, array('class' => 'answer'));
     $output = html_writer::tag('div', '<p>'.$question->questiontext.'</p>', array('class' => 'qtext'));
     $output .= html_writer::tag('div', $qablock, array('class' => 'ablock'));
 
@@ -1190,7 +1209,7 @@ function domoscio_get_match($question, $resource_type)
 
 /*----------------- RESULTATS ----------------*/
 /* This function retrives only right answers */
-function domoscio_get_right_answers($qnum, $resource_type)
+function domoscio_get_right_answers($qnum, $resource_type, $single)
 {
     global $CFG, $DB;
 
@@ -1205,13 +1224,16 @@ function domoscio_get_right_answers($qnum, $resource_type)
     }
     else
     {
-        $sqlanswers = "SELECT *
-                         FROM {question_answers}
-                        WHERE `question` = $qnum
-                          AND `fraction` = 1";
+        if($single == 0)
+        {
+            $answers = $DB->get_records_select('question_answers', "question = $qnum AND fraction > 0");
+        }
+        else
+        {
+            $answers = $DB->get_record('question_answers', array('question' => $qnum, 'fraction' => 1), '*');
+        }
     }
 
-    $answers = $DB->get_record_sql($sqlanswers);
     return $answers;
 }
 
@@ -1249,51 +1271,103 @@ function domoscio_get_input_result($question, $post, $resource_type)
 /*  Displays correction for multi choice question */
 function domoscio_get_multi_choice_result($question, $post, $resource_type)
 {
+    global $DB;
     $result = new stdClass;
-    $i = 0;
+    $i = $j = 0;
 
-    $radio = array();
+    $single = $DB->get_record('qtype_multichoice_options', array('questionid' => $question->id), '*')->single;
 
     $answers_list = domoscio_get_answers($question->id, $resource_type);
+    $rightanswer = domoscio_get_right_answers($question->id, $resource_type, $single);
+    $length = count($rightanswer);
+    $correction_display = "";
 
-    $rightanswer = domoscio_get_right_answers($question->id, $resource_type);
+    if($length > 1)
+    {
+        foreach($rightanswer as $correction)
+        {
+            $correction_display .= strip_tags($correction->answer);
+            $j++;
+            if($length > $j)
+            {
+                $correction_display .= ", ";
+            }
+        }
+    }
+    else
+    {
+        $correction_display = $rightanswer->answer;
+    }
 
+    $answers = array();
+    $result->score = 0;
     foreach($answers_list as $answer)
     {
         $class = null;
 
-        if($i == $post['q0:'.$question->id.'_answer'])
+        if($single == 1)
         {
-            $checkradio = "checked";
-            if($answer->answer !== $rightanswer->answer)
+            if($i == $post['q0:'.$question->id.'_answer'])
             {
-                $class = "incorrect";
-                $result->score = 0;
+                $checkradio = "checked";
+                if($answer->answer !== $rightanswer->answer)
+                {
+                    $class = "incorrect";
+                }
+                else
+                {
+                    $class = "correct";
+                    $result->score = $answer->fraction;
+                }
             }
             else
             {
-                $class = "correct";
-                $result->score = 100;
+                $checkradio = null;
             }
+            $qinput = html_writer::tag('input', '', array('disabled' => 'disabled', 'id' => 'q0:'.$question->id.'_answer', 'type' => 'radio', 'value' => $i, 'name' => 'q0:'.$question->id.'_answer ', 'checked' => $checkradio));
+            $qlabel = html_writer::tag('label', strip_tags($answer->answer), array('for' => 'q0:'.$question->id.'_answer'));
+            $answers[] = html_writer::tag('div', $qinput . $qlabel, array('class' => 'r0 '.$class));
         }
         else
         {
-            $checkradio = null;
+            if(isset($post['q0:'.$question->id.'_choice'.$i]) && $i == $post['q0:'.$question->id.'_choice'.$i])
+            {
+                $check_checkbox = "checked";
+                if($answer->fraction > 0)
+                {
+                    $class = 'correct';
+                    $result->score += $answer->fraction;
+                }
+                else
+                {
+                    $class = "incorrect";
+                }
+            }
+            else
+            {
+                $check_checkbox = null;
+                if($answer->fraction > 0)
+                {
+                    $class = "incorrect";
+                }
+            }
+            $qinput = html_writer::tag('input', '', array('disabled' => 'disabled', 'id' => 'q0:'.$question->id.'_choice'.$i, 'type' => 'checkbox', 'value' => $i, 'name' => 'q0:'.$question->id.'_choice'.$i, 'checked' => $check_checkbox));
+            $qlabel = html_writer::tag('label', strip_tags($answer->answer), array('for' => 'q0:'.$question->id.'_choice'.$i));
+            $answers[] = html_writer::tag('div', $qinput . $qlabel, array('class' => 'r0 '.$class));
         }
-        $qinput = html_writer::tag('input', '', array('disabled' => 'disabled', 'id' => 'q0:'.$question->id.'_answer', 'type' => 'radio', 'value' => $i, 'name' => 'q0:'.$question->id.'_answer ', 'checked' => $checkradio));
-        $qlabel = html_writer::tag('label', strip_tags($answer->answer), array('for' => 'q0:'.$question->id.'_answer'));
-        $radio[] = html_writer::tag('div', $qinput . $qlabel, array('class' => 'r0 '.$class));
 
         $i++;
     }
-    $radio_fetched = implode("", $radio);
+    $answers_fetched = implode("", $answers);
 
-    $qablock = html_writer::tag('div', get_string('select_answer', 'domoscio'), array('class' => 'prompt')) . html_writer::tag('div', $radio_fetched, array('class' => 'answer'));
-    $divanswer = html_writer::tag('div', get_string('correction', 'domoscio').$rightanswer->answer, array('class' => 'rightanswer'));
+    $qablock = html_writer::tag('div', get_string('select_answer', 'domoscio'), array('class' => 'prompt')) . html_writer::tag('div', $answers_fetched, array('class' => 'answer'));
+    $divanswer = html_writer::tag('div', get_string('correction', 'domoscio').$correction_display, array('class' => 'rightanswer'));
 
     $output = html_writer::tag('div', '<p>'.$question->questiontext.'</p>', array('class' => 'qtext'));
     $output .= html_writer::tag('div', $qablock, array('class' => 'ablock'));
     $output .= html_writer::tag('div', $divanswer, array('class' => 'outcome'));
+
+    $result->score = $result->score * 100;
 
     $result->output = $output;
     return $result;

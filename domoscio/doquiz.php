@@ -114,12 +114,12 @@ if(!empty($lists))
             echo $OUTPUT->heading(get_string('test_session', 'domoscio'));
 
             // Retrieve selected question data
-            $question = $DB->get_record($table, array('id' => $selected->questionid), '*');
+            $question = $DB->get_record('question', array('id' => $selected->question_id), '*');
             $qinstance = "kn_q".$question->id;
 
             $content = html_writer::tag('input', '', array('type' => 'hidden', 'value' => $domoscio->id, 'name' => $qinstance))
-                      .domoscio_display_questions($question, $domoscio->resource_type);
-            $params = "kn=$kn&q=$selected";
+                      .domoscio_display_questions($question, $selected->type);
+            $params = "kn=$kn&q=$selected->question_id";
 
             $content .= html_writer::tag('input', '', array('type' => 'submit', 'value' => get_string('validate_btn', 'domoscio'), 'name' => 'next'));
             $output = html_writer::tag('form', $content, array('method' => 'POST', 'action' => $url_r.'?'.$params, 'id' => 'responseform'));
