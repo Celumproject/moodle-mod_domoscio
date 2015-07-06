@@ -70,10 +70,10 @@ $rest = new mod_domoscio_client();
 
 if($q)
 {
-    if($domoscio->resource_type == "scorm"){$table = "celltests";}else{$table = "question";}
+    $selected = $DB->get_record('knowledge_node_questions', array('question_id' => $q, 'knowledge_node' => $kn), '*');
 
     $question = $DB->get_record_sql("SELECT *
-                                       FROM {".$table."}
+                                       FROM {question}
                                       WHERE `id` = $q");
 
     $qtype = $question->qtype;
@@ -84,7 +84,7 @@ if($q)
     }
     elseif($qtype == "multichoice" || $qtype == "calculatedmulti" || $qtype == "truefalse")
     {
-        $result = domoscio_get_multi_choice_result($question, $_POST, $domoscio->resource_type);
+        $result = domoscio_get_multi_choice_result($question, $_POST, $selected->type);
     }
     elseif($qtype == "multianswer")
     {
