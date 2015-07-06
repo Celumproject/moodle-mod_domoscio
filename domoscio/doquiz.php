@@ -64,66 +64,83 @@ $PAGE->set_pagelayout('incourse');
 $url_r = "$CFG->wwwroot/mod/domoscio/results.php";
 // Récupère les identifiants des questions sélectionnées par le concepteur
 
-$lists = $DB->get_records('knowledge_node_questions', array('instance' => $domoscio->id, 'knowledge_node' => $kn), '', 'question_id');
+$lists = $DB->get_records('knowledge_node_questions', array('instance' => $domoscio->id, 'knowledge_node' => $kn), '', '*');
 
-if($domoscio->resource_type == "scorm")
+if(!empty($lists))
 {
-    if(!empty($lists))
+    $random = array_rand($lists, 1);
+    $selected = $DB->get_record('knowledge_node_questions', array('id' => $random), '*');
+
+    if($selected->type == "scorm")
     {
-        $selected = array_rand($lists, 1);
-
-        $scorm = $DB->get_record('scorm_scoes', array('id' => $selected), '*');
-
-        $domoscioid = $temp = $cm->id;
-        $a = $scorm->scorm;
-        $scoid = $selected;
-
-        include('player.php');
-
-        $content = "<input type='hidden' value=$scoid name=scoid></input><input type='hidden' value=$attempt name=attempt></input>";
-        $content .= html_writer::tag('input', '', array('type' => 'submit', 'value' => get_string('validate_btn', 'domoscio'), 'name' => 'next'));
-        $params = "id=$temp&scorm=".$a."&kn=$kn";
-
-        $output = html_writer::tag('form', $content, array('method' => 'POST', 'action' => $url_r.'?'.$params, 'id' => 'responseform'));
-        echo $output;
+        $scorm = $DB->get_record('scorm_scoes', array('id' => $selected->question_id), '*');
+        $cm_selected = $scorm->scorm;
+        $cap = 'mod/scorm:savetrack';
+        $module = 18;
     }
     else
     {
-        echo html_writer::tag('blockquote', get_string('tests_empty', 'domoscio'), array('class' => 'muted'));
+        $slot = $DB->get_record('quiz_slots', array('questionid' => $selected->question_id), '*');
+        $cm_selected = $slot->quizid;
+        $cap = 'mod/quiz:view';
+        $module = 16;
+    }
+
+    // Check student is allowed to see selected question
+    $cmid = $DB->get_record('course_modules', array('instance' => $cm_selected, 'module' => $module));
+    $cm_context = context_module::instance($cmid->id);
+
+    if(has_capability($cap, $cm_context))
+    {
+        if($selected->type == "scorm")
+        {
+            $domoscioid = $temp = $cm->id;
+            $a = $scorm->scorm;
+            $scoid = $selected->question_id;
+
+            include('player.php');
+
+            $content = "<input type='hidden' value=$scoid name=scoid></input><input type='hidden' value=$attempt name=attempt></input>";
+            $content .= html_writer::tag('input', '', array('type' => 'submit', 'value' => get_string('validate_btn', 'domoscio'), 'name' => 'next'));
+            $params = "id=$temp&scorm=".$a."&kn=$kn";
+
+            $output = html_writer::tag('form', $content, array('method' => 'POST', 'action' => $url_r.'?'.$params, 'id' => 'responseform'));
+            echo $output;
+        }
+        else
+        {
+            echo $OUTPUT->header();
+            $PAGE->set_title(get_string('test_session', 'domoscio'));
+            echo $OUTPUT->heading(get_string('test_session', 'domoscio'));
+
+            // Retrieve selected question data
+            $question = $DB->get_record($table, array('id' => $selected->questionid), '*');
+            $qinstance = "kn_q".$question->id;
+
+            $content = html_writer::tag('input', '', array('type' => 'hidden', 'value' => $domoscio->id, 'name' => $qinstance))
+                      .domoscio_display_questions($question, $domoscio->resource_type);
+            $params = "kn=$kn&q=$selected";
+
+            $content .= html_writer::tag('input', '', array('type' => 'submit', 'value' => get_string('validate_btn', 'domoscio'), 'name' => 'next'));
+            $output = html_writer::tag('form', $content, array('method' => 'POST', 'action' => $url_r.'?'.$params, 'id' => 'responseform'));
+            echo $output;
+        }
+    }
+    else
+    {
+        echo $OUTPUT->header();
+
+        echo $OUTPUT->heading(get_string('test_session', 'domoscio'));
+
+        echo get_string('nocapabilitytousethisservice', 'error');
     }
 }
 else
 {
-    echo $OUTPUT->header();
-    $PAGE->set_title(get_string('test_session', 'domoscio'));
-
-    echo $OUTPUT->heading(get_string('test_session', 'domoscio'));
-
-    if(!empty($lists))
-    {
-        $selected = array_rand($lists, 1);
-
-        // Récupère les informations relatives aux questions sélectionnées
-        if($domoscio->resource_type == "scorm"){$table = "celltests";}else{$table = "question";}
-        $question = $DB->get_record($table, array('id' => $selected), '*');
-        $qinstance = "kn_q".$question->id;
-
-        $content = html_writer::tag('input', '', array('type' => 'hidden', 'value' => $domoscio->id, 'name' => $qinstance))
-                  .domoscio_display_questions($question, $domoscio->resource_type);
-        $params = "kn=$kn&q=$selected";
-
-        $content .= html_writer::tag('input', '', array('type' => 'submit', 'value' => get_string('validate_btn', 'domoscio'), 'name' => 'next'));
-        $output = html_writer::tag('form', $content, array('method' => 'POST', 'action' => $url_r.'?'.$params, 'id' => 'responseform'));
-        echo $output;
-    }
-    else
-    {
-        echo html_writer::tag('blockquote', get_string('tests_empty', 'domoscio'), array('class' => 'muted'));
-    }
+    echo html_writer::tag('blockquote', get_string('tests_empty', 'domoscio'), array('class' => 'muted'));
 }
+
 echo html_writer::tag('button', get_string('end_btn', 'domoscio'), array('type' => 'button',
                                                                        'onclick'=>"javascript:location.href='$CFG->wwwroot/mod/domoscio/results.php?end=true'"));
-
-
 
 echo $OUTPUT->footer();
