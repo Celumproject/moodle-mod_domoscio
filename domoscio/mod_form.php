@@ -107,13 +107,13 @@ class mod_domoscio_mod_form extends moodleform_mod {
 
         foreach($modules as $module)
         {
-            $datas[$module->id] = $this->get_resource_info($module->module, $module->instance)->name;
+            $datas[$module->id] = $this->domoscio_get_resource_info($module->module, $module->instance)->name;
         }
 
         return $datas;
     }
 
-    function get_resource_info($module, $instance) {
+    function domoscio_get_resource_info($module, $instance) {
 
         global $DB, $CFG;
 

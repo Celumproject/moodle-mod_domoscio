@@ -32,7 +32,7 @@ require_once(dirname(dirname(dirname(__FILE__))).'/config.php');
 require_once(dirname(__FILE__).'/lib.php');
 require_once(dirname(__FILE__).'/classes/linkto_form.php');
 
-//$PAGE->requires->js('/mod/domoscio/jquery-1.11.3.min.js', true);
+$PAGE->requires->js('/mod/domoscio/jquery-1.11.3.min.js', true);
 //$PAGE->requires->js('/mod/domoscio/bootstrap-tab.js', true);
 
 $config = get_config('domoscio');
@@ -58,7 +58,7 @@ $PAGE->set_title($domoscio->name);
 $PAGE->set_heading($course->fullname." > ".$domoscio->name);
 $PAGE->set_pagelayout('incourse');
 
-$rest = new domoscio_client();
+$rest = new mod_domoscio_client();
 
 $resource = json_decode($rest->setUrl($config, 'knowledge_nodes', $domoscio->resource_id)->get());
 $notion = json_decode($rest->setUrl($config, 'knowledge_nodes', $kn)->get());
@@ -67,7 +67,7 @@ echo $OUTPUT->header();
 
 echo $OUTPUT->heading(get_string('choose_q', 'domoscio'));
 
-$linked_module = get_resource_info($resource->id);
+$linked_module = domoscio_get_resource_info($resource->id);
 
 
 /* ----- MOODLE QUIZ QUESTIONS -----*/
@@ -107,7 +107,7 @@ if (has_capability('moodle/course:create', $context)) {
     {
         $selected = explode('_', $exo);
 
-        $mform = new linkto_form("$CFG->wwwroot/mod/domoscio/linkto.php?id=$cm->id&notion=$kn&exo=$exo", array('kn_id' => $kn, 'module' => $selected[0], 'exo_id' => $selected[1]));
+        $mform = new mod_domoscio_linkto_form("$CFG->wwwroot/mod/domoscio/linkto.php?id=$cm->id&notion=$kn&exo=$exo", array('kn_id' => $kn, 'module' => $selected[0], 'exo_id' => $selected[1]));
 
         if ($mform->is_cancelled()) {
 

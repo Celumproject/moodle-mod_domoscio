@@ -30,9 +30,8 @@
 require_once(dirname(dirname(dirname(__FILE__))).'/config.php');
 require_once(dirname(__FILE__).'/lib.php');
 require_once(dirname(__FILE__).'/sdk/client.php');
-require_once(dirname(__FILE__).'/classes/select_notion_form.php');
 
-//$PAGE->requires->js('/mod/domoscio/jquery-1.11.3.min.js', true);
+$PAGE->requires->js('/mod/domoscio/jquery-1.11.3.min.js', true);
 $PAGE->requires->js('/mod/domoscio/bootstrap-collapse.js', true);
 $PAGE->requires->js('/mod/domoscio/Chart.min.js', true);
 
@@ -77,11 +76,11 @@ echo $OUTPUT->header();
 // Replace the following lines with you own code.
 echo $OUTPUT->heading($domoscio->name);
 
-$rest = new domoscio_client();
+$rest = new mod_domoscio_client();
 
 $resource = json_decode($rest->setUrl($config, 'knowledge_nodes', $domoscio->resource_id)->get());
 
-$linked_resource = get_resource_info($resource->id);
+$linked_resource = domoscio_get_resource_info($resource->id);
 
 // --- TEACHER VIEW ---
 
@@ -103,7 +102,7 @@ if (has_capability('moodle/course:create', $context)) {
     foreach($notions as $notion)
     {
         $render_q = '';
-        $rest = new domoscio_client();
+        $rest = new mod_domoscio_client();
 
         $title = json_decode($rest->setUrl($config, 'knowledge_nodes', $notion->knowledge_node_id)->get());
 
@@ -128,7 +127,7 @@ if (has_capability('moodle/course:create', $context)) {
         $accordion_collapse = html_writer::tag('div', $accordion_inner, array('class' => 'accordion-body collapse', 'id' => 'collapse-'.$notion->id));
         $togglers = html_writer::link('#collapse-'.$notion->id, html_writer::start_span('content').
                                                                 html_writer::tag('i', '', array('class' => 'icon-chevron-down')).
-                                                                " $title->name (".count($qids)." question".plural($qids).")".
+                                                                " $title->name (".count($qids)." question".domoscio_plural($qids).")".
                                                                 html_writer::end_span(), array(
                                                                                             'class' => 'accordion-toggle',
                                                                                             'data-toggle' => 'collapse',
@@ -156,7 +155,7 @@ elseif (is_enrolled($context)) {
     if(empty($check))
     {
         // If not, plugin calls API for creating new student profile
-        create_student();
+        domoscio_create_student();
 
         echo html_writer::tag('div', html_writer::tag('h5', get_string('welcome', 'domoscio').$USER->firstname, array('class' => 'content')), array('class' => 'block'));
         echo get_string('student_first_visit', 'domoscio')."<br/>";
@@ -165,9 +164,9 @@ elseif (is_enrolled($context)) {
     else
     {
         // If true, retrive student datas
-        $kn_student = manage_student($config, $domoscio, $check);
+        $kn_student = domoscio_manage_student($config, $domoscio, $check);
 
-        $count = count_tests($config);
+        $count = domoscio_count_tests($config);
         $url2=new moodle_url("$CFG->wwwroot/mod/domoscio/index.php");
 
         if(!empty($count))
@@ -179,7 +178,7 @@ elseif (is_enrolled($context)) {
             $indexurl = '';
         }
 
-        $todo_counter = html_writer::start_span('badge badge-important').html_writer::tag('h4', count($count)).html_writer::end_span().get_string('text2', 'domoscio').plural($count).get_string('text3', 'domoscio')." ";
+        $todo_counter = html_writer::start_span('badge badge-important').html_writer::tag('h4', count($count)).html_writer::end_span().get_string('text2', 'domoscio').domoscio_plural($count).get_string('text3', 'domoscio')." ";
 
         $introbox = html_writer::tag('div', $todo_counter.$indexurl, array('class' => 'content'))."<hr/>".
                     html_writer::tag('b', get_string('reviewed', 'domoscio'), array('class' => 'content')).

@@ -37,7 +37,7 @@ require_once("$CFG->libdir/formslib.php");
 * @copyright  2015 Domoscio
 * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
 */
-class select_notion_form extends moodleform {
+class mod_domoscio_select_notion_form extends moodleform {
 
     public function definition() {
         global $DB, $CFG;
