@@ -47,7 +47,7 @@ if ($id) {
     $domoscio  = $DB->get_record('domoscio', array('id' => $cm->instance), '*', MUST_EXIST);
 }
 
-
+$context = context_module::instance($cm->id);
 require_course_login($course);
 
 
@@ -72,87 +72,89 @@ $linked_module = get_resource_info($resource->id);
 
 /* ----- MOODLE QUIZ QUESTIONS -----*/
 
-if($exo == null)
-{
-    echo html_writer::tag('div', get_string('linkto_intro', 'domoscio').html_writer::tag('b', $linked_module->display." - ".$notion->name, array('class' => '')), array('class' => 'well'));
-    echo html_writer::link("$CFG->wwwroot/mod/domoscio/view.php?id=$cm->id", '<< '.get_string('back_btn', 'domoscio')."&nbsp");
+if (has_capability('moodle/course:create', $context)) {
 
-    $quizzes = $DB->get_records('quiz', array('course' => $course->id), '', 'id,name');
-    $scorms = $DB->get_records('scorm', array(), '', '*');
-
-    $list = '';
-
-    foreach($quizzes as $quiz)
+    if($exo == null)
     {
-        $icon = html_writer::tag('img', '', array('src'=>$OUTPUT->pix_url('icon','quiz','quiz',array('class'=>'icon')), 'class'=>'activityicon', 'alt'=>'disable'));
-        $url = html_writer::link("$CFG->wwwroot/mod/domoscio/linkto.php?id=$cm->id&notion=$kn&exo=quiz_$quiz->id", $icon." ".$quiz->name);
-        $list .= html_writer::tag('h5', $url, array('class' => 'well well-small'));
-    }
+        echo html_writer::tag('div', get_string('linkto_intro', 'domoscio').html_writer::tag('b', $linked_module->display." - ".$notion->name, array('class' => '')), array('class' => 'well'));
+        echo html_writer::link("$CFG->wwwroot/mod/domoscio/view.php?id=$cm->id", '<< '.get_string('back_btn', 'domoscio')."&nbsp");
 
-    foreach($scorms as $scorm)
-    {
-        $icon = html_writer::tag('img', '', array('src'=>$OUTPUT->pix_url('icon','scorm','scorm',array('class'=>'icon')), 'class'=>'activityicon', 'alt'=>'disable'));
-        $url = html_writer::link("$CFG->wwwroot/mod/domoscio/linkto.php?id=$cm->id&notion=$kn&exo=scorm_$scorm->id", $icon." ".$scorm->name);
-        $list .= html_writer::tag('h5', $url, array('class' => 'well well-small'));
-    }
-    $icon = html_writer::empty_tag('img', array('src'=>$OUTPUT->pix_url('i/edit'), 'alt'=>get_string('edit'), 'class'=>'smallicon'));
-    $url = html_writer::link("#", $icon." ".get_string('create_q', 'domoscio')." (Coming Soon)", array('disabled' => 'disabled'));
-    $list .= "<hr/>".html_writer::tag('h5', $url, array('class' => 'well well-small'));
+        $quizzes = $DB->get_records('quiz', array('course' => $course->id), '', 'id,name');
+        $scorms = $DB->get_records('scorm', array(), '', '*');
 
-    echo $list;
-}
-else
-{
-    $selected = explode('_', $exo);
+        $list = '';
 
-    $mform = new linkto_form("$CFG->wwwroot/mod/domoscio/linkto.php?id=$cm->id&notion=$kn&exo=$exo", array('kn_id' => $kn, 'module' => $selected[0], 'exo_id' => $selected[1]));
-
-    if ($mform->is_cancelled()) {
-
-      redirect("$CFG->wwwroot/mod/domoscio/linkto.php?id=$cm->id&notion=$kn");
-      exit;
-
-    } else if ($fromform = $mform->get_data()) {
-
-        foreach($fromform as $k => $value)
+        foreach($quizzes as $quiz)
         {
-            if(is_numeric($k))
-            {
-                $check = $DB->get_record_sql("SELECT *
-                                                FROM {knowledge_node_questions}
-                                               WHERE `question_id` = $k
-                                                 AND knowledge_node = $notion->id");
+            $icon = html_writer::tag('img', '', array('src'=>$OUTPUT->pix_url('icon','quiz','quiz',array('class'=>'icon')), 'class'=>'activityicon', 'alt'=>'disable'));
+            $url = html_writer::link("$CFG->wwwroot/mod/domoscio/linkto.php?id=$cm->id&notion=$kn&exo=quiz_$quiz->id", $icon." ".$quiz->name);
+            $list .= html_writer::tag('h5', $url, array('class' => 'well well-small'));
+        }
 
-                if($value == 1)
+        foreach($scorms as $scorm)
+        {
+            $icon = html_writer::tag('img', '', array('src'=>$OUTPUT->pix_url('icon','scorm','scorm',array('class'=>'icon')), 'class'=>'activityicon', 'alt'=>'disable'));
+            $url = html_writer::link("$CFG->wwwroot/mod/domoscio/linkto.php?id=$cm->id&notion=$kn&exo=scorm_$scorm->id", $icon." ".$scorm->name);
+            $list .= html_writer::tag('h5', $url, array('class' => 'well well-small'));
+        }
+        $icon = html_writer::empty_tag('img', array('src'=>$OUTPUT->pix_url('i/edit'), 'alt'=>get_string('edit'), 'class'=>'smallicon'));
+        $url = html_writer::link("#", $icon." ".get_string('create_q', 'domoscio')." (Coming Soon)", array('disabled' => 'disabled'));
+        $list .= "<hr/>".html_writer::tag('h5', $url, array('class' => 'well well-small'));
+
+        echo $list;
+    }
+    else
+    {
+        $selected = explode('_', $exo);
+
+        $mform = new linkto_form("$CFG->wwwroot/mod/domoscio/linkto.php?id=$cm->id&notion=$kn&exo=$exo", array('kn_id' => $kn, 'module' => $selected[0], 'exo_id' => $selected[1]));
+
+        if ($mform->is_cancelled()) {
+
+          redirect("$CFG->wwwroot/mod/domoscio/linkto.php?id=$cm->id&notion=$kn");
+          exit;
+
+        } else if ($fromform = $mform->get_data()) {
+
+            foreach($fromform as $k => $value)
+            {
+                if(is_numeric($k))
                 {
-                    if($check == null)
+                    $check = $DB->get_record_sql("SELECT *
+                                                    FROM {knowledge_node_questions}
+                                                   WHERE `question_id` = $k
+                                                     AND knowledge_node = $notion->id");
+
+                    if($value == 1)
                     {
-                        $entry = new stdClass;
-                        $entry->instance = $domoscio->id;
-                        $entry->knowledge_node = $kn;
-                        $entry->question_id = $k;
-                        $entry->type = $selected[0];
-                        $write = $DB->insert_record('knowledge_node_questions', $entry);
+                        if($check == null)
+                        {
+                            $entry = new stdClass;
+                            $entry->instance = $domoscio->id;
+                            $entry->knowledge_node = $kn;
+                            $entry->question_id = $k;
+                            $entry->type = $selected[0];
+                            $write = $DB->insert_record('knowledge_node_questions', $entry);
+                        }
                     }
-                }
-                elseif($value == 0)
-                {
-                    if(!empty($check))
+                    elseif($value == 0)
                     {
-                        $DB->delete_records('knowledge_node_questions', array('question_id' => $k, 'knowledge_node' => $notion->id));
+                        if(!empty($check))
+                        {
+                            $DB->delete_records('knowledge_node_questions', array('question_id' => $k, 'knowledge_node' => $notion->id));
+                        }
                     }
                 }
             }
+
+            echo get_string('upd_qlist', 'domoscio')."<hr/>";
+            echo html_writer::tag('button', get_string('next_btn', 'domoscio'), array('type' => 'button','onclick'=>"javascript:location.href='$CFG->wwwroot/mod/domoscio/view.php?id=$cm->id'"));
+
+        } else {
+            $mform->display();
         }
-
-        echo get_string('upd_qlist', 'domoscio')."<hr/>";
-        echo html_writer::tag('button', get_string('next_btn', 'domoscio'), array('type' => 'button','onclick'=>"javascript:location.href='$CFG->wwwroot/mod/domoscio/view.php?id=$cm->id'"));
-
-    } else {
-        $mform->display();
     }
 }
-
 
 
 /* ----- CELLTESTS QUESTIONS -----*/
