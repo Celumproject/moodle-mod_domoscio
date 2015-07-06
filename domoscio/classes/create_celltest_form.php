@@ -36,7 +36,7 @@ require_once("$CFG->libdir/formslib.php");
 * @copyright  2015 Your Name
 * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
 */
-class quiz_form extends moodleform {
+class mod_domoscio_create_celltest_form extends moodleform {
 
     public function definition() {
         global $CFG;

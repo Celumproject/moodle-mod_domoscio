@@ -28,9 +28,7 @@
 require_once(dirname(dirname(dirname(__FILE__))).'/config.php');
 require_once(dirname(__FILE__).'/lib.php');
 require_once(dirname(__FILE__).'/sdk/client.php');
-require_once(dirname(__FILE__).'/classes/select_notion_form.php');
 
-//$PAGE->requires->js('/mod/domoscio/jquery-1.11.3.min.js', true);
 $PAGE->requires->js('/mod/domoscio/bootstrap-collapse.js', true);
 $PAGE->requires->js('/mod/domoscio/Chart.min.js', true);
 
@@ -70,11 +68,11 @@ echo $OUTPUT->header();
 // Replace the following lines with you own code.
 echo $OUTPUT->heading($domoscio->name);
 
-$rest = new domoscio_client();
+$rest = new mod_domoscio_client();
 
 $resource = json_decode($rest->setUrl($config, 'knowledge_nodes', $domoscio->resource_id)->get());
 
-$linked_resource = get_resource_info($resource->id);
+$linked_resource = domoscio_get_resource_info($resource->id);
 
 echo html_writer::tag('div', '<h5 class="content">'.get_string('stats', 'domoscio').'</h5>', array('class' => 'block'));
 echo html_writer::link("$CFG->wwwroot/mod/domoscio/stats.php?id=$cm->id", '<< '.get_string('back_btn', 'domoscio')."<br/><br/>");
@@ -85,19 +83,19 @@ if (has_capability('moodle/course:create', $context)) {
 
     if($stat = 'students')
     {
-        $students = get_stats($kn)->enrolled;
+        $students = domoscio_get_stats($kn)->enrolled;
 
         $trows = "";
 
         foreach($students as $student)
         {
-            $student_info = get_student_by_kns($student->id);
+            $student_info = domoscio_get_student_by_kns($student->id);
             $attempts = count(str_split($student->history));
             $right_attempts = count(array_filter(str_split($student->history)));
             $wrong_attempts = $attempts - $right_attempts;
 
             $trows .= html_writer::tag('tr', html_writer::tag('td', $student_info->firstname." ".$student_info->lastname).
-                                             html_writer::tag('td', secondsToTime(strtotime($student->next_review_at) - time())).
+                                             html_writer::tag('td', domoscio_sec_to_time(strtotime($student->next_review_at) - time())).
                                              html_writer::tag('td', $right_attempts, array('class' => 'alert-success')).
                                              html_writer::tag('td', $wrong_attempts, array('class' => 'alert-danger'))
                                       );

@@ -97,7 +97,7 @@ if (empty($collapsetocwinsize)) {
 
 require_login($course, false, $cm);
 
-$strscorms = get_string('modulenameplural', 'scorm');
+$strscorms = get_string('modulenamedomoscio_plural', 'scorm');
 $strscorm  = get_string('modulename', 'scorm');
 $strpopup = get_string('popup', 'scorm');
 $strexit = get_string('exitactivity', 'scorm');

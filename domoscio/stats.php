@@ -29,9 +29,7 @@
 require_once(dirname(dirname(dirname(__FILE__))).'/config.php');
 require_once(dirname(__FILE__).'/lib.php');
 require_once(dirname(__FILE__).'/sdk/client.php');
-require_once(dirname(__FILE__).'/classes/select_notion_form.php');
 
-//$PAGE->requires->js('/mod/domoscio/jquery-1.11.3.min.js', true);
 $PAGE->requires->js('/mod/domoscio/bootstrap-collapse.js', true);
 $PAGE->requires->js('/mod/domoscio/Chart.min.js', true);
 
@@ -76,11 +74,11 @@ echo $OUTPUT->header();
 // Replace the following lines with you own code.
 echo $OUTPUT->heading($domoscio->name);
 
-$rest = new domoscio_client();
+$rest = new mod_domoscio_client();
 
 $resource = json_decode($rest->setUrl($config, 'knowledge_nodes', $domoscio->resource_id)->get());
 
-$linked_resource = get_resource_info($resource->id);
+$linked_resource = domoscio_get_resource_info($resource->id);
 
 // --- TEACHER VIEW ---
 
@@ -95,14 +93,14 @@ if (has_capability('moodle/course:create', $context)) {
 
     foreach($notions as $notion)
     {
-        $rest = new domoscio_client();
+        $rest = new mod_domoscio_client();
 
         $title = json_decode($rest->setUrl($config, 'knowledge_nodes', $notion->knowledge_node_id)->get());
 
-        $enrolled_stat = html_writer::tag('div', get_string('enrol_students', 'domoscio'), array('class' => 'content')).html_writer::tag('h2', get_stats($notion->knowledge_node_id)->count_students, array('class'=>'text-center'));
-        $global_success = html_writer::tag('div', get_string('avr_rate', 'domoscio'), array('class' => 'content')).html_writer::tag('h2', get_stats($notion->knowledge_node_id)->global_success."%", array('class'=>'text-center'));
-        $attempts = html_writer::tag('div', get_string('test_done', 'domoscio'), array('class' => 'content')).html_writer::tag('h2', get_stats($notion->knowledge_node_id)->attempts, array('class'=>'text-center'));
-        $todo = html_writer::tag('div', get_string('test_todo', 'domoscio'), array('class' => 'content')).html_writer::tag('h2', get_stats($notion->knowledge_node_id)->todo, array('class'=>'text-center'));
+        $enrolled_stat = html_writer::tag('div', get_string('enrol_students', 'domoscio'), array('class' => 'content')).html_writer::tag('h2', domoscio_get_stats($notion->knowledge_node_id)->count_students, array('class'=>'text-center'));
+        $global_success = html_writer::tag('div', get_string('avr_rate', 'domoscio'), array('class' => 'content')).html_writer::tag('h2', domoscio_get_stats($notion->knowledge_node_id)->global_success."%", array('class'=>'text-center'));
+        $attempts = html_writer::tag('div', get_string('test_done', 'domoscio'), array('class' => 'content')).html_writer::tag('h2', domoscio_get_stats($notion->knowledge_node_id)->attempts, array('class'=>'text-center'));
+        $todo = html_writer::tag('div', get_string('test_todo', 'domoscio'), array('class' => 'content')).html_writer::tag('h2', domoscio_get_stats($notion->knowledge_node_id)->todo, array('class'=>'text-center'));
 
         $blocks = html_writer::tag('div', $enrolled_stat.
                                           html_writer::link("$CFG->wwwroot/mod/domoscio/stats_adv.php?id=$cm->id&kn=$notion->knowledge_node_id&stat=students", get_string('stats_adv', 'domoscio'), array('class'=>'content text-center')),
