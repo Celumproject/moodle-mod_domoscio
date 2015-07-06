@@ -87,7 +87,7 @@ function domoscio_add_instance(stdClass $domoscio, mod_domoscio_mod_form $mform 
     // Si le cours n'est pas référencé en tant que knowledge_graph, en créé un nouveau sur l'api
     $check = $DB->get_records('knowledge_graphs', array('course_id' => $domoscio->course), '', 'knowledge_graph_id');
 
-    $rest = new domoscio_client();
+    $rest = new mod_domoscio_client();
 
     if(count($check) > 0) // Récupère le knowledge_graph_id existant
     {
@@ -113,7 +113,7 @@ function domoscio_add_instance(stdClass $domoscio, mod_domoscio_mod_form $mform 
     }
 
 
-    $rest = new domoscio_client();
+    $rest = new mod_domoscio_client();
 
     // Create new parent knowledge node for this new instance
 
@@ -134,7 +134,7 @@ function domoscio_add_instance(stdClass $domoscio, mod_domoscio_mod_form $mform 
 
     $domoscio->resource_id = $resource->id;
 
-    $linked_resource = get_resource_info($resource->id);
+    $linked_resource = domoscio_get_resource_info($resource->id);
     $domoscio->resource_type = $linked_resource->modulename;
 
     $domoscio->id = $DB->insert_record('domoscio', $domoscio);
@@ -143,7 +143,7 @@ function domoscio_add_instance(stdClass $domoscio, mod_domoscio_mod_form $mform 
     // Si la ressource à ancrer est un package SCORM, associe un nouveau knowledge node pour chaque SCO contenu dans le package
     if($linked_resource->modulename == "scorm")
     {
-        $scoes = get_scorm_scoes($resource->id);
+        $scoes = domoscio_get_scorm_scoes($resource->id);
 
         foreach($scoes as $sco)
         {
@@ -171,12 +171,12 @@ function domoscio_add_instance(stdClass $domoscio, mod_domoscio_mod_form $mform 
             $knowledge_node_sco = $DB->insert_record('knowledge_nodes', $knowledge_node_sco);
         }
 
-        //$import = write_scorm_content($domoscio->id, $linked_resource->cm);
+        //$import = domoscio_write_scorm_content($domoscio->id, $linked_resource->cm);
     }
 
     if($linked_resource->modulename == "book")
     {
-        $chapters = get_book_chapters($resource->id);
+        $chapters = domoscio_get_book_chapters($resource->id);
 
         foreach($chapters as $chapter)
         {
@@ -570,7 +570,7 @@ function is_user_with_role($courseid, $rolename, $userid = 0) {
     return $result;
 }
 
-function create_student() {
+function domoscio_create_student() {
     global $USER, $DB;
     $config = get_config('domoscio');
 
@@ -589,7 +589,7 @@ function create_student() {
                                               )
     ));
 
-    $rest = new domoscio_client();
+    $rest = new mod_domoscio_client();
 
     $student = json_decode($rest->setUrl($config, 'students', null)->post($json));
 
@@ -604,10 +604,10 @@ function create_student() {
     or create a new knowledge_node_students if student never reviewed the plugin
     or retrieves his knowledge_node_students if another Domoscio instance is linked to the same resource
 */
-function manage_student($config, $domoscio, $check) {
+function domoscio_manage_student($config, $domoscio, $check) {
     global $USER, $CFG, $DB;
 
-    $rest = new domoscio_client();
+    $rest = new mod_domoscio_client();
 
     // Retrive student data from API
     $student = json_decode($rest->setUrl($config, 'students', $check->uniq_id)->get());
@@ -652,7 +652,7 @@ function manage_student($config, $domoscio, $check) {
                                             WHERE {knowledge_node_students}.`knowledge_node_id` = $last_kn->knowledge_node_id");
                 if(empty($kn->child_id))
                 {
-                    $get_sco = get_scorm_scoes($last_kn->knowledge_node_id);
+                    $get_sco = domoscio_get_scorm_scoes($last_kn->knowledge_node_id);
 
                     foreach($get_sco as $sco)
                     {
@@ -666,7 +666,7 @@ function manage_student($config, $domoscio, $check) {
 
                 $scoredata = $DB->get_records_sql("SELECT *
                                                      FROM {scorm_scoes_track}
-                                                    WHERE `scormid` = ". get_resource_info($last_kn->knowledge_node_id)->instance ."
+                                                    WHERE `scormid` = ". domoscio_get_resource_info($last_kn->knowledge_node_id)->instance ."
                                                       AND `userid` = $USER->id
                                                       AND `scoid` = $scoid
                                                       AND `element` = 'cmi.score.scaled'
@@ -729,7 +729,7 @@ function manage_student($config, $domoscio, $check) {
 }
 
 /*  Retrives course modules data and retrun display and useful datas*/
-function get_resource_info($knowledge_node) {
+function domoscio_get_resource_info($knowledge_node) {
 
     global $DB, $CFG, $OUTPUT;
 
@@ -799,11 +799,11 @@ function get_resource_info($knowledge_node) {
 }
 
 /* Retrive all SCOes in SCORM package */
-function get_scorm_scoes($kn)
+function domoscio_get_scorm_scoes($kn)
 {
     global $DB, $CFG;
 
-    $instance = get_resource_info($kn)->instance;
+    $instance = domoscio_get_resource_info($kn)->instance;
 
     $scoes = $DB->get_records_sql("SELECT *
                                    FROM {scorm_scoes}
@@ -814,11 +814,11 @@ function get_scorm_scoes($kn)
 }
 
 /* Retrive all chapters in Moodle book module */
-function get_book_chapters($cm)
+function domoscio_get_book_chapters($cm)
 {
     global $DB, $CFG;
 
-    $instance = get_resource_info($cm)->instance;
+    $instance = domoscio_get_resource_info($cm)->instance;
 
     $chapters = $DB->get_records_sql("SELECT *
                                    FROM {book_chapters}
@@ -829,7 +829,7 @@ function get_book_chapters($cm)
 
 /* Recherche le fichier de structure contenu dans un package SCORM, retrouve les questions et les inscrits en DB
 $instance est l'instance du plugin domoscio, $cm est le module de cours rattaché au plugin Domoscio */
-function write_scorm_content($instance, $cm)
+function domoscio_write_scorm_content($instance, $cm)
 {
     global $DB, $CFG;
 
@@ -887,7 +887,7 @@ function write_scorm_content($instance, $cm)
 }
 
 /* This function counts all plugins where student is enrolled and due date has arrived */
-function count_tests($config)
+function domoscio_count_tests($config)
 {
     global $DB, $USER, $CFG;
 
@@ -931,7 +931,7 @@ function count_tests($config)
 
         foreach($kn_students as $kn_student)
         {
-            $rest = new domoscio_client();
+            $rest = new mod_domoscio_client();
             $result = json_decode($rest->setUrl($config, 'knowledge_node_students', $kn_student->kn_student_id)->get());
 
             if(strtotime($result->next_review_at) < time() && $result->next_review_at != null)
@@ -945,23 +945,23 @@ function count_tests($config)
 }
 
 /* This function displays tests interface */
-function display_questions($question, $resource_type)
+function domoscio_display_questions($question, $resource_type)
 {
     if($question->qtype == "calculated" || $question->qtype == "numerical" || $question->qtype == "shortanswer")
     {
-        $display = get_inputanswer($question, $resource_type);
+        $display = domoscio_get_input_answers($question, $resource_type);
     }
     elseif($question->qtype == "multichoice" || $question->qtype == "calculatedmulti" || $question->qtype == "truefalse")
     {
-        $display = get_multichoiceanswer($question, $resource_type);
+        $display = domoscio_get_multichoice_answer($question, $resource_type);
     }
     elseif($question->qtype == "multianswer")
     {
-        $display = get_multianswer($question, $resource_type);
+        $display = domoscio_get_multi_answer($question, $resource_type);
     }
     elseif($question->qtype == "match")
     {
-        $display = get_match($question, $resource_type);
+        $display = domoscio_get_match($question, $resource_type);
     }
 
     $qspan = html_writer::start_span('qno') . $question->id . html_writer::end_span();
@@ -977,7 +977,7 @@ function display_questions($question, $resource_type)
 }
 
 /* This function retrives all answers for the question in params */
-function get_answers($qnum, $resource_type)
+function domoscio_get_answers($qnum, $resource_type)
 {
     global $CFG, $DB;
 
@@ -1001,7 +1001,7 @@ function get_answers($qnum, $resource_type)
 }
 
 /* Displays text input for simple text questions */
-function get_inputanswer($question)
+function domoscio_get_input_answers($question)
 {
     $qlabel = html_writer::tag('label', get_string('answer', 'domoscio'), array('for' => 'q0:'.$question->id.'_answer'));
     $qspan = html_writer::start_span('answer') . html_writer::tag('input', '', array('id' => 'q0:'.$question->id.'_answer', 'type' => 'text', 'size' => '80', 'name' => 'q0:'.$question->id.'_answer')) . html_writer::end_span();
@@ -1013,13 +1013,13 @@ function get_inputanswer($question)
 }
 
 /* Displays multichoice questions interface */
-function get_multichoiceanswer($question, $resource_type)
+function domoscio_get_multichoice_answer($question, $resource_type)
 {
     $i = 0;
 
     $radio = array();
 
-    $answers_list = get_answers($question->id, $resource_type);
+    $answers_list = domoscio_get_answers($question->id, $resource_type);
 
     foreach($answers_list as $answer)
     {
@@ -1039,7 +1039,7 @@ function get_multichoiceanswer($question, $resource_type)
 }
 
 /* Displays multianswer test interface */
-function get_multianswer($question, $resource_type)
+function domoscio_get_multi_answer($question, $resource_type)
 {
     global $CFG, $DB;
 
@@ -1125,7 +1125,7 @@ function get_multianswer($question, $resource_type)
 }
 
 /* Displays match questions test interface */
-function get_match($question, $resource_type)
+function domoscio_get_match($question, $resource_type)
 {
     global $CFG, $DB;
 
@@ -1190,7 +1190,7 @@ function get_match($question, $resource_type)
 
 /*----------------- RESULTATS ----------------*/
 /* This function retrives only right answers */
-function get_right_answers($qnum, $resource_type)
+function domoscio_get_right_answers($qnum, $resource_type)
 {
     global $CFG, $DB;
 
@@ -1216,10 +1216,10 @@ function get_right_answers($qnum, $resource_type)
 }
 
 /*  Displays correction for simple text question */
-function get_inputresult($question, $post, $resource_type)
+function domoscio_get_input_result($question, $post, $resource_type)
 {
     $result = new stdClass;
-    $answer = get_right_answers($question->id, $resource_type);
+    $answer = domoscio_get_right_answers($question->id, $resource_type);
 
     if($post['q0:'.$question->id.'_answer'] != $answer->answer)
     {
@@ -1247,16 +1247,16 @@ function get_inputresult($question, $post, $resource_type)
 }
 
 /*  Displays correction for multi choice question */
-function get_multichoiceresult($question, $post, $resource_type)
+function domoscio_get_multi_choice_result($question, $post, $resource_type)
 {
     $result = new stdClass;
     $i = 0;
 
     $radio = array();
 
-    $answers_list = get_answers($question->id, $resource_type);
+    $answers_list = domoscio_get_answers($question->id, $resource_type);
 
-    $rightanswer = get_right_answers($question->id, $resource_type);
+    $rightanswer = domoscio_get_right_answers($question->id, $resource_type);
 
     foreach($answers_list as $answer)
     {
@@ -1300,7 +1300,7 @@ function get_multichoiceresult($question, $post, $resource_type)
 }
 
 /*  Displays correction for multi answer question */
-function get_multiresult($question, $post, $resource_type)
+function domoscio_get_multi_result($question, $post, $resource_type)
 {
     global $CFG, $DB;
     $result = new stdClass;
@@ -1393,7 +1393,7 @@ function get_multiresult($question, $post, $resource_type)
 }
 
 /*  Displays correction for match question */
-function get_matchresult($question, $post, $resource_type)
+function domoscio_get_match_result($question, $post, $resource_type)
 {
     global $CFG, $DB;
     $result = new stdClass;
@@ -1466,7 +1466,7 @@ function get_matchresult($question, $post, $resource_type)
 }
 
 /*  Add or update event in users Moodle calendar  */
-function create_event($domoscio, $course, $kn_student)
+function domoscio_create_event($domoscio, $course, $kn_student)
 {
     global $DB, $CGF, $USER;
 
@@ -1496,11 +1496,11 @@ function create_event($domoscio, $course, $kn_student)
     }
 }
 
-function get_stats($kn)
+function domoscio_get_stats($kn)
 {
     global $DB;
     $config = get_config('domoscio');
-    $rest = new domoscio_client();
+    $rest = new mod_domoscio_client();
     $stats = new stdClass();
 
     $kn_students = $DB->get_records('knowledge_node_students', array('knowledge_node_id' => $kn), '', '*');
@@ -1535,7 +1535,7 @@ function get_stats($kn)
     return $stats;
 }
 
-function get_student_by_kns($kns)
+function domoscio_get_student_by_kns($kns)
 {
     global $DB, $CFG;
     $config = get_config('domoscio');
@@ -1596,19 +1596,19 @@ function domoscio_scorm_check_mode($scorm, &$newattempt, &$attempt, $userid, &$m
     }
 }
 
-function plural($count)
+function domoscio_plural($count)
 {
     if(count($count) > 1)
     {
-        return $plural = "s";
+        return $domoscio_plural = "s";
     }
     else
     {
-        return $plural = "";
+        return $domoscio_plural = "";
     }
 }
 
-function secondsToTime($seconds) {
+function domoscio_sec_to_time($seconds) {
     $dtF = new DateTime("@0");
     $dtT = new DateTime("@$seconds");
     if($seconds <= (strtotime("tomorrow midnight")-strtotime("now")) && $seconds > 0)

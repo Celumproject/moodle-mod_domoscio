@@ -42,8 +42,8 @@ list($d, $m, $y, $h, $min) = array($date['mday'], $date['mon'], $date['year'], $
 
 echo $OUTPUT->header();
 
-$todo_tests = count_tests($config);
-$rest = new domoscio_client();
+$todo_tests = domoscio_count_tests($config);
+$rest = new mod_domoscio_client();
 
 echo $OUTPUT->heading(get_string('desk', 'domoscio'));
 
@@ -51,17 +51,17 @@ $check = $DB->get_record('userapi', array('user_id' => $USER->id), '*');
 $student = json_decode($rest->setUrl($config, 'students', $check->uniq_id)->get());
 
 $display_user = html_writer::tag('p', get_string('welcome', 'domoscio').$student->id);
-$notification = userdate(make_timestamp($y, $m, $d, $h, $min))."<br/>".html_writer::start_span('badge badge-important').html_writer::tag('h4', count($todo_tests)).html_writer::end_span().get_string('text2', 'domoscio').plural($todo_tests).get_string('text3', 'domoscio');
+$notification = userdate(make_timestamp($y, $m, $d, $h, $min))."<br/>".html_writer::start_span('badge badge-important').html_writer::tag('h4', count($todo_tests)).html_writer::end_span().get_string('text2', 'domoscio').domoscio_plural($todo_tests).get_string('text3', 'domoscio');
 echo html_writer::tag('div', html_writer::tag('h5', $display_user."<hr/>".$notification, array('class' => 'content')), array('class' => 'block'));
 
 if(!empty($todo_tests))
 {
   $_SESSION['todo'] = array();
   $trows = "";
-  $rest = new domoscio_client();
+  $rest = new mod_domoscio_client();
   foreach($todo_tests as $kn)
   {
-    $resource = get_resource_info($kn);
+    $resource = domoscio_get_resource_info($kn);
     $domoscio_id = $DB->get_record('knowledge_nodes', array('knowledge_node_id' => $kn), '*');
     $_SESSION['todo'][] = $kn;
 

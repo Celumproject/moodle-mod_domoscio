@@ -32,7 +32,7 @@ require_once(dirname(dirname(__FILE__)).'/lib.php');
 
 //$PAGE->requires->js('/mod/domoscio/bootstrap-collapse.js', true);
 
-class linkto_form extends moodleform {
+class mod_domoscio_linkto_form extends moodleform {
 
     public function definition() {
         global $DB, $CFG, $OUTPUT;

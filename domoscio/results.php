@@ -26,7 +26,7 @@
 
 require_once(dirname(dirname(dirname(__FILE__))).'/config.php');
 require_once(dirname(dirname(dirname(__FILE__))).'/calendar/lib.php');
-require_once(dirname(__FILE__).'/classes/quiz_form.php');
+require_once(dirname(__FILE__).'/classes/create_celltest_form.php');
 require_once(dirname(__FILE__).'/lib.php');
 
 $config = get_config('domoscio');
@@ -66,7 +66,7 @@ echo $OUTPUT->header();
 
 echo $OUTPUT->heading(get_string('results', 'domoscio'));
 
-$rest = new domoscio_client();
+$rest = new mod_domoscio_client();
 
 if($q)
 {
@@ -80,19 +80,19 @@ if($q)
 
     if($qtype == "calculated" || $qtype == "numerical" || $qtype == "shortanswer")
     {
-        $result = get_inputresult($question, $_POST, $domoscio->resource_type);
+        $result = domoscio_get_input_result($question, $_POST, $domoscio->resource_type);
     }
     elseif($qtype == "multichoice" || $qtype == "calculatedmulti" || $qtype == "truefalse")
     {
-        $result = get_multichoiceresult($question, $_POST, $domoscio->resource_type);
+        $result = domoscio_get_multi_choice_result($question, $_POST, $domoscio->resource_type);
     }
     elseif($qtype == "multianswer")
     {
-        $result = get_multiresult($question, $_POST, $domoscio->resource_type);
+        $result = domoscio_get_multi_result($question, $_POST, $domoscio->resource_type);
     }
     elseif($qtype == "match")
     {
-        $result = get_matchresult($question, $_POST, $domoscio->resource_type);
+        $result = domoscio_get_match_result($question, $_POST, $domoscio->resource_type);
     }
 
     $qspan = html_writer::start_span('qno') . $question->id . html_writer::end_span();
@@ -148,7 +148,7 @@ elseif($end = true)
         {
             $kns = $DB->get_record('knowledge_node_students', array('kn_student_id' => $rapport->knowledge_node_student_id), '*');
 
-            $resource = get_resource_info($kns->knowledge_node_id);
+            $resource = domoscio_get_resource_info($kns->knowledge_node_id);
 
             $kn_info = json_decode($rest->setUrl($config, 'knowledge_nodes', $kns->knowledge_node_id)->get());
 
@@ -200,7 +200,7 @@ if($q || $scorm)
     // Inscrit un rappel dans le calendrier
     $kn_student = json_decode($rest->setUrl($config, 'knowledge_node_students', $kn_student->kn_student_id)->get());
 
-    $new_event = create_event($domoscio, $course, $kn_student);
+    $new_event = domoscio_create_event($domoscio, $course, $kn_student);
 }
 
 

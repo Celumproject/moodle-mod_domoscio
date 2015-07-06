@@ -26,7 +26,7 @@
 
 require_once(dirname(dirname(dirname(__FILE__))).'/config.php');
 require_once(dirname(__FILE__).'/lib.php');
-require_once(dirname(__FILE__).'/classes/quiz_form.php');
+require_once(dirname(__FILE__).'/classes/create_celltest_form.php');
 
 $id = optional_param('id', 0, PARAM_INT);
 $q = optional_param('q', 0, PARAM_INT); // Course_module ID, or
@@ -63,7 +63,7 @@ if($delete == null && $update == null)
 {
     echo $OUTPUT->heading(get_string('create_q', 'domoscio'));
 
-    $mform = new quiz_form();
+    $mform = new mod_domoscio_create_celltest_form();
 
     $formdata = array('knowledge_cell_id' => $id);
 
@@ -93,7 +93,7 @@ elseif($update == true)
 
     $qUpdate = $DB->get_record('cell_tests', array('id' => $q));
 
-    $mform = new quiz_form();
+    $mform = new mod_domoscio_create_celltest_form();
 
     $formdata = array('id' => $q,
                     'knowledge_cell_id' => $id,

@@ -109,7 +109,7 @@ else
         $qinstance = "kn_q".$question->id;
 
         $content = html_writer::tag('input', '', array('type' => 'hidden', 'value' => $domoscio->id, 'name' => $qinstance))
-                  .display_questions($question, $domoscio->resource_type);
+                  .domoscio_display_questions($question, $domoscio->resource_type);
         $params = "kn=$kn&q=$selected";
 
         $content .= html_writer::tag('input', '', array('type' => 'submit', 'value' => get_string('validate_btn', 'domoscio'), 'name' => 'next'));

@@ -70,18 +70,18 @@ echo $OUTPUT->header();
 // Replace the following lines with you own code.
 echo $OUTPUT->heading(get_string('def_notions', 'domoscio'));
 
-$rest = new domoscio_client();
+$rest = new mod_domoscio_client();
 
 $resource = json_decode($rest->setUrl($config, 'knowledge_nodes', $domoscio->resource_id)->get());
 
-$linked_resource = get_resource_info($resource->id);
+$linked_resource = domoscio_get_resource_info($resource->id);
 
 if (has_capability('moodle/course:create', $context)) {
 
     echo html_writer::tag('div', html_writer::tag('b', get_string('notions_intro', 'domoscio'), array('class' => 'mod_introbox')), array('class' => 'block'));
     echo html_writer::link("$CFG->wwwroot/mod/domoscio/view.php?id=$cm->id", '<< '.get_string('back_btn', 'domoscio')."&nbsp");
 
-    $mform = new select_notion_form("$CFG->wwwroot/mod/domoscio/select_notions.php?id=$cm->id", array('instance' => $domoscio->id, 'parent' => $domoscio->resource_id));
+    $mform = new mod_domoscio_select_notion_form("$CFG->wwwroot/mod/domoscio/select_notions.php?id=$cm->id", array('instance' => $domoscio->id, 'parent' => $domoscio->resource_id));
 
     if ($mform->is_cancelled()) {
 

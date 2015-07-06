@@ -9,7 +9,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-class domoscio_client
+class mod_domoscio_client
 {
     private $_url;
     public function setUrl($config, $feature, $var)
@@ -83,21 +83,3 @@ class domoscio_client
         }
     }
 }
-
-/* EXEMPLES D'APPELS AUX FONCTIONS CI DESSUS
-
-$rest = new domoscio_client();
-
-//lecture d'un livre
-$livre = $rest->setUrl('http://bibliotheque/livre/1')->get();
-
-//ecriture d'un livre
-$rest->setUrl('http://bibliotheque/livre')->post($unLivre);
-
-//modification d'un livre
-$rest->setUrl('http://bibliotheque/livre/1')->put($unLivre);
-
-//supression d'un livre
-$rest->setUrl('http://bibliotheque/livre/1')->delete();
-
-*/
