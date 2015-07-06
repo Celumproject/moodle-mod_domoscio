@@ -109,7 +109,7 @@ if (has_capability('moodle/course:create', $context)) {
 
         foreach($qids as $qid)
         {
-            if($linked_resource->modulename == "scorm")
+            if($qid->type == "scorm")
             {
                 $sco = $DB->get_record('scorm_scoes', array('id' => $qid->question_id), '*');
 
