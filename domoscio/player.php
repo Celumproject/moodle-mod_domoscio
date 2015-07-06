@@ -15,12 +15,15 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 // This page prints a particular instance of aicc/scorm package.
-// This view was slightly modified for better working with Domoscio solution
+// This view was slightly modified from the original copy in mod/SCORM folder
+// for better working with Domoscio solution.
+// Each changes from origin are commented below
 
 require_once('../../config.php');
 require_once($CFG->dirroot.'/mod/scorm/locallib.php');
 require_once($CFG->libdir . '/completionlib.php');
 
+// Required and optional params modified here. Defined before in doquiz.php
 $id = optional_param('cm', '', PARAM_INT);                          // Course Module ID, or
 $mode = optional_param('mode', 'normal', PARAM_ALPHA);              // navigation mode
 $currentorg = optional_param('currentorg', '', PARAM_RAW);          // selected organization
@@ -97,7 +100,7 @@ if (empty($collapsetocwinsize)) {
 
 require_login($course, false, $cm);
 
-$strscorms = get_string('modulenamedomoscio_plural', 'scorm');
+$strscorms = get_string('modulenamedomoscio_plural', 'domoscio');
 $strscorm  = get_string('modulename', 'scorm');
 $strpopup = get_string('popup', 'scorm');
 $strexit = get_string('exitactivity', 'scorm');
