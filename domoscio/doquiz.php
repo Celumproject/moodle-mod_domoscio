@@ -61,6 +61,9 @@ $PAGE->navbar->add($strname);
 $PAGE->set_heading(get_string('pluginname', 'domoscio'));
 $PAGE->set_pagelayout('incourse');
 
+echo $OUTPUT->header();
+$PAGE->set_title(get_string('test_session', 'domoscio'));
+echo $OUTPUT->heading(get_string('test_session', 'domoscio'));
 $url_r = "$CFG->wwwroot/mod/domoscio/results.php";
 // Récupère les identifiants des questions sélectionnées par le concepteur
 
@@ -97,21 +100,22 @@ if(!empty($lists))
             $domoscioid = $temp = $cm->id;
             $a = $scorm->scorm;
             $scoid = $selected->question_id;
+            $content = "<input type='hidden' value=$scoid name=scoid></input>";
+            $sco_url = "$CFG->wwwroot/mod/scorm/player.php?a=$scorm->scorm&scoid=$selected->question_id&newattempt=on&display=popup";
 
-            include('player.php');
+            $scorm_frame = html_writer::tag('iframe', '', array('src' => $sco_url,
+                                                                'width' => 1000,
+                                                                'height' => 500,
+                                                                'style' => 'border:none'));
 
-            $content = "<input type='hidden' value=$scoid name=scoid></input><input type='hidden' value=$attempt name=attempt></input>";
             $content .= html_writer::tag('input', '', array('type' => 'submit', 'value' => get_string('validate_btn', 'domoscio'), 'name' => 'next'));
             $params = "id=$temp&scorm=".$a."&kn=$kn";
 
-            $output = html_writer::tag('form', $content, array('method' => 'POST', 'action' => $url_r.'?'.$params, 'id' => 'responseform'));
+            $output = $scorm_frame.html_writer::tag('form', $content, array('method' => 'POST', 'action' => $url_r.'?'.$params, 'id' => 'responseform'));
             echo $output;
         }
         else
         {
-            echo $OUTPUT->header();
-            $PAGE->set_title(get_string('test_session', 'domoscio'));
-            echo $OUTPUT->heading(get_string('test_session', 'domoscio'));
 
             // Retrieve selected question data
             $question = $DB->get_record('question', array('id' => $selected->question_id), '*');

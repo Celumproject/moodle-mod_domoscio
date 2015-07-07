@@ -25,6 +25,7 @@ $string['settings_apiurl_helptext'] = "Enter API URL provided by our customer su
 //TEST
 $string['modulename'] = 'Domoscio';
 $string['modulenameplural'] = 'Domoscios';
+$string['modulenamedomoscio_plural'] = 'Domoscios';
 $string['modulename_help'] = 'To learn is good, to know is better. <br/><br/>Link the plugin with any Moodle course module or SCORM package,
  add questions from your quiz module or create from scratch, or use your SCORM package activites. You can also fetch datas from your
   students to evaluate their progress.';
