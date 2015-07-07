@@ -1230,7 +1230,7 @@ function domoscio_get_right_answers($qnum, $resource_type, $single)
         }
         else
         {
-            $answers = $DB->get_record('question_answers', array('question' => $qnum, 'fraction' => 1), '*');
+            $answers = $DB->get_record_select('question_answers', "question = $qnum AND fraction = 1");
         }
     }
 
@@ -1241,17 +1241,19 @@ function domoscio_get_right_answers($qnum, $resource_type, $single)
 function domoscio_get_input_result($question, $post, $resource_type)
 {
     $result = new stdClass;
-    $answer = domoscio_get_right_answers($question->id, $resource_type);
-
-    if($post['q0:'.$question->id.'_answer'] != $answer->answer)
+    $right_answer = domoscio_get_right_answers($question->id, $resource_type, 0);
+    foreach($right_answer as $answer)
     {
-        $class = 'incorrect';
-        $result->score = 0;
-    }
-    else
-    {
-        $class = 'correct';
-        $result->score = 100;
+        if(strtolower($post['q0:'.$question->id.'_answer']) != strtolower($answer->answer))
+        {
+            $class = 'incorrect';
+            $result->score = 0;
+        }
+        else
+        {
+            $class = 'correct';
+            $result->score = 100;
+        }
     }
     $qlabel = html_writer::tag('label', get_string('answer', 'domoscio'), array('for' => 'q0:'.$question->id.'_answer'));
     $qspan = html_writer::start_span('answer')
@@ -1367,7 +1369,7 @@ function domoscio_get_multi_choice_result($question, $post, $resource_type)
     $output .= html_writer::tag('div', $qablock, array('class' => 'ablock'));
     $output .= html_writer::tag('div', $divanswer, array('class' => 'outcome'));
 
-    $result->score = $result->score * 100;
+    $result->score = round($result->score * 100);
 
     $result->output = $output;
     return $result;
