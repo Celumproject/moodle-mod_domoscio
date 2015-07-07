@@ -26,6 +26,7 @@ $string['settings_apiurl_helptext'] = "Entrez l'URL API fournie";
 //TEST
 $string['modulename'] = 'Domoscio';
 $string['modulenameplural'] = 'Domoscios';
+$string['modulenamedomoscio_plural'] = 'Domoscios';
 $string['modulename_help'] = "Consolidez vos savoirs à l'aide du plugin Domoscio for Moodle. <br/><br/>Associez le plugin à un module de cours,
  qu'ils soient issus du cours ou un paquet SCORM, ajoutez des questions issues des quiz de Moodle ou créez-en, ou bien encore des
  activités SCORM. Evaluez la compréhension de vos élèves à l'aide de statistiques.";

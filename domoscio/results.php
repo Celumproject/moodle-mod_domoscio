@@ -109,28 +109,37 @@ if($q)
 
 elseif($scorm)
 {
-    if(isset($_POST['scoid']))
-    {
-        $_SESSION['scoid'] = $_POST['scoid'];
-        $_SESSION['attempt'] = $_POST['attempt'];
-    }
+    $redirect = optional_param('redirect', true, PARAM_BOOL);
 
-    $score = $DB->get_record('scorm_scoes_track', array('scormid' => $scorm,
-                                                         'userid' => $USER->id,
-                                                          'scoid' => $_SESSION['scoid'],
-                                                        'attempt' => $_SESSION['attempt'],
-                                                        'element' => "cmi.score.scaled"));
-
-    if($score)
+    if($redirect == true)
     {
-        $result = new stdClass;
-        $result->score = $score->value * 100;
-        unset($_SESSION['scoid'], $_SESSION['attempt']);
+        if(isset($_POST['scoid']))
+        {
+            $_SESSION['scoid'] = $_POST['scoid'];
+        }
+        redirect("$CFG->wwwroot/mod/domoscio/results.php?id=$id&scorm=$scorm&kn=$kn&redirect=false");
+        exit;
     }
     else
     {
-        redirect("$CFG->wwwroot/mod/domoscio/results.php?id=$id&scorm=$scorm&kn=$kn");
-        exit;
+
+        $score = $DB->get_record_sql("SELECT *
+                                        FROM {scorm_scoes_track}
+                                       WHERE `userid` = $USER->id
+                                         AND `scormid` = $scorm
+                                         AND `scoid` = ".$_SESSION['scoid']."
+                                         AND `element` = 'cmi.score.scaled'
+                                         AND (`attempt` = (SELECT MAX(`attempt`)
+                                                             FROM {scorm_scoes_track}
+                                                            WHERE `userid` = $USER->id
+                                                              AND `scormid` = $scorm
+                                                              AND `scoid` = ".$_SESSION['scoid']."))");
+        if($score)
+        {
+            $result = new stdClass;
+            $result->score = $score->value * 100;
+            unset($_SESSION['scoid']);
+        }
     }
 }
 elseif($end = true)
