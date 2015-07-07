@@ -101,6 +101,7 @@ $string['home_btn'] = "Home";
 $string['back_btn'] = "Back";
 $string['end_btn'] = "Finish";
 $string['at'] = ', ';
+$string['gottatest'] = "You have a review to do on ";
 
 $string['proxy_login_required'] = 'You must be logged in to access this url. Please log in and retry.';
 $string['proxy_permission_required'] = 'You don\'t have the permission to access this url.';
