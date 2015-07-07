@@ -994,7 +994,7 @@ function domoscio_get_answers($qnum, $resource_type)
 {
     global $CFG, $DB;
 
-    if($resource_type == "scorm") // If question stored in cell test tables
+    if($resource_type == "generic") // If question stored in cell test tables
     {
         $sqlanswers = "SELECT {propositions}.`content` as `answer`
                          FROM {propositions}
@@ -1079,7 +1079,7 @@ function domoscio_get_multi_answer($question, $resource_type)
     $result = array();
     $i = 1;
 
-    if($resource_type == "scorm") // If data stored in cell test tables
+    if($resource_type == "generic") // If data stored in cell test tables
     {
         $answers = $DB->get_records_sql("SELECT {propositions}.`content` as `answer`, {propositions}.`proposition_list_id`, {proposition_lists}.`cell_question_type`
                                            FROM {propositions}
@@ -1120,7 +1120,7 @@ function domoscio_get_multi_answer($question, $resource_type)
 
     $replacements = array();
     $i = 1;
-    if($resource_type == "scorm"){$j = $j->proposition_list_id;}else{$j = $j->question;}
+    if($resource_type == "generic"){$j = $j->proposition_list_id;}else{$j = $j->question;}
 
     foreach($result as $key => $hole)
     {
@@ -1162,7 +1162,7 @@ function domoscio_get_match($question, $resource_type)
     global $CFG, $DB;
 
     $options = $lists = $subquestions = array();
-    if($resource_type == "scorm")
+    if($resource_type == "generic")
     {
         $proplists = $DB->get_records_sql("SELECT {propositions}.`id`, {propositions}.`content` as `answertext`, {propositions}.`proposition_list_id`
                                              FROM {propositions}
@@ -1226,7 +1226,7 @@ function domoscio_get_right_answers($qnum, $resource_type, $single)
 {
     global $CFG, $DB;
 
-    if($resource_type == "scorm")
+    if($resource_type == "generic")
     {
         $sqlanswers = "SELECT {propositions}.`content` as `answer`
                          FROM {propositions}
@@ -1397,7 +1397,7 @@ function domoscio_get_multi_result($question, $post, $resource_type)
     $response = array();
     $i = 1;
 
-    if($resource_type == "scorm")
+    if($resource_type == "generic")
     {
         $answers = $DB->get_records_sql("SELECT {propositions}.`content` as `answer`, {propositions}.`proposition_list_id`, {proposition_lists}.`cell_question_type`
                                            FROM {propositions}
@@ -1440,7 +1440,7 @@ function domoscio_get_multi_result($question, $post, $resource_type)
 
     $replacements = array();
     $i = 1;
-    if($resource_type == "scorm"){$j = $j->proposition_list_id;}else{$j = $j->question;}
+    if($resource_type == "generic"){$j = $j->proposition_list_id;}else{$j = $j->question;}
     $subresult = 0;
     foreach($response as $key => $answer)
     {
@@ -1487,7 +1487,7 @@ function domoscio_get_match_result($question, $post, $resource_type)
     global $CFG, $DB;
     $result = new stdClass;
     $options = $lists = $subquestions = $table = array();
-    if($resource_type == "scorm")
+    if($resource_type == "generic")
     {
         $proplists = $DB->get_records_sql("SELECT {propositions}.`id`, {propositions}.`content` as `answertext`, {propositions}.`proposition_list_id`
                                              FROM {propositions}
@@ -1560,8 +1560,8 @@ function domoscio_create_event($domoscio, $course, $kn_student)
     global $DB, $CGF, $USER;
 
     $event = new stdClass;
-    $event->name    = "Domoscio Rappel :".$domoscio->name;
-    $event->description = "Vous avez un rappel à faire sur la ressource ";
+    $event->name    = get_string('do_review_btn', 'domoscio')." ".$domoscio->name;
+    $event->description = get_string('gottatest', 'domoscio');
     $event->courseid    = $course->id;
     $event->groupid     = 0;
     $event->userid      = $USER->id;
@@ -1636,53 +1636,6 @@ function domoscio_get_student_by_kns($kns)
                                      WHERE {knowledge_node_students}.`kn_student_id` = $kns");
 
     return $student;
-}
-
-function domoscio_scorm_check_mode($scorm, &$newattempt, &$attempt, $userid, &$mode) {
-    global $DB;
-
-    if (($mode == 'browse')) {
-        if ($scorm->hidebrowse == 1) {
-            // Prevent Browse mode if hidebrowse is set.
-            $mode = 'normal';
-        } else {
-            // We don't need to check attempts as browse mode is set.
-            return;
-        }
-    }
-    // Check if the scorm module is incomplete (used to validate user request to start a new attempt).
-    $incomplete = true;
-    $tracks = $DB->get_recordset('scorm_scoes_track', array('scormid' => $scorm->id, 'userid' => $userid,
-        'attempt' => $attempt, 'element' => 'cmi.success_status'));
-    foreach ($tracks as $track) {
-        if (($track->value == 'completed') || ($track->value == 'passed') || ($track->value == 'failed')) {
-            $incomplete = false;
-        } else {
-            $incomplete = true;
-            break; // Found an incomplete sco, so the result as a whole is incomplete.
-        }
-    }
-    $tracks->close();
-
-    // Validate user request to start a new attempt.
-    if ($incomplete === true) {
-        // The option to start a new attempt should never have been presented. Force false.
-        $newattempt = 'off';
-    } else if (!empty($scorm->forcenewattempt)) {
-        // A new attempt should be forced for already completed attempts.
-        $newattempt = 'on';
-    }
-
-    if (($newattempt == 'on') && (($attempt < $scorm->maxattempt) || ($scorm->maxattempt == 0))) {
-        $attempt++;
-        $mode = 'normal';
-    } else { // Check if review mode should be set.
-        if ($incomplete === true) {
-            $mode = 'normal';
-        } else {
-            $mode = 'review';
-        }
-    }
 }
 
 function domoscio_plural($count)
