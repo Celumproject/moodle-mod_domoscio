@@ -182,7 +182,7 @@ elseif($end = true)
 
             echo html_writer::tag('div', html_writer::empty_tag('img', $attributes).
                                          html_writer::tag('span', $resource->display." - ".$kn_info->name, array('class' => 'mod_introbox')).
-                                         html_writer::tag('span', $state, array('class' => 'pull-right')), array('class' => 'que '.$class));
+                                         html_writer::tag('span', $rapport->value." ".$state, array('class' => 'pull-right')), array('class' => 'que '.$class));
 
         }
 
