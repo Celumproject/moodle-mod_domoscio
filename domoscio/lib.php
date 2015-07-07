@@ -643,79 +643,92 @@ function domoscio_manage_student($config, $domoscio, $check) {
 
         if($last_kn->history == "")
         {
-            if($domoscio->resource_type == "scorm")
+            // Retrive list of exercises (SCORM & Quiz) selected by course creator
+            $questions = $DB->get_records('knowledge_node_questions', array('instance' => $domoscio->id, 'knowledge_node' => $kn->knowledge_node_id), '', '*');
+            $list_questions = $list_scoes = array();
+            $i = 0;
+            foreach($questions as $question)
             {
-                $kn = $DB->get_records_sql("SELECT *
-                                             FROM {knowledge_nodes}
-                                       INNER JOIN {knowledge_node_students}
-                                               ON {knowledge_nodes}.`knowledge_node_id` = {knowledge_node_students}.`knowledge_node_id`
-                                            WHERE {knowledge_node_students}.`knowledge_node_id` = $last_kn->knowledge_node_id");
-                if(empty($kn->child_id))
+                if($question->type == "quiz")
                 {
-                    $get_sco = domoscio_get_scorm_scoes($last_kn->knowledge_node_id);
-
-                    foreach($get_sco as $sco)
-                    {
-                        $scoid = $sco->id;
-                    }
+                    $list_questions[$i] = $question->question_id;
                 }
-                else
+                elseif($question->type == "scorm")
                 {
-                    $scoid = $kn->child_id;
-                }
-
-                $scoredata = $DB->get_records_sql("SELECT *
-                                                     FROM {scorm_scoes_track}
-                                                    WHERE `scormid` = ". domoscio_get_resource_info($last_kn->knowledge_node_id)->instance ."
-                                                      AND `userid` = $USER->id
-                                                      AND `scoid` = $scoid
-                                                      AND `element` = 'cmi.score.scaled'
-                                                      AND `attempt` =
-                                                          (SELECT MAX(`attempt`)
-                                                           FROM {scorm_scoes_track}
-                                                           WHERE `userid` = $USER->id
-                                                           AND `scoid` = $scoid)");
-
-                if(!empty($scoredata))
-                {
-                   $score = (round(array_shift($scoredata)->value))*100;
+                    $list_scoes[$i] = $question->question_id;
                 }
             }
-            else
+            $list_questions = join(',', $list_questions);
+            $list_scoes = join(',', $list_scoes);
+            $score_scoes = $score_questions = "";
+
+            if(!empty($list_scoes))
             {
-                $questions = $DB->get_records('knowledge_node_questions', array('instance' => $domoscio->id, 'knowledge_node' => $kn->knowledge_node_id), '', 'question_id');
-                $list = array();
-                foreach($questions as $question)
+                // Retrive data for each SCOes selected
+                $scoredata = $DB->get_records_sql("SELECT AVG({scorm_scoes_track}.`value`) AS score
+                                                     FROM {scorm_scoes_track}
+                                                    WHERE `userid` = $USER->id
+                                                      AND `scormid` = ". domoscio_get_resource_info($last_kn->knowledge_node_id)->instance ."
+                                                      AND `scoid` IN ($list_scoes)
+                                                      AND `element` = 'cmi.score.scaled'
+                                                      AND (`attempt` = (SELECT MAX(`attempt`)
+                                                                          FROM {scorm_scoes_track}
+                                                                         WHERE `userid` = $USER->id
+                                                                           AND `scormid` = ". domoscio_get_resource_info($last_kn->knowledge_node_id)->instance ."
+                                                                           AND `scoid` IN ($list_scoes)))");
+                $scoredata = array_shift($scoredata);
+                if($scoredata->score != null)
                 {
-                    $list[] = $question->question_id;
+                   $score_scoes = (round($scoredata->score))*100;
                 }
+            }
 
-                $list = join(',', $list);
-
+            if(!empty($list_questions))
+            {
+                // Retrive data for each Quiz module questions selected
                 $scoredata = $DB->get_records_sql("SELECT AVG({question_attempt_steps}.`fraction`) AS score
                                                      FROM {question_attempt_steps}
                                                INNER JOIN {question_attempts}
                                                        ON {question_attempts}.`id` = {question_attempt_steps}.`questionattemptid`
                                                     WHERE {question_attempt_steps}.`userid` = $USER->id
                                                       AND {question_attempt_steps}.`sequencenumber` = 2
-                                                      AND {question_attempts}.`questionid` IN ($list)
+                                                      AND {question_attempts}.`questionid` IN ($list_questions)
                                                       AND {question_attempts}.`timemodified` =
                                                           (SELECT MAX(`timemodified`)
                                                            FROM {question_attempts})");
 
-                if($scoredata != null)
+                $scoredata = array_shift($scoredata);
+                if($scoredata->score != null)
                 {
-                    $score_exist = $scoredata;
-                    $score = (round(array_shift($scoredata)->score))*100;
+                    $score_questions = (round($scoredata->score))*100;
                 }
             }
 
-            if(isset($score_exist))
+            // If scores exist, send them to API and retrive next due date
+            if($score_questions !== "" && $score_scoes  !== "")
             {
-                $json = json_encode(array('knowledge_node_student_id' => intval($last_kn->id),
-                                                              'value' => intval($score)));
+                $score_avg = ($score_questions + $score_scoes)/2;
+                $scorejson = json_encode(array('knowledge_node_student_id' => intval($last_kn->id),
+                                                              'value' => intval($score_avg)));
+            }
+            elseif($score_questions !== "")
+            {
+                $scorejson = json_encode(array('knowledge_node_student_id' => intval($last_kn->id),
+                                                              'value' => intval($score_questions)));
+            }
+            elseif($score_scoes !== "")
+            {
+                $scorejson = json_encode(array('knowledge_node_student_id' => intval($last_kn->id),
+                                                              'value' => intval($score_scoes)));
+            }
+            else
+            {
+                $scorejson = "";
+            }
 
-                $sending = $rest->setUrl($config, 'results', null)->post($json);
+            if($scorejson !== "")
+            {
+                $sending = $rest->setUrl($config, 'results', null)->post($scorejson);
 
                 array_pop($kn_student);
 
