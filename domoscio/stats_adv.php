@@ -15,6 +15,8 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
+ * Advanced stats view
+ *
  * More datas and stats from each students such as their name, the number
  * of succeeded and failed tests...
  *
@@ -29,7 +31,7 @@ require_once(dirname(dirname(dirname(__FILE__))).'/config.php');
 require_once(dirname(__FILE__).'/lib.php');
 require_once(dirname(__FILE__).'/sdk/client.php');
 
-//$PAGE->requires->js('/mod/domoscio/jquery-1.11.3.min.js', true);
+// $PAGE->requires->js('/mod/domoscio/jquery-1.11.3.min.js', true);
 $PAGE->requires->js('/mod/domoscio/bootstrap-collapse.js', true);
 $PAGE->requires->js('/mod/domoscio/Chart.min.js', true);
 
@@ -54,26 +56,16 @@ if ($id) {
 $context = context_module::instance($cm->id);
 require_login($course, true, $cm);
 
-
-// Print the page header.
-
 $PAGE->set_url('/mod/domoscio/view.php', array('id' => $cm->id));
 $PAGE->set_title(format_string($domoscio->name));
 $PAGE->set_heading("Domoscio for Moodle");
 
-
-// Output starts here.
-
 echo $OUTPUT->header();
-
-// Replace the following lines with you own code.
 echo $OUTPUT->heading($domoscio->name);
 
 $rest = new mod_domoscio_client();
 
-$resource = json_decode($rest->setUrl($config, 'knowledge_nodes', $domoscio->resource_id)->get());
-
-$linked_resource = domoscio_get_resource_info($resource->id);
+$resource = json_decode($rest->seturl($config, 'knowledge_nodes', $domoscio->resource_id)->get());
 
 echo html_writer::tag('div', '<h5 class="content">'.get_string('stats', 'domoscio').'</h5>', array('class' => 'block'));
 echo html_writer::link("$CFG->wwwroot/mod/domoscio/stats.php?id=$cm->id", '<< '.get_string('back_btn', 'domoscio')."<br/><br/>");
@@ -82,23 +74,21 @@ echo html_writer::link("$CFG->wwwroot/mod/domoscio/stats.php?id=$cm->id", '<< '.
 
 if (has_capability('moodle/course:create', $context)) {
 
-    if($stat = 'students')
-    {
+    if ($stat = 'students') {
         $students = domoscio_get_stats($kn)->enrolled;
 
         $trows = "";
 
-        foreach($students as $student)
-        {
-            $student_info = domoscio_get_student_by_kns($student->id);
+        foreach ($students as $student) {
+            $studentinfo = domoscio_get_student_by_kns($student->id);
             $attempts = count(str_split($student->history));
-            $right_attempts = count(array_filter(str_split($student->history)));
-            $wrong_attempts = $attempts - $right_attempts;
+            $rightattempts = count(array_filter(str_split($student->history)));
+            $wrongattempts = $attempts - $rightattempts;
 
-            $trows .= html_writer::tag('tr', html_writer::tag('td', $student_info->firstname." ".$student_info->lastname).
+            $trows .= html_writer::tag('tr', html_writer::tag('td', $studentinfo->firstname." ".$studentinfo->lastname).
                                              html_writer::tag('td', domoscio_sec_to_time(strtotime($student->next_review_at) - time())).
-                                             html_writer::tag('td', $right_attempts, array('class' => 'alert-success')).
-                                             html_writer::tag('td', $wrong_attempts, array('class' => 'alert-danger'))
+                                             html_writer::tag('td', $rightattempts, array('class' => 'alert-success')).
+                                             html_writer::tag('td', $wrongattempts, array('class' => 'alert-danger'))
                                       );
         }
         $th = html_writer::tag('tr', html_writer::tag('th', get_string('student', 'domoscio')).
@@ -107,8 +97,6 @@ if (has_capability('moodle/course:create', $context)) {
                                      html_writer::tag('th', "<i class='icon-remove'></i>".get_string('test_failed', 'domoscio'), array('class' => 'alert-danger')));
         echo html_writer::tag('table', $th.$trows, array('class' => 'table table-striped table-bordered table-hover'));
     }
-
 }
 
-// Finish the page.
 echo $OUTPUT->footer();

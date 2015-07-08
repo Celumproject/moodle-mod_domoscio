@@ -32,7 +32,6 @@ $id = optional_param('id', 0, PARAM_INT);
 $q = optional_param('q', 0, PARAM_INT); // Course_module ID, or
 $update = optional_param('update', null, PARAM_BOOL);
 $delete = optional_param('delete', null, PARAM_BOOL);
-//$course = $DB->get_record('course', array('id' => $id), '*', MUST_EXIST);
 
 if ($id) {
     $cm         = get_coursemodule_from_id('domoscio', $id, 0, false, MUST_EXIST);
@@ -41,7 +40,6 @@ if ($id) {
 }
 
 require_course_login($course);
-
 
 $strname = get_string('modulename', 'mod_domoscio');
 $PAGE->set_url('/mod/domoscio/index.php', array('id' => $id));
@@ -56,11 +54,10 @@ if ($domoscio->intro) {
     echo $OUTPUT->box(format_module_intro('domoscio', $domoscio, $cm->id), 'generalbox mod_introbox', 'domosciointro');
 }
 
-// Formulaire d'inscription de questions
+// Creating questions form
 
-// Inscription nouvelle question
-if($delete == null && $update == null)
-{
+// Writing new question
+if ($delete == null && $update == null) {
     echo $OUTPUT->heading(get_string('create_q', 'domoscio'));
 
     $mform = new mod_domoscio_create_celltest_form();
@@ -80,27 +77,23 @@ if($delete == null && $update == null)
 
     } else {
 
-      $mform->set_data($formdata);
-      $mform->display();
+        $mform->set_data($formdata);
+        $mform->display();
     }
-}
-// Mise à jour question existante
-
-
-elseif($update == true)
-{
+} else if ($update == true) {
+    // Updating existing question
     echo $OUTPUT->heading(get_string('create_q', 'domoscio'));
 
-    $qUpdate = $DB->get_record('cell_tests', array('id' => $q));
+    $qupdate = $DB->get_record('cell_tests', array('id' => $q));
 
     $mform = new mod_domoscio_create_celltest_form();
 
     $formdata = array('id' => $q,
-                    'knowledge_cell_id' => $id,
-                    'title' => $qUpdate->title,
-                    'question' => $qUpdate->question,
-                    'nature' => $qUpdate->nature,
-                    'answer' => $qUpdate->answer);
+       'knowledge_cell_id' => $id,
+                   'title' => $qupdate->title,
+                'question' => $qupdate->question,
+                  'nature' => $qupdate->nature,
+                  'answer' => $qupdate->answer);
 
     if ($mform->is_cancelled()) {
 
@@ -115,16 +108,12 @@ elseif($update == true)
 
     } else {
 
-      $mform->set_data($formdata);
-      $mform->display();
+        $mform->set_data($formdata);
+        $mform->display();
     }
 
-}
-// Liste de questions
-
-
-elseif($delete == true)
-{
+} else if ($delete == true) {
+    // Question list
     $DB->delete_records('cell_tests', array('knowledge_cell_id' => $id, 'id' => $q));
     redirect("$CFG->wwwroot/mod/domoscio/quiz.php?id=".$id);
     exit;
@@ -132,22 +121,22 @@ elseif($delete == true)
 
 echo $OUTPUT->heading(get_string('create_q', 'domoscio'));
 
-$questions = $DB->get_records('cell_tests', array('knowledge_cell_id' => $id), '','*');
+$questions = $DB->get_records('cell_tests', array('knowledge_cell_id' => $id), '', '*');
 
 $datas = array();
 
-foreach($questions as $question)
-{
-    $delete_icon = "<form action='$CFG->wwwroot/mod/domoscio/quiz.php?id=".$id."&q=".$question->id."&delete=true' method='POST'><input type='submit' value='x'></input></form>";
-    $update_icon = "<form action='$CFG->wwwroot/mod/domoscio/quiz.php?id=".$id."&q=".$question->id."&update=true' method='POST'><input type='submit' value='Update'></input></form>";
+foreach ($questions as $question) {
+    $deleteicon = "<form action='$CFG->wwwroot/mod/domoscio/quiz.php?id=".$id."&q=".$question->id."&delete=true' method='POST'>
+                   <input type='submit' value='x'></input></form>";
+    $updateicon = "<form action='$CFG->wwwroot/mod/domoscio/quiz.php?id=".$id."&q=".$question->id."&update=true' method='POST'>
+                   <input type='submit' value='Update'></input></form>";
 
-    $datas[] = array($question->id, $question->title, $delete_icon, $update_icon);
+    $datas[] = array($question->id, $question->title, $deleteicon, $updateicon);
 }
 
 $table = new html_table();
 $table->head = array(get_string('num', 'domoscio'), get_string('notion_title', 'domoscio'), get_string('delete', 'domoscio'), get_string('edit', 'domoscio'));
 $table->data = $datas;
-
 
 echo html_writer::table($table);
 

@@ -61,63 +61,55 @@ $PAGE->set_url('/mod/domoscio/view.php', array('id' => $cm->id));
 $PAGE->set_title(format_string($domoscio->name));
 $PAGE->set_heading("Domoscio for Moodle");
 
-// Output starts here.
-
 echo $OUTPUT->header();
 
-// Replace the following lines with you own code.
 echo $OUTPUT->heading(get_string('add_notion_btn', 'domoscio'));
 
 $rest = new mod_domoscio_client();
 
-$resource = json_decode($rest->setUrl($config, 'knowledge_nodes', $domoscio->resource_id)->get());
+$resource = json_decode($rest->seturl($config, 'knowledge_nodes', $domoscio->resource_id)->get());
 
-$linked_resource = domoscio_get_resource_info($resource->id);
+$linkedresource = domoscio_get_resource_info($resource->id);
 
-echo html_writer::tag('div', html_writer::tag('b', get_string('new_notion_intro', 'domoscio'), array('class' => 'mod_introbox')), array('class' => 'block'));
+echo html_writer::tag('div', html_writer::tag('b', get_string('newnotion_intro', 'domoscio'), array('class' => 'mod_introbox')), array('class' => 'block'));
 
 if (has_capability('moodle/course:create', $context)) {
 
-  $mform = new mod_domoscio_create_notion_form("$CFG->wwwroot/mod/domoscio/create_notion.php?id=$cm->id");
+    $mform = new mod_domoscio_create_notion_form("$CFG->wwwroot/mod/domoscio/create_notion.php?id=$cm->id");
 
-  if ($mform->is_cancelled()) {
+    if ($mform->is_cancelled()) {
+        redirect("$CFG->wwwroot/mod/domoscio/select_notions.php?id=".$cm->id);
+        exit;
+    } else if ($fromform = $mform->get_data()) {
+        $kngraph  = $DB->get_record('knowledge_graphs', array('course_id' => $course->id), '*', MUST_EXIST);
+        $rest = new mod_domoscio_client();
 
-      redirect("$CFG->wwwroot/mod/domoscio/select_notions.php?id=".$cm->id);
-      exit;
-
-  } else if ($fromform = $mform->get_data()) {
-
-      $kngraph  = $DB->get_record('knowledge_graphs', array('course_id' => $course->id), '*', MUST_EXIST);
-      $rest = new mod_domoscio_client();
-
-      $json = json_encode(array('knowledge_graph_id' => strval($kngraph->knowledge_graph_id),
+        $json = json_encode(array('knowledge_graph_id' => strval($kngraph->knowledge_graph_id),
                                   'name' => strval($fromform->notion)));
 
-      $new_notion = json_decode($rest->setUrl($config, 'knowledge_nodes', null)->post($json));
+        $newnotion = json_decode($rest->seturl($config, 'knowledge_nodes', null)->post($json));
 
-      //print_r($new_notion);
+        // Add new entry into knowledge_nodes table
+        $record = new stdClass();
+        $record->knowledge_node_id = $newnotion->id;
+        $record->instance = $domoscio->id;
+        $record->resource_id = $linkedresource->cm;
+        $record->child_id = null;
 
-      // Add new entry into knowledge_nodes table
-      $record = new stdClass();
-      $record->knowledge_node_id = $new_notion->id;
-      $record->instance = $domoscio->id;
-      $record->resource_id = $linked_resource->cm;
-      $record->child_id = null;
+        $insert = $DB->insert_record('knowledge_nodes', $record);
 
-      $insert = $DB->insert_record('knowledge_nodes', $record);
-
-      // Ajoute les knowledge edges
-      $json = json_encode(array('knowledge_graph_id' => strval($kngraph->knowledge_graph_id),
+        // Store knowledge_edges
+        $json = json_encode(array('knowledge_graph_id' => strval($kngraph->knowledge_graph_id),
                                   'source_node_id' => strval($resource->id),
-                                  'destination_node_id' => strval($new_notion->id)));
+                                  'destination_node_id' => strval($newnotion->id)));
 
-      $knedge = json_decode($rest->setUrl($config, 'knowledge_edges', null)->post($json));
+        $knedge = json_decode($rest->seturl($config, 'knowledge_edges', null)->post($json));
 
-      echo get_string('notion_created', 'domoscio')."<hr/>".html_writer::link("$CFG->wwwroot/mod/domoscio/select_notions.php?id=$cm->id", '<< '.get_string('back_btn', 'domoscio')."&nbsp");
-
-  } else {
-    $mform->display();
-  }
+        echo get_string('notion_created', 'domoscio')."<hr/>".
+             html_writer::link("$CFG->wwwroot/mod/domoscio/select_notions.php?id=$cm->id", '<< '.get_string('back_btn', 'domoscio')."&nbsp");
+    } else {
+        $mform->display();
+    }
 }
 
 // Finish the page.
