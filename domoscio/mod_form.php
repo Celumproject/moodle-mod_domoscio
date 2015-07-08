@@ -1,4 +1,4 @@
-    <?php
+<?php
 // This file is part of Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
@@ -44,10 +44,9 @@ class mod_domoscio_mod_form extends moodleform_mod {
     public function definition() {
         global $DB;
 
-        if($this->_cm)
-        {
+        if ($this->_cm) {
             $domoscio = $DB->get_record('domoscio', array('id' => $this->_cm->instance), '*');
-            $module = $this->get_resource_bykn($domoscio->resource_id);
+            $module = $this->domoscio_get_resource_bykn($domoscio->resource_id);
         }
 
         $mform = $this->_form;
@@ -75,14 +74,13 @@ class mod_domoscio_mod_form extends moodleform_mod {
 
         $select = $mform->addElement('select', 'resource', get_string('resourceset_resource', 'domoscio'), $this->select_ressource(), NOGROUPS);
 
-        if($this->_cm)
-        {
+        if ($this->_cm) {
             $select->setSelected($module);
         }
         $mform->addHelpButton('resource', 'domoscioresourceset', 'domoscio');
 
         // Add standard grading elements.
-        //$this->standard_grading_coursemodule_elements();
+        // $this->standard_grading_coursemodule_elements();
 
         // Add standard elements, common to all modules.
         $this->standard_coursemodule_elements();
@@ -91,7 +89,12 @@ class mod_domoscio_mod_form extends moodleform_mod {
         $this->add_action_buttons();
     }
 
-    function select_ressource() {
+    /**
+     * Retrive all selectable course modules to link to the Domoscio plugin
+     *
+     * @return \array $datas all course modules
+     */
+    public function select_ressource() {
 
         global $COURSE, $CFG, $DB;
 
@@ -105,15 +108,21 @@ class mod_domoscio_mod_form extends moodleform_mod {
 
         $datas = array();
 
-        foreach($modules as $module)
-        {
+        foreach ($modules as $module) {
             $datas[$module->id] = $this->domoscio_get_resource_info($module->module, $module->instance)->name;
         }
 
         return $datas;
     }
 
-    function domoscio_get_resource_info($module, $instance) {
+    /**
+     * Retrives course modules data and retrun display and useful datas
+     *
+     * @param \stdClass $module the course module category in DB Moodle
+     * @param \int $instance the course module id
+     * @return \int $moduleinfo the course module data
+     */
+    public function domoscio_get_resource_info($module, $instance) {
 
         global $DB, $CFG;
 
@@ -142,7 +151,13 @@ class mod_domoscio_mod_form extends moodleform_mod {
         return $moduleinfo;
     }
 
-    function get_resource_bykn($knowledge_node) {
+    /**
+     * Retrives course modules by its knowledge_node once the module was linked to Domoscio for edit purpose
+     *
+     * @param \int $knowledgenode the knowledge node id
+     * @return \int $resource->id the course module id
+     */
+    public function domoscio_get_resource_bykn($knowledgenode) {
 
         global $DB, $CFG, $OUTPUT;
 
@@ -150,7 +165,7 @@ class mod_domoscio_mod_form extends moodleform_mod {
                     FROM {course_modules}
               INNER JOIN {knowledge_nodes}
                       ON {course_modules}.`id` = {knowledge_nodes}.`resource_id`
-                   WHERE {knowledge_nodes}.`knowledge_node_id` =".$knowledge_node;
+                   WHERE {knowledge_nodes}.`knowledge_node_id` = ".$knowledgenode;
 
         $resource = $DB->get_record_sql($query);
 

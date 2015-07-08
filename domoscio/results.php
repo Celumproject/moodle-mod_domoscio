@@ -39,8 +39,6 @@ $kn = optional_param('kn', 0, PARAM_INT);
 $scorm = optional_param('scorm', '', PARAM_INT);
 $end = optional_param('end', false, PARAM_INT);
 
-//$course = $DB->get_record('course', array('id' => $id), '*', MUST_EXIST);
-
 if ($id) {
     $cm         = $DB->get_record('course_modules', array('id' => $id), '*', MUST_EXIST);
     $course     = get_course($cm->course);
@@ -54,7 +52,6 @@ if ($id) {
     $id         = $cm->id;
 }
 
-
 $strname = get_string('modulename', 'mod_domoscio');
 $PAGE->set_url('/mod/domoscio/index.php', array('id' => $id));
 $PAGE->navbar->add($strname);
@@ -63,35 +60,27 @@ $PAGE->set_pagelayout('incourse');
 
 echo $OUTPUT->header();
 
-
 echo $OUTPUT->heading(get_string('results', 'domoscio'));
 
 $rest = new mod_domoscio_client();
 
-if($q)
-{
+if ($q) {
     $selected = $DB->get_record('knowledge_node_questions', array('question_id' => $q, 'knowledge_node' => $kn), '*');
 
     $question = $DB->get_record_sql("SELECT *
                                        FROM {question}
-                                      WHERE `id` = $q");
+                                      WHERE `id` = $q"
+                                   );
 
     $qtype = $question->qtype;
 
-    if($qtype == "calculated" || $qtype == "numerical" || $qtype == "shortanswer")
-    {
+    if ($qtype == "calculated" || $qtype == "numerical" || $qtype == "shortanswer") {
         $result = domoscio_get_input_result($question, $_POST, $domoscio->resource_type);
-    }
-    elseif($qtype == "multichoice" || $qtype == "calculatedmulti" || $qtype == "truefalse")
-    {
+    } else if ($qtype == "multichoice" || $qtype == "calculatedmulti" || $qtype == "truefalse") {
         $result = domoscio_get_multi_choice_result($question, $_POST, $selected->type);
-    }
-    elseif($qtype == "multianswer")
-    {
+    } else if ($qtype == "multianswer") {
         $result = domoscio_get_multi_result($question, $_POST, $domoscio->resource_type);
-    }
-    elseif($qtype == "match")
-    {
+    } else if ($qtype == "match") {
         $result = domoscio_get_match_result($question, $_POST, $domoscio->resource_type);
     }
 
@@ -105,24 +94,16 @@ if($q)
     $output = html_writer::tag('div', $output, array('class' => 'que '.$qtype.' deferredfeedback notyetanswered'));
 
     echo $output;
-}
-
-elseif($scorm)
-{
+} else if ($scorm) {
     $redirect = optional_param('redirect', true, PARAM_BOOL);
 
-    if($redirect == true)
-    {
-        if(isset($_POST['scoid']))
-        {
+    if ($redirect == true) {
+        if (isset($_POST['scoid'])) {
             $_SESSION['scoid'] = $_POST['scoid'];
         }
         redirect("$CFG->wwwroot/mod/domoscio/results.php?id=$id&scorm=$scorm&kn=$kn&redirect=false");
         exit;
-    }
-    else
-    {
-
+    } else {
         $score = $DB->get_record_sql("SELECT *
                                         FROM {scorm_scoes_track}
                                        WHERE `userid` = $USER->id
@@ -134,41 +115,37 @@ elseif($scorm)
                                                             WHERE `userid` = $USER->id
                                                               AND `scormid` = $scorm
                                                               AND `scoid` = ".$_SESSION['scoid']."))");
-        if($score)
-        {
+        if ($score) {
             $result = new stdClass;
             $result->score = $score->value * 100;
             unset($_SESSION['scoid']);
         }
     }
-}
-elseif($end = true)
-{
-    if(isset($_SESSION['start']))
-    {
+} else if ($end = true) {
+    if (isset($_SESSION['start'])) {
         $finish = time();
-        $running_time = $finish - $_SESSION['start'];
+        $runningtime = $finish - $_SESSION['start'];
 
-        echo html_writer::tag('div', html_writer::tag('h5', get_string('running_time', 'domoscio').date('i:s', $running_time), array('class' => 'mod_introbox')), array('class' => 'block'));
+        echo html_writer::tag('div',
+                              html_writer::tag('h5',
+                                               get_string('running_time', 'domoscio').date('i:s', $runningtime),
+                                               array('class' => 'mod_introbox')),
+                              array('class' => 'block'));
 
         unset($_SESSION['start']);
 
-        foreach($_SESSION['results'] as $rapport)
-        {
+        foreach ($_SESSION['results'] as $rapport) {
             $kns = $DB->get_record('knowledge_node_students', array('kn_student_id' => $rapport->knowledge_node_student_id), '*');
 
             $resource = domoscio_get_resource_info($kns->knowledge_node_id);
 
-            $kn_info = json_decode($rest->setUrl($config, 'knowledge_nodes', $kns->knowledge_node_id)->get());
+            $kninfo = json_decode($rest->seturl($config, 'knowledge_nodes', $kns->knowledge_node_id)->get());
 
-            if($rapport->value == 100)
-            {
+            if ($rapport->value == 100) {
                 $state = get_string('notion_ok', 'domoscio');
                 $class = "alert-success";
                 $feedbackclass = "correct";
-            }
-            else
-            {
+            } else {
                 $state = html_writer::link($resource->url, "<i class='icon-book'></i>".get_string('notion_rvw', 'domoscio'));
                 $class = "alert-danger";
                 $feedbackclass = "incorrect";
@@ -181,7 +158,7 @@ elseif($end = true)
             );
 
             echo html_writer::tag('div', html_writer::empty_tag('img', $attributes).
-                                         html_writer::tag('span', $resource->display." - ".$kn_info->name, array('class' => 'mod_introbox')).
+                                         html_writer::tag('span', $resource->display." - ".$kninfo->name, array('class' => 'mod_introbox')).
                                          html_writer::tag('span', $rapport->value." ".$state, array('class' => 'pull-right')), array('class' => 'que '.$class));
 
         }
@@ -191,37 +168,34 @@ elseif($end = true)
     }
 
     echo html_writer::tag('button', get_string('home_btn', 'domoscio'), array('type' => 'button',
-                                                                           'onclick'=>"javascript:location.href='$CFG->wwwroot/'"));
+                                                                           'onclick' => "javascript:location.href='$CFG->wwwroot/'"));
 }
 
-if($q || $scorm)
-{
-    //Génère le résultat en json à retourner à l'api
-    $kn_student = $DB->get_record('knowledge_node_students', array('user' => $USER->id,
+if ($q || $scorm) {
+    // Write json, send it and retrive result from API
+    $knstudent = $DB->get_record('knowledge_node_students', array('user' => $USER->id,
                                                       'knowledge_node_id' => $kn), '*');
-    $json = json_encode(array('knowledge_node_student_id' => intval($kn_student->kn_student_id),
+    $json = json_encode(array('knowledge_node_student_id' => intval($knstudent->kn_student_id),
                                                   'value' => intval($result->score)));
 
+    $_SESSION['results'][] = json_decode($rest->seturl($config, 'results', null)->post($json));
 
-    $_SESSION['results'][] = json_decode($rest->setUrl($config, 'results', null)->post($json));
+    // Put a new event in calendar
+    $knstudent = json_decode($rest->seturl($config, 'knowledge_node_students', $knstudent->kn_student_id)->get());
 
-
-    // Inscrit un rappel dans le calendrier
-    $kn_student = json_decode($rest->setUrl($config, 'knowledge_node_students', $kn_student->kn_student_id)->get());
-
-    $new_event = domoscio_create_event($domoscio, $course, $kn_student);
+    $newevent = domoscio_create_event($domoscio, $course, $knstudent);
 }
 
-
-if(!empty($_SESSION['todo']))
-{
-    echo html_writer::tag('button', get_string('next_btn', 'domoscio'), array('type' => 'button',
-                                                        'onclick'=>"javascript:location.href='$CFG->wwwroot/mod/domoscio/doquiz.php?kn=".array_shift($_SESSION['todo'])."'"));
-}
-else if(empty($_SESSION['todo']) && $end == false)
-{
-    echo html_writer::tag('button', get_string('end_btn', 'domoscio'), array('type' => 'button',
-                                                                           'onclick'=>"javascript:location.href='$CFG->wwwroot/mod/domoscio/results.php?end=true'"));
+if (!empty($_SESSION['todo'])) {
+    echo html_writer::tag('button',
+                          get_string('next_btn', 'domoscio'),
+                          array('type' => 'button',
+                              'onclick' => "javascript:location.href='$CFG->wwwroot/mod/domoscio/doquiz.php?kn=".array_shift($_SESSION['todo'])."'"));
+} else if (empty($_SESSION['todo']) && $end == false) {
+    echo html_writer::tag('button',
+                          get_string('end_btn', 'domoscio'),
+                          array('type' => 'button',
+                              'onclick' => "javascript:location.href='$CFG->wwwroot/mod/domoscio/results.php?end=true'"));
 }
 
 echo $OUTPUT->footer();

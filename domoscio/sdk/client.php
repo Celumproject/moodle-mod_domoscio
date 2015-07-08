@@ -1,6 +1,22 @@
 <?php
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
+ * Domoscio API SDK
+ *
  * The Domoscio API SDK, contains all needed functions to interact with
  * Domoscio REST API
  *
@@ -9,76 +25,134 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+
+ /**
+  * The client class which allow to interact with Domoscio API
+  *
+  * @package    mod_domoscio
+  * @copyright  2015 Domoscio
+  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+  */
 class mod_domoscio_client
 {
+    /**
+     * The Domoscio API url
+     *
+     * @var the url
+     */
     private $_url;
-    public function setUrl($config, $feature, $var)
-    {
+
+    /**
+     * Building the url to send to Domoscio API
+     *
+     * @param \stdClass $config
+     * @param \string $feature
+     * @param \int $var
+     * @return url
+     */
+    public function seturl($config, $feature, $var) {
         $this->_url = $config->domoscio_apiurl."/companies/".$config->domoscio_id."/".$feature."/".$var."?token=".$config->domoscio_apikey;
         return $this;
     }
 
-    public function get($params = array())
-    {
-        return $this->_launch($this->_makeUrl($params),
-                            $this->_createContext('GET'));
+    /**
+     * Defining method to get datas from API
+     *
+     * @param \array $params
+     * @return method launch
+     */
+    public function get($params = array()) {
+        return $this->_launch($this->_makeurl($params),
+                            $this->_createcontext('GET'));
     }
 
-    public function post($post_params=array(), $get_params = array())
-    {
-        return $this->_launch($this->_makeUrl($get_params),
-                            $this->_createContext('POST', $post_params));
+    /**
+     * Defining method to send datas to API
+     *
+     * @param \string $postparams the json sent
+     * @param \array $getparams the url
+     * @return method launch
+     */
+    public function post($postparams=array(), $getparams = array()) {
+        return $this->_launch($this->_makeurl($getparams),
+                            $this->_createcontext('POST', $postparams));
     }
 
-    public function put($pContent = null, $get_params = array())
-    {
-        return $this->_launch($this->_makeUrl($get_params),
-                            $this->_createContext('PUT', $pContent));
+    /**
+     * Defining method to edit datas on API
+     *
+     * @param \string $pcontent the json sent
+     * @param \array $getparams the url
+     * @return method launch
+     */
+    public function put($pcontent = null, $getparams = array()) {
+        return $this->_launch($this->_makeurl($getparams),
+                            $this->_createcontext('PUT', $pcontent));
     }
 
-    public function delete($pContent = null, $get_params = array())
-    {
-        return $this->_launch($this->_makeUrl($get_params),
-                            $this->_createContext('DELETE', $pContent));
+    /**
+     * Defining method to delete datas on API
+     *
+     * @param \string $pcontent the json sent
+     * @param \array $getparams the url
+     * @return method launch
+     */
+    public function delete($pcontent = null, $getparams = array()) {
+        return $this->_launch($this->_makeurl($getparams),
+                            $this->_createcontext('DELETE', $pcontent));
     }
 
-    protected function _createContext($pMethod, $pContent = null)
-    {
+    /**
+     * Defining context
+     *
+     * @param \string $pmethod
+     * @param \void $pcontent
+     * @return method
+     */
+    protected function _createcontext($pmethod, $pcontent = null) {
         $opts = array(
-              'http'=>array(
-                            'method'=>$pMethod,
-                            'header'=>'Content-type: application/json',
+              'http' => array(
+                            'method' => $pmethod,
+                            'header' => 'Content-type: application/json',
                           )
         );
-        if ($pContent !== null){
-            if (is_array($pContent)){
-                $pContent = http_build_query($pContent);
+        if ($pcontent !== null) {
+            if (is_array($pcontent)) {
+                $pcontent = http_build_query($pcontent);
             }
-            $opts['http']['content'] = $pContent;
+            $opts['http']['content'] = $pcontent;
         }
 
         return stream_context_create($opts);
     }
 
-    protected function _makeUrl($pParams)
-    {
+    /**
+     * Defining query to API
+     *
+     * @param \array $pparams
+     * @return method
+     */
+    protected function _makeurl($pparams) {
         return $this->_url
             .(strpos($this->_url, '?') ? '' : '?')
-            .http_build_query($pParams);
+            .http_build_query($pparams);
     }
 
-    protected function _launch ($pUrl, $context)
-    {
-        if (($stream = fopen($pUrl, 'r', false, $context)) !== false)
-        {
+    /**
+     * Sending request to API
+     *
+     * @param \string $purl
+     * @param \string $context
+     * @return \array $content
+     */
+    protected function _launch ($purl, $context) {
+        if (($stream = fopen($purl, 'r', false, $context)) !== false) {
             $content = stream_get_contents($stream);
             $header = stream_get_meta_data($stream);
             fclose($stream);
-            //return array('content'=>$content, 'header'=>$header);
+
             return $content;
-        }
-        else
-        {
+        } else {
             return false;
         }
     }
