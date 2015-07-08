@@ -1,20 +1,36 @@
 <?php
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-
+/**
+ * Domoscio plugin language strings FRENCH
+ *
+ * @package    mod_domoscio
+ * @copyright  2015 Domoscio
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
 $string['pluginname'] = 'Domoscio for Moodle';
-
-
 $string['domscio:addinstance'] = 'Ajouter un quiz';
 $string['domscio:view'] = 'View quiz information';
 $string['domscio:viewreports'] = 'View quiz reports';
 $string['domscio:attempt'] = 'Attempt adaptive quiz';
 $string['domscio:manage'] = 'Manage a lesson activity';
-$string['domscio:submit']= 'Submit to Domoscio API';
+$string['domscio:submit'] = 'Submit to Domoscio API';
 $string['domscio:view'] = 'View quiz information';
 
-
-
-// settings page
+// Settings page
 $string['settings_id'] = 'Identifiant Domoscio';
 $string['settings_id_helptext'] = 'Entrez votre identifiant API';
 $string['settings_apikey'] = 'Clé API Domoscio';
@@ -22,8 +38,7 @@ $string['settings_apikey_helptext'] = 'Entrez votre clé API. Une clé API resse
 $string['settings_apiurl'] = 'URL API Domoscio';
 $string['settings_apiurl_helptext'] = "Entrez l'URL API fournie";
 
-
-//TEST
+// TEST
 $string['modulename'] = 'Domoscio';
 $string['modulenameplural'] = 'Domoscios';
 $string['modulenamedomoscio_plural'] = 'Domoscios';
@@ -44,7 +59,7 @@ $string['welcome'] = 'Bienvenue, ';
 $string['notions_empty'] = "Vous n'avez pas défini de notions. Veuillez sélectionner une ou des notions pour associer des questions.";
 $string['notions_intro'] = "Choisir les notions à proposer pour l'ancrage : ";
 $string['add_notion_btn'] = "Ajouter une notion";
-$string['new_notion_intro'] = 'Créer une nouvelle notion';
+$string['newnotion_intro'] = 'Créer une nouvelle notion';
 $string['linkto_intro'] = "Sélectionnez, parmi les modules contenant des exercices, les questions qui seront liées à la notion : ";
 $string['questions_assigned'] = 'Ce plugin propose les questions suivantes : ';
 $string['resource_assigned'] = 'Le plugin est lié à la ressource suivante : ';
@@ -110,5 +125,3 @@ $string['proxy_curl_missing'] = 'The CURL lib is missing from your PHP server. T
 $string['proxy_action_missing'] = 'Action not set in request arguments.';
 $string['proxy_request_error'] = 'Error during request to MediaServer. Error:';
 $string['proxy_parsing_error'] = 'Response from MediaServer cannot be parsed.';
-
-?>

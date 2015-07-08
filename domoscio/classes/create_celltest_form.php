@@ -15,41 +15,44 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
-* The form to be displayed when creating new questions
-*
-* It uses the standard core Moodle formslib. For more info about them, please
-* visit: http://docs.moodle.org/en/Development:lib/formslib.php
-*
-* @package    mod_domoscio
-* @copyright  2015 Domoscio
-* @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
-*/
+ * The form to be displayed when creating new questions
+ *
+ * It uses the standard core Moodle formslib. For more info about them, please
+ * visit: http://docs.moodle.org/en/Development:lib/formslib.php
+ *
+ * @package    mod_domoscio
+ * @copyright  2015 Domoscio
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
 
 defined('MOODLE_INTERNAL') || die();
 
 require_once("$CFG->libdir/formslib.php");
-
 /**
-* Module instance settings form
-*
-* @package    mod_domoscio
-* @copyright  2015 Your Name
-* @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
-*/
+ * Create celltest form class
+ *
+ * @package    mod_domoscio
+ * @since      Moodle 2.8
+ * @copyright  2015 Domoscio
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
 class mod_domoscio_create_celltest_form extends moodleform {
-
+    /**
+     * The form
+     *
+     * @return void
+     */
     public function definition() {
         global $CFG;
 
-        $quiztypes = array("open"=>"Question ouverte","qcm"=>"QCM","hole"=>"Texte à trous","dragdrop"=>"Appairage","eval"=>"Barème");
+        $quiztypes = array("open" => "Question ouverte", "qcm" => "QCM", "hole" => "Texte à trous", "dragdrop" => "Appairage", "eval" => "Barème");
 
         $mform = $this->_form;
 
-    //    $editoroptions = $this->_customdata['editoroptions'];
         $mform->addElement('hidden', 'knowledge_cell_id');
         $mform->addElement('text', 'title', "Titre de la question");
         $mform->addElement('textarea', 'question', 'Question');
-    //    $mform->addElement('editor', 'question', 'Enoncé', null, $editoroptions);
+
         $mform->addElement('select', 'nature', 'Type de question', $quiztypes, $attributes);
         $mform->addElement('textarea', 'answer', 'Réponse');
 

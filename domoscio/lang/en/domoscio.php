@@ -1,8 +1,27 @@
 <?php
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-
+/**
+ * Domoscio plugin language strings ENGLISH
+ *
+ * @package    mod_domoscio
+ * @copyright  2015 Domoscio
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
 $string['pluginname'] = 'Domoscio for Moodle';
-
 
 $string['domscio:addinstance'] = 'Add a new quiz';
 $string['domscio:view'] = 'View quiz information';
@@ -12,8 +31,6 @@ $string['domscio:manage'] = 'Manage a lesson activity';
 $string['domscio:submit']= 'Submit to Domoscio API';
 $string['domscio:view'] = 'View quiz information';
 
-
-
 // settings page
 $string['settings_id'] = 'Domoscio Identifiant';
 $string['settings_id_helptext'] = 'Enter the Domoscio Identifiant user API.';
@@ -22,7 +39,7 @@ $string['settings_apikey_helptext'] = 'Enter the MediaServer API key. An API key
 $string['settings_apiurl'] = 'URL API Domoscio';
 $string['settings_apiurl_helptext'] = "Enter API URL provided by our customer support";
 
-//TEST
+// TEST
 $string['modulename'] = 'Domoscio';
 $string['modulenameplural'] = 'Domoscios';
 $string['modulenamedomoscio_plural'] = 'Domoscios';
@@ -47,7 +64,7 @@ $string['notions_empty'] = "You didn't select any notion. Add one or more notion
 $string['notions_intro'] = "Select which notion to link to the plugin : ";
 $string['add_notion_expl'] = "Create a new notion if you don't find the one you desired :";
 $string['add_notion_btn'] = "Add a notion";
-$string['new_notion_intro'] = 'Create new notion';
+$string['newnotion_intro'] = 'Create new notion';
 $string['questions_assigned'] = 'This plugin displays the following questions : ';
 $string['resource_assigned'] = 'This plugin is linked to the following module : ';
 $string['linkto_intro'] = "Select from the exercises modules below, the questions you want to add for this notion : ";

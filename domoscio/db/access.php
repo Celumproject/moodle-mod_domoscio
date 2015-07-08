@@ -17,10 +17,10 @@
 /**
  * Adaptive testing capabilities definition
  *
- * @package    mod
+ * @package    mod_domoscio
  * @subpackage adaptivequiz
  * @category   access
- * @copyright  2013 onwards Remote-Learner {@link http://www.remote-learner.ca/}
+ * @copyright  2015 Domoscio
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 

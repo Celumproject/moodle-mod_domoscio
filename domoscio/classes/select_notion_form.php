@@ -15,15 +15,15 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
-* The class defining the form displayed on the select notion view
-*
-* It uses the standard core Moodle formslib. For more info about them, please
-* visit: http://docs.moodle.org/en/Development:lib/formslib.php
-*
-* @package    mod_domoscio
-* @copyright  2015 Domoscio
-* @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
-*/
+ * The class defining the form displayed on the select notion view
+ *
+ * It uses the standard core Moodle formslib. For more info about them, please
+ * visit: http://docs.moodle.org/en/Development:lib/formslib.php
+ *
+ * @package    mod_domoscio
+ * @copyright  2015 Domoscio
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
 
 defined('MOODLE_INTERNAL') || die();
 
@@ -31,14 +31,18 @@ require_once("$CFG->libdir/formslib.php");
 
 
 /**
-* Module instance settings form
-*
-* @package    mod_domoscio
-* @copyright  2015 Domoscio
-* @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
-*/
+ * Select notion form
+ *
+ * @package    mod_domoscio
+ * @copyright  2015 Domoscio
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
 class mod_domoscio_select_notion_form extends moodleform {
-
+    /**
+     * The form
+     *
+     * @return void
+     */
     public function definition() {
         global $DB, $CFG;
 
@@ -47,40 +51,39 @@ class mod_domoscio_select_notion_form extends moodleform {
 
         $notions = $DB->get_records('knowledge_nodes', array('instance' => $this->_customdata['instance']), '', '*');
 
-        //fill the checkbox if already selected
-        $selected_notions = $DB->get_records_sql("SELECT *
+        // Fill the checkbox if already selected
+        $selectednotions = $DB->get_records_sql("SELECT *
                                                     FROM {knowledge_nodes}
                                                    WHERE `instance` = ".$this->_customdata['instance']."
                                                      AND `active` = '1'");
 
         $selected = array();
 
-        foreach($selected_notions as $selected_notion)
-        {
-            $selected[] = $selected_notion->id;
+        foreach ($selectednotions as $selectednotion) {
+            $selected[] = $selectednotion->id;
         }
 
         $mform = $this->_form;
 
-        foreach($notions as $notion)
-        {
-            $title = json_decode($this->setUrl("$config->domoscio_apiurl/companies/$config->domoscio_id/knowledge_nodes/$notion->knowledge_node_id?token=$config->domoscio_apikey")->get());
+        foreach ($notions as $notion) {
+            $title = json_decode($this->seturl($config, "knowledge_nodes", $notion->knowledge_node_id)->get());
 
-            if(in_array($notion->id, $selected)){$check = true;}else{$check = false;}
+            if (in_array($notion->id, $selected)) {
+                $check = true;
+            } else {
+                $check = false;
+            }
 
-            if(intval($notion->knowledge_node_id) == intval($this->_customdata['parent']))
-            {
+            if (intval($notion->knowledge_node_id) == intval($this->_customdata['parent'])) {
                 $mform->addElement('html', '<blockquote class="muted"><small>'.get_string('whole_expl', 'domoscio').'</small></blockquote>');
-                $notion_name = html_writer::tag('span', get_string('global_module', 'domoscio'), array('class' => 'alert alert-info'));
-                $parent_id = $notion->id;
-                $parent = $mform->addElement('advcheckbox', $notion->id, '', $notion_name, array('group' => 1, 'class' => 'parent_notion'), array(0, 1))->setChecked($check);
+                $notionname = html_writer::tag('span', get_string('global_module', 'domoscio'), array('class' => 'alert alert-info'));
+                $parentid = $notion->id;
+                $parent = $mform->addElement('advcheckbox', $notion->id, '', $notionname, array('group' => 1, 'class' => 'parent_notion'), array(0, 1))->setChecked($check);
 
                 $mform->addElement('html', '<blockquote class="muted"><small>'.get_string('each_expl', 'domoscio').'</small></blockquote>');
-            }
-            else
-            {
-                $notion_name = $title->name;
-                $mform->addElement('advcheckbox', $notion->id, '', $notion_name, array('group' => 1, 'class' => 'children_notions'), array(0, 1))->setChecked($check);
+            } else {
+                $notionname = $title->name;
+                $mform->addElement('advcheckbox', $notion->id, '', $notionname, array('group' => 1, 'class' => 'children_notions'), array(0, 1))->setChecked($check);
             }
 
         }
@@ -88,56 +91,88 @@ class mod_domoscio_select_notion_form extends moodleform {
         $this->add_action_buttons();
     }
 
+    /**
+     * The Domoscio API url
+     *
+     * @var the url
+     */
     private $_url;
-    public function setUrl($url)
-    {
-        $this->_url = $url;
+
+    /**
+     * Building the url to send to Domoscio API
+     *
+     * @param \stdClass $config
+     * @param \string $feature
+     * @param \int $var
+     * @return url
+     */
+    public function seturl($config, $feature, $var) {
+        $this->_url = $config->domoscio_apiurl."/companies/".$config->domoscio_id."/".$feature."/".$var."?token=".$config->domoscio_apikey;
         return $this;
     }
 
-    public function get($params = array())
-    {
-        return $this->_launch($this->_makeUrl($params),
-                            $this->_createContext('GET'));
+    /**
+     * Defining method to get datas from API
+     *
+     * @param \array $params
+     * @return method launch
+     */
+    public function get($params = array()) {
+        return $this->_launch($this->_makeurl($params),
+                            $this->_createcontext('GET'));
     }
 
-    protected function _createContext($pMethod, $pContent = null)
-    {
+    /**
+     * Defining context
+     *
+     * @param \string $pmethod
+     * @param \void $pcontent
+     * @return method
+     */
+    protected function _createcontext($pmethod, $pcontent = null) {
         $opts = array(
-              'http'=>array(
-                            'method'=>$pMethod,
-                            'header'=>'Content-type: application/json',
+              'http' => array(
+                            'method' => $pmethod,
+                            'header' => 'Content-type: application/json',
                           )
         );
-        if ($pContent !== null){
-            if (is_array($pContent)){
-                $pContent = http_build_query($pContent);
+        if ($pcontent !== null) {
+            if (is_array($pcontent)) {
+                $pcontent = http_build_query($pcontent);
             }
-            $opts['http']['content'] = $pContent;
+            $opts['http']['content'] = $pcontent;
         }
 
         return stream_context_create($opts);
     }
 
-    protected function _makeUrl($pParams)
-    {
+    /**
+     * Defining query to API
+     *
+     * @param \array $pparams
+     * @return method
+     */
+    protected function _makeurl($pparams) {
         return $this->_url
             .(strpos($this->_url, '?') ? '' : '?')
-            .http_build_query($pParams);
+            .http_build_query($pparams);
     }
 
-    protected function _launch ($pUrl, $context)
-    {
-        if (($stream = fopen($pUrl, 'r', false, $context)) !== false)
-        {
+    /**
+     * Sending request to API
+     *
+     * @param \string $purl
+     * @param \string $context
+     * @return \array $content
+     */
+    protected function _launch ($purl, $context) {
+        if (($stream = fopen($purl, 'r', false, $context)) !== false) {
             $content = stream_get_contents($stream);
             $header = stream_get_meta_data($stream);
             fclose($stream);
-            //return array('content'=>$content, 'header'=>$header);
+
             return $content;
-        }
-        else
-        {
+        } else {
             return false;
         }
     }
