@@ -943,29 +943,37 @@ function domoscio_get_multichoice_answer($question, $resourcetype) {
     global $DB;
     $i = 0;
 
-    $single = $DB->get_record('qtype_multichoice_options', array('questionid' => $question->id), '*')->single;
+    $single = $DB->get_record('qtype_multichoice_options', array('questionid' => $question->id), 'single');
 
     $answers = array();
     $answerslist = domoscio_get_answers($question->id, $resourcetype);
 
     foreach ($answerslist as $answer) {
-        if ($single == 1) {
+        if (isset($single->single)) {
+            if ($single->single == 1) {
+                $inputtype = "radio";
+                $qinput = html_writer::tag('input', '', array('id' => 'q0:'.$question->id.'_answer',
+                                                              'type' => $inputtype,
+                                                              'value' => $i,
+                                                              'name' => 'q0:'.$question->id.'_answer'));
+                $qlabel = html_writer::tag('label', strip_tags($answer->answer), array('for' => 'q0:'.$question->id.'_answer'));
+
+            } else if ($single->single == 0) {
+                $inputtype = "checkbox";
+                $qinput = html_writer::tag('input', '', array('id' => 'q0:'.$question->id.'_choice'.$i,
+                                                              'type' => $inputtype,
+                                                              'value' => $i,
+                                                              'name' => 'q0:'.$question->id.'_choice'.$i));
+                $qlabel = html_writer::tag('label', strip_tags($answer->answer), array('for' => 'q0:'.$question->id.'_choice'.$i));
+            }
+        } else {
             $inputtype = "radio";
             $qinput = html_writer::tag('input', '', array('id' => 'q0:'.$question->id.'_answer',
                                                           'type' => $inputtype,
                                                           'value' => $i,
                                                           'name' => 'q0:'.$question->id.'_answer'));
             $qlabel = html_writer::tag('label', strip_tags($answer->answer), array('for' => 'q0:'.$question->id.'_answer'));
-
-        } else if ($single == 0) {
-            $inputtype = "checkbox";
-            $qinput = html_writer::tag('input', '', array('id' => 'q0:'.$question->id.'_choice'.$i,
-                                                          'type' => $inputtype,
-                                                          'value' => $i,
-                                                          'name' => 'q0:'.$question->id.'_choice'.$i));
-            $qlabel = html_writer::tag('label', strip_tags($answer->answer), array('for' => 'q0:'.$question->id.'_choice'.$i));
         }
-
         $answers[] = html_writer::tag('div', $qinput . $qlabel, array('class' => 'r0'));
         $i++;
     }
@@ -1157,7 +1165,7 @@ function domoscio_get_right_answers($qnum, $resourcetype, $single) {
                         WHERE {proposition_lists}.`cell_question_id` = $qnum
                           AND {propositions}.`right` = 1";
     } else {
-        if ($single == 0) {
+        if (isset($single->single) && $single->single == 0) {
             $answers = $DB->get_records_select('question_answers', "question = $qnum AND fraction > 0");
         } else {
             $answers = $DB->get_record_select('question_answers', "question = $qnum AND fraction = 1");
@@ -1222,7 +1230,7 @@ function domoscio_get_multi_choice_result($question, $post, $resourcetype) {
     $result = new stdClass;
     $i = $j = 0;
 
-    $single = $DB->get_record('qtype_multichoice_options', array('questionid' => $question->id), '*')->single;
+    $single = $DB->get_record('qtype_multichoice_options', array('questionid' => $question->id), 'single');
 
     $answerslist = domoscio_get_answers($question->id, $resourcetype);
     $rightanswer = domoscio_get_right_answers($question->id, $resourcetype, $single);
@@ -1246,7 +1254,55 @@ function domoscio_get_multi_choice_result($question, $post, $resourcetype) {
     foreach ($answerslist as $answer) {
         $class = null;
 
-        if ($single == 1) {
+        if (isset($single->single)) {
+            if ($single->single == 1) {
+                if ($i == $post['q0:'.$question->id.'_answer']) {
+                    $checkradio = "checked";
+
+                    if ($answer->answer !== $rightanswer->answer) {
+                        $class = "incorrect";
+                    } else {
+                        $class = "correct";
+                        $result->score = $answer->fraction;
+                    }
+                } else {
+                    $checkradio = null;
+                }
+                $qinput = html_writer::tag('input', '', array('disabled' => 'disabled',
+                                                                    'id' => 'q0:'.$question->id.'_answer',
+                                                                  'type' => 'radio',
+                                                                 'value' => $i,
+                                                                  'name' => 'q0:'.$question->id.'_answer ',
+                                                               'checked' => $checkradio));
+                $qlabel = html_writer::tag('label', strip_tags($answer->answer), array('for' => 'q0:'.$question->id.'_answer'));
+                $answers[] = html_writer::tag('div', $qinput . $qlabel, array('class' => 'r0 '.$class));
+            } else {
+                if (isset($post['q0:'.$question->id.'_choice'.$i]) && $i == $post['q0:'.$question->id.'_choice'.$i]) {
+                    $checkcheckbox = "checked";
+
+                    if ($answer->fraction > 0) {
+                        $class = 'correct';
+                        $result->score += $answer->fraction;
+                    } else {
+                        $class = "incorrect";
+                    }
+                } else {
+
+                    $checkcheckbox = null;
+                    if ($answer->fraction > 0) {
+                        $class = "incorrect";
+                    }
+                }
+                $qinput = html_writer::tag('input', '', array('disabled' => 'disabled',
+                                                                    'id' => 'q0:'.$question->id.'_choice'.$i,
+                                                                  'type' => 'checkbox',
+                                                                 'value' => $i,
+                                                                  'name' => 'q0:'.$question->id.'_choice'.$i,
+                                                               'checked' => $checkcheckbox));
+                $qlabel = html_writer::tag('label', strip_tags($answer->answer), array('for' => 'q0:'.$question->id.'_choice'.$i));
+                $answers[] = html_writer::tag('div', $qinput . $qlabel, array('class' => 'r0 '.$class));
+            }
+        } else {
             if ($i == $post['q0:'.$question->id.'_answer']) {
                 $checkradio = "checked";
 
@@ -1266,31 +1322,6 @@ function domoscio_get_multi_choice_result($question, $post, $resourcetype) {
                                                               'name' => 'q0:'.$question->id.'_answer ',
                                                            'checked' => $checkradio));
             $qlabel = html_writer::tag('label', strip_tags($answer->answer), array('for' => 'q0:'.$question->id.'_answer'));
-            $answers[] = html_writer::tag('div', $qinput . $qlabel, array('class' => 'r0 '.$class));
-        } else {
-            if (isset($post['q0:'.$question->id.'_choice'.$i]) && $i == $post['q0:'.$question->id.'_choice'.$i]) {
-                $checkcheckbox = "checked";
-
-                if ($answer->fraction > 0) {
-                    $class = 'correct';
-                    $result->score += $answer->fraction;
-                } else {
-                    $class = "incorrect";
-                }
-            } else {
-
-                $checkcheckbox = null;
-                if ($answer->fraction > 0) {
-                    $class = "incorrect";
-                }
-            }
-            $qinput = html_writer::tag('input', '', array('disabled' => 'disabled',
-                                                                'id' => 'q0:'.$question->id.'_choice'.$i,
-                                                              'type' => 'checkbox',
-                                                             'value' => $i,
-                                                              'name' => 'q0:'.$question->id.'_choice'.$i,
-                                                           'checked' => $checkcheckbox));
-            $qlabel = html_writer::tag('label', strip_tags($answer->answer), array('for' => 'q0:'.$question->id.'_choice'.$i));
             $answers[] = html_writer::tag('div', $qinput . $qlabel, array('class' => 'r0 '.$class));
         }
 
@@ -1512,7 +1543,7 @@ function domoscio_create_event($domoscio, $course, $knstudent) {
     $event = new stdClass;
     $event->name    = get_string('do_review_btn', 'domoscio')." ".$domoscio->name;
     $event->description = get_string('gottatest', 'domoscio');
-    $event->courseid    = $course->id;
+    $event->courseid    = 0;
     $event->groupid     = 0;
     $event->userid      = $USER->id;
     $event->modulename  = 'domoscio';
