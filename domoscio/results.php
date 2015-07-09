@@ -146,7 +146,7 @@ if ($q) {
                 $class = "alert-success";
                 $feedbackclass = "correct";
             } else {
-                $state = html_writer::link($resource->url, "<i class='icon-book'></i>".get_string('notion_rvw', 'domoscio'));
+                $state = html_writer::link($resource->url, "<i class='icon-book'></i>".get_string('notion_rvw', 'domoscio'), array('target' => '_blank'));
                 $class = "alert-danger";
                 $feedbackclass = "incorrect";
             }
