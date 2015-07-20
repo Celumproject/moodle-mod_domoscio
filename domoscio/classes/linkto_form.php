@@ -51,8 +51,11 @@ class mod_domoscio_linkto_form extends moodleform {
         // Retrive already selected questions
         $selectedquestions = $DB->get_records_sql("SELECT *
                                                      FROM {knowledge_node_questions}
-                                                    WHERE `knowledge_node`=".$this->_customdata['kn_id']."
-                                                      AND `type` = '".$this->_customdata['module']."'");
+                                                    WHERE `knowledge_node`= :knid
+                                                      AND `type` = :type",
+                                                  array('knid' => $this->_customdata['kn_id'],
+                                                        'type' => $this->_customdata['module'])
+                                                 );
 
         $selected = array();
 
@@ -69,9 +72,9 @@ class mod_domoscio_linkto_form extends moodleform {
                                FROM {question}
                          INNER JOIN {quiz_slots}
                                  ON {question}.`id` = {quiz_slots}.`questionid`
-                              WHERE {quiz_slots}.`quizid` = ".$quiz->id;
+                              WHERE {quiz_slots}.`quizid` = :quizid";
 
-            $questions = $DB->get_records_sql($sqlquestions);
+            $questions = $DB->get_records_sql($sqlquestions, array('quizid' => $quiz->id));
 
             $mform->addElement('html', "<h5 class='well well-small accordion-toggle' data-toggle='collapse' data-parent='#accordion'><a href='#collapse-".
                                         $quiz->id."'>".

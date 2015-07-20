@@ -107,7 +107,11 @@ if (has_capability('moodle/course:create', $context)) {
 
         $title = json_decode($rest->seturl($config, 'knowledge_nodes', $notion->knowledge_node_id)->get());
 
-        $qids = $DB->get_records_sql("SELECT * FROM {knowledge_node_questions} WHERE `knowledge_node`= $notion->knowledge_node_id");
+        $qids = $DB->get_records_sql("SELECT *
+                                        FROM {knowledge_node_questions}
+                                       WHERE `knowledge_node`= :knid",
+                                     array('knid' => $notion->knowledge_node_id)
+                                    );
 
         foreach ($qids as $qid) {
             if ($qid->type == "scorm") {
