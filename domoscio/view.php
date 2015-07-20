@@ -31,7 +31,6 @@ require_once(dirname(dirname(dirname(__FILE__))).'/config.php');
 require_once(dirname(__FILE__).'/lib.php');
 require_once(dirname(__FILE__).'/sdk/client.php');
 
-$PAGE->requires->js('/mod/domoscio/jquery-1.11.3.min.js', true);
 $PAGE->requires->js('/mod/domoscio/bootstrap-collapse.js', true);
 $PAGE->requires->js('/mod/domoscio/Chart.min.js', true);
 
@@ -107,7 +106,11 @@ if (has_capability('moodle/course:create', $context)) {
 
         $title = json_decode($rest->seturl($config, 'knowledge_nodes', $notion->knowledge_node_id)->get());
 
-        $qids = $DB->get_records_sql("SELECT * FROM {knowledge_node_questions} WHERE `knowledge_node`= $notion->knowledge_node_id");
+        $qids = $DB->get_records_sql("SELECT *
+                                        FROM {knowledge_node_questions}
+                                       WHERE `knowledge_node`= :knid",
+                                     array('knid' => $notion->knowledge_node_id)
+                                    );
 
         foreach ($qids as $qid) {
             if ($qid->type == "scorm") {

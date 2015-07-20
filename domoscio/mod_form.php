@@ -103,9 +103,9 @@ class mod_domoscio_mod_form extends moodleform_mod {
                     FROM {course_modules}
                    WHERE `module`
                       IN (3,13,15,18)
-                     AND `course` = $COURSE->id";
+                     AND `course` = :courseid";
 
-        $modules = $DB->get_records_sql($query);
+        $modules = $DB->get_records_sql($query, array('courseid' => $COURSE->id));
 
         $datas = array();
 
@@ -166,9 +166,9 @@ class mod_domoscio_mod_form extends moodleform_mod {
                     FROM {course_modules}
               INNER JOIN {knowledge_nodes}
                       ON {course_modules}.`id` = {knowledge_nodes}.`resource_id`
-                   WHERE {knowledge_nodes}.`knowledge_node_id` = ".$knowledgenode;
+                   WHERE {knowledge_nodes}.`knowledge_node_id` = :knid";
 
-        $resource = $DB->get_record_sql($query);
+        $resource = $DB->get_record_sql($query, array('knid' => $knowledgenode));
 
         return $resource->id;
     }

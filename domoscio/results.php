@@ -76,7 +76,8 @@ if ($q) {
         if ($selected->type == "quiz") {
             $question = $DB->get_record_sql("SELECT *
                                                FROM {question}
-                                              WHERE `id` = $q"
+                                              WHERE `id` = :qid"
+                                            array('qid' => $q)
                                            );
         } else if ($selected->type == "lesson") {
             $question = $DB->get_record('lesson_pages', array('id' => $q), '*');
@@ -129,15 +130,19 @@ if ($q) {
         // Once student result is written, retrive the answer
         $score = $DB->get_record_sql("SELECT *
                                         FROM {scorm_scoes_track}
-                                       WHERE `userid` = $USER->id
-                                         AND `scormid` = $scorm
-                                         AND `scoid` = ".$SESSION->scoid."
+                                       WHERE `userid` = :userid
+                                         AND `scormid` = :scormid
+                                         AND `scoid` = :scoid
                                          AND `element` = 'cmi.score.scaled'
                                          AND (`attempt` = (SELECT MAX(`attempt`)
                                                              FROM {scorm_scoes_track}
-                                                            WHERE `userid` = $USER->id
-                                                              AND `scormid` = $scorm
-                                                              AND `scoid` = ".$SESSION->scoid."))");
+                                                            WHERE `userid` = :userid
+                                                              AND `scormid` = :scormid
+                                                              AND `scoid` = :scoid))",
+                                     array('userid' => $USER->id,
+                                          'scormid' => $scorm,
+                                            'scoid' => $SESSION->scoid)
+                                    );
 
         // Scale the result to be used by Domoscio API
         if ($score && confirm_sesskey()) {
