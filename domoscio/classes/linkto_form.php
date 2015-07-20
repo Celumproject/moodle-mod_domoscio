@@ -60,7 +60,7 @@ class mod_domoscio_linkto_form extends moodleform {
             $selected[] = $selectedquestion->question_id;
         }
 
-        if ($this->_customdata['module'] != 'scorm') {
+        if ($this->_customdata['module'] == 'quiz') {
             $quiz = $DB->get_record('quiz', array('id' => $this->_customdata['exo_id']), 'id,name');
 
             $icon = html_writer::tag('img', '', array('src' => $OUTPUT->pix_url('icon', 'quiz', 'quiz', array('class' => 'icon')), 'class' => 'activityicon', 'alt' => 'disable'));
@@ -89,6 +89,32 @@ class mod_domoscio_linkto_form extends moodleform {
                                     $question->id." ".$question->name,
                                     "<hr/>".$question->questiontext,
                                     array('group' => 1), array(0, 1))->setChecked($check);
+            }
+        } else if ($this->_customdata['module'] == 'lesson') {
+            $lesson = $DB->get_record('lesson', array('id' => $this->_customdata['exo_id']), 'id,name');
+
+            $icon = html_writer::tag('img', '', array('src' => $OUTPUT->pix_url('icon', 'lesson', 'lesson', array('class' => 'icon')), 'class' => 'activityicon', 'alt' => 'disable'));
+
+            $questions = $DB->get_records_sql("SELECT `id`, `contents`, `qtype`, `title`
+                                              FROM {lesson_pages}
+                                              WHERE `qtype` IN (1,2,3,5,8,10)");
+
+            $mform->addElement('html', "<h5 class='well well-small accordion-toggle' data-toggle='collapse' data-parent='#accordion'><a href='#collapse-".
+                                        $lesson->id."'>".
+                                        $icon.$lesson->name."</a></h5>");
+
+            foreach ($questions as $question) {
+                if (in_array($question->id, $selected)) {
+                  $check = true;
+                } else {
+                  $check = false;
+                }
+
+                $mform->addElement('advcheckbox',
+                                  $question->id,
+                                  $question->id." ".$question->title." (".$question->qtype.")",
+                                  $question->contents."<hr/>",
+                                  array('group' => 1), array(0, 1))->setChecked($check);
             }
         } else {
             $scoes = $DB->get_records('scorm_scoes', array('scormtype' => 'sco', 'scorm' => $this->_customdata['exo_id']), '', '*');

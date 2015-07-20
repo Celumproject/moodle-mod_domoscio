@@ -59,13 +59,13 @@ $notification = userdate(make_timestamp($y, $m, $d, $h, $min))."<br/>".
 echo html_writer::tag('div', html_writer::tag('h5', $displayuser."<hr/>".$notification, array('class' => 'content')), array('class' => 'block'));
 
 if (!empty($todotests)) {
-    $_SESSION['todo'] = array();
+    $SESSION->todo = array();
     $trows = "";
     $rest = new mod_domoscio_client();
     foreach ($todotests as $kn) {
         $resource = domoscio_get_resource_info($kn);
         $domoscioid = $DB->get_record('knowledge_nodes', array('knowledge_node_id' => $kn), '*');
-        $_SESSION['todo'][] = $kn;
+        $SESSION->todo[] = $kn;
 
         $kninfo = json_decode($rest->seturl($config, 'knowledge_nodes', $kn)->get());
 
@@ -96,7 +96,7 @@ if (!empty($todotests)) {
     echo html_writer::tag('button',
                           get_string('start_tests', 'domoscio'),
                           array('type' => 'button',
-                                'onclick' => "javascript:location.href='$CFG->wwwroot/mod/domoscio/doquiz.php?kn=".array_shift($_SESSION['todo'])."&t=".time()."'"));
+                                'onclick' => "javascript:location.href='$CFG->wwwroot/mod/domoscio/doquiz.php?kn=".array_shift($SESSION->todo)."&t=".time()."'"));
 } else {
     echo get_string('no_test', 'domoscio');
 }

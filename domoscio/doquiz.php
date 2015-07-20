@@ -29,6 +29,7 @@ require_once(dirname(dirname(dirname(__FILE__))).'/config.php');
 require_once(dirname(__FILE__).'/lib.php');
 require_once(dirname(__FILE__).'/sdk/client.php');
 require_once($CFG->dirroot . '/mod/quiz/locallib.php');
+require_once($CFG->dirroot.'/mod/lesson/locallib.php');
 
 $id = optional_param('id', 0, PARAM_INT); // Course_module ID, or
 $kn = optional_param('kn', 0, PARAM_INT); // Knowledge_node ID (Rappels)
@@ -36,10 +37,10 @@ $solo = optional_param('solo', false, PARAM_INT); // Si test unitaire
 $t = optional_param('t', null, PARAM_INT); // Start test timestamp
 
 if ($solo == 'true') {
-    $_SESSION['todo'] = null;
+    $SESSION->todo = null;
 }
 if ($t) {
-    $_SESSION['start'] = $t;
+    $SESSION->start = $t;
 }
 
 if ($id) {
@@ -66,9 +67,10 @@ $PAGE->set_title(get_string('test_session', 'domoscio'));
 
 echo $OUTPUT->header();
 echo $OUTPUT->heading(get_string('test_session', 'domoscio'));
-$urlresults = "$CFG->wwwroot/mod/domoscio/results.php";
+$urlresults = new moodle_url("$CFG->wwwroot/mod/domoscio/results.php");
+$urlresults->param('sesskey', sesskey());
 
-// Récupère les identifiants des questions sélectionnées par le concepteur
+// Retrive selected questions id
 $lists = $DB->get_records('knowledge_node_questions', array('instance' => $domoscio->id, 'knowledge_node' => $kn), '', '*');
 
 if (!empty($lists)) {
@@ -80,56 +82,80 @@ if (!empty($lists)) {
         $cmselected = $scorm->scorm;
         $cap = 'mod/scorm:savetrack';
         $module = 18;
-    } else {
+    } else if ($selected->type == "quiz") {
         $slot = $DB->get_record('quiz_slots', array('questionid' => $selected->question_id), '*');
         $cmselected = $slot->quizid;
         $cap = 'mod/quiz:view';
         $module = 16;
+    } else if ($selected->type == "lesson") {
+        $lessonpage = $DB->get_record('lesson_pages', array('id' => $selected->question_id), '*');
+        $lesson = new lesson($DB->get_record('lesson', array('id' => $lessonpage->lessonid), '*', MUST_EXIST));
     }
 
-    // Check student is allowed to see selected question
-    $cmid = $DB->get_record('course_modules', array('instance' => $cmselected, 'module' => $module));
-    $cmcontext = context_module::instance($cmid->id);
+    if ($selected->type !== "lesson") {
+        // Check student is allowed to see selected question
+        $cmid = $DB->get_record('course_modules', array('instance' => $cmselected, 'module' => $module));
+        $cmcontext = context_module::instance($cmid->id);
 
-    if (has_capability($cap, $cmcontext)) {
-        if ($selected->type == "scorm") {
-            $domoscioid = $temp = $cm->id;
-            $a = $scorm->scorm;
-            $scoid = $selected->question_id;
-            $content = "<input type='hidden' value=$scoid name=scoid></input>";
-            $scourl = "$CFG->wwwroot/mod/scorm/player.php?a=$scorm->scorm&scoid=$selected->question_id&newattempt=on&display=popup";
+        if (has_capability($cap, $cmcontext)) {
+            if ($selected->type == "scorm") {
+                $domoscioid = $temp = $cm->id;
+                $a = $scorm->scorm;
+                $scoid = $selected->question_id;
+                $content = "<input type='hidden' value=$scoid name=scoid></input>";
+                $scourl = "$CFG->wwwroot/mod/scorm/player.php?a=$scorm->scorm&scoid=$selected->question_id&newattempt=on&display=popup";
 
-            $scormframe = html_writer::tag('iframe', '', array('src' => $scourl,
-                                                                'width' => 1000,
-                                                                'height' => 500,
-                                                                'style' => 'border:none'));
+                $scormframe = html_writer::tag('iframe', '', array('src' => $scourl,
+                                                                    'width' => 1000,
+                                                                    'height' => 500,
+                                                                    'style' => 'border:none'));
 
-            $content .= html_writer::tag('input', '', array('type' => 'submit', 'value' => get_string('validate_btn', 'domoscio'), 'name' => 'next'));
-            $params = "id=$temp&scorm=".$a."&kn=$kn";
+                $content .= html_writer::tag('input', '', array('type' => 'submit', 'value' => get_string('validate_btn', 'domoscio'), 'name' => 'next'));
 
-            $output = $scormframe.html_writer::tag('form', $content, array('method' => 'POST', 'action' => $urlresults.'?'.$params, 'id' => 'responseform'));
-            echo $output;
+                $urlresults->param('id', $temp);
+                $urlresults->param('scorm', $a);
+                $urlresults->param('kn', $kn);
+
+                $output = $scormframe.html_writer::tag('form', $content, array('method' => 'POST', 'action' => $urlresults, 'id' => 'responseform'));
+                echo $output;
+            } else {
+                if ($selected->type == "quiz") {
+                    // Retrieve selected question data
+                    $question = $DB->get_record('question', array('id' => $selected->question_id), '*');
+                }
+
+                $qinstance = "kn_q".$question->id;
+                $content = html_writer::tag('input', '', array('type' => 'hidden', 'value' => $domoscio->id, 'name' => $qinstance))
+                          .domoscio_display_questions($question, $selected->type);
+                $urlresults->param('kn', $kn);
+                $urlresults->param('q', $selected->question_id);
+
+                $content .= html_writer::tag('input', '', array('type' => 'submit', 'value' => get_string('validate_btn', 'domoscio'), 'name' => 'next'));
+                $output = html_writer::tag('form', $content, array('method' => 'POST', 'action' => $urlresults, 'id' => 'responseform'));
+                echo $output;
+            }
         } else {
-
-            // Retrieve selected question data
-            $question = $DB->get_record('question', array('id' => $selected->question_id), '*');
-            $qinstance = "kn_q".$question->id;
-
-            $content = html_writer::tag('input', '', array('type' => 'hidden', 'value' => $domoscio->id, 'name' => $qinstance))
-                      .domoscio_display_questions($question, $selected->type);
-            $params = "kn=$kn&q=$selected->question_id";
-
-            $content .= html_writer::tag('input', '', array('type' => 'submit', 'value' => get_string('validate_btn', 'domoscio'), 'name' => 'next'));
-            $output = html_writer::tag('form', $content, array('method' => 'POST', 'action' => $urlresults.'?'.$params, 'id' => 'responseform'));
-            echo $output;
+            echo get_string('nocapabilitytousethisservice', 'error');
         }
+    } else if ($lesson->is_accessible()) {
+        $question = $DB->get_record('lesson_pages', array('id' => $selected->question_id), '*');
+
+        $qinstance = "kn_q".$question->id;
+        $content = html_writer::tag('input', '', array('type' => 'hidden', 'value' => $domoscio->id, 'name' => $qinstance))
+                  .domoscio_display_questions($question, $selected->type);
+        $urlresults->param('kn', $kn);
+        $urlresults->param('q', $selected->question_id);
+
+        $content .= html_writer::tag('input', '', array('type' => 'submit', 'value' => get_string('validate_btn', 'domoscio'), 'name' => 'next'));
+        $output = html_writer::tag('form', $content, array('method' => 'POST', 'action' => $urlresults, 'id' => 'responseform'));
+        echo $output;
+
     } else {
         echo get_string('nocapabilitytousethisservice', 'error');
     }
 } else {
     echo html_writer::tag('blockquote', get_string('tests_empty', 'domoscio'), array('class' => 'muted'));
 }
-
 echo html_writer::tag('button',
                       get_string('end_btn', 'domoscio'),
                       array('type' => 'button',

@@ -23,13 +23,14 @@
  */
 $string['pluginname'] = 'Domoscio for Moodle';
 
-$string['domscio:addinstance'] = 'Add a new quiz';
-$string['domscio:view'] = 'View quiz information';
-$string['domscio:viewreports'] = 'View quiz reports';
-$string['domscio:attempt'] = 'Attempt adaptive quiz';
-$string['domscio:manage'] = 'Manage a lesson activity';
-$string['domscio:submit']= 'Submit to Domoscio API';
-$string['domscio:view'] = 'View quiz information';
+$string['domoscio:addinstance'] = 'Add a new quiz';
+$string['domoscio:view'] = 'View quiz information';
+$string['domoscio:viewreports'] = 'View quiz reports';
+$string['domoscio:attempt'] = 'Attempt adaptive quiz';
+$string['domoscio:manage'] = 'Manage a lesson activity';
+$string['domoscio:submit']= 'Submit to Domoscio API';
+$string['domoscio:view'] = 'View quiz information';
+$string['domoscio:savetrack'] = "Store results from SCORM activities in the Domoscio plugin";
 
 // settings page
 $string['settings_id'] = 'Domoscio Identifiant';
@@ -68,6 +69,7 @@ $string['newnotion_intro'] = 'Create new notion';
 $string['questions_assigned'] = 'This plugin displays the following questions : ';
 $string['resource_assigned'] = 'This plugin is linked to the following module : ';
 $string['linkto_intro'] = "Select from the exercises modules below, the questions you want to add for this notion : ";
+$string['global_view'] = "Overview";
 $string['def_notions'] = 'Set notions';
 $string['set_notions'] = 'Notions selected :';
 $string['choose_q'] = 'Select questions';
@@ -75,6 +77,7 @@ $string['create_q'] = 'Create questions';
 $string['whole_expl'] = 'Select the whole notion (1 notion, 1 test)';
 $string['each_expl'] = 'or select notions one by one (n notion, n test) :';
 $string['stats_adv'] = "More";
+$string['no_stats'] = 'No data available now';
 $string['results'] = 'Results';
 $string['question'] = "Question ";
 $string['upd_qlist'] = 'Question list updated.';
@@ -119,6 +122,9 @@ $string['back_btn'] = "Back";
 $string['end_btn'] = "Finish";
 $string['at'] = ', ';
 $string['gottatest'] = "You have a review to do on ";
+$string['today'] = "Today";
+$string['tomorrow'] = "Tomorrow";
+$string['days'] = "days";
 
 $string['proxy_login_required'] = 'You must be logged in to access this url. Please log in and retry.';
 $string['proxy_permission_required'] = 'You don\'t have the permission to access this url.';

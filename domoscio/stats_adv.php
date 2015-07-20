@@ -65,15 +65,35 @@ echo $OUTPUT->heading($domoscio->name);
 
 $rest = new mod_domoscio_client();
 
-$resource = json_decode($rest->seturl($config, 'knowledge_nodes', $domoscio->resource_id)->get());
+$resource = json_decode($rest->seturl($config, 'knowledge_nodes', $kn)->get());
 
-echo html_writer::tag('div', '<h5 class="content">'.get_string('stats', 'domoscio').'</h5>', array('class' => 'block'));
-echo html_writer::link("$CFG->wwwroot/mod/domoscio/stats.php?id=$cm->id", '<< '.get_string('back_btn', 'domoscio')."<br/><br/>");
+$linkedresource = domoscio_get_resource_info($kn);
+
+echo html_writer::tag('div', '<h5 class="content">'.
+                             get_string('stats', 'domoscio')." ".
+                             $linkedresource->display." - ".
+                             $resource->name.'</h5>', array('class' => 'block'));
 
 // --- TEACHER VIEW ---
 
 if (has_capability('moodle/course:create', $context)) {
-
+    $overviewurl = html_writer::tag('li',
+                                     html_writer::link($CFG->wwwroot.'/mod/domoscio/view.php?id='.$cm->id,
+                                                       get_string('global_view', 'domoscio')
+                                                      ),
+                                     array('class' => ''));
+    $defnotionurl = html_writer::tag('li',
+                                     html_writer::link($CFG->wwwroot.'/mod/domoscio/select_notions.php?id='.$cm->id,
+                                                       get_string('def_notions', 'domoscio')
+                                                      ),
+                                     array('class' => 'warning'));
+    $showstatsurl = html_writer::tag('li',
+                                     html_writer::link($CFG->wwwroot.'/mod/domoscio/stats.php?id='.$cm->id,
+                                                       get_string('stats', 'domoscio')
+                                                      ),
+                                     array('class' => 'active'));
+    echo html_writer::tag('ul', $overviewurl.$defnotionurl.$showstatsurl, array('class' => 'nav nav-tabs'));
+    echo html_writer::link("$CFG->wwwroot/mod/domoscio/stats.php?id=$cm->id", '<< '.get_string('back_btn', 'domoscio')."<br/><br/>");
     if ($stat = 'students') {
         $students = domoscio_get_stats($kn)->enrolled;
 

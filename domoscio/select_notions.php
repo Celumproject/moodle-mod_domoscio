@@ -79,7 +79,22 @@ $resource = json_decode($rest->seturl($config, 'knowledge_nodes', $domoscio->res
 if (has_capability('moodle/course:create', $context)) {
 
     echo html_writer::tag('div', html_writer::tag('b', get_string('notions_intro', 'domoscio'), array('class' => 'mod_introbox')), array('class' => 'block'));
-    echo html_writer::link("$CFG->wwwroot/mod/domoscio/view.php?id=$cm->id", '<< '.get_string('back_btn', 'domoscio')."&nbsp");
+    $overviewurl = html_writer::tag('li',
+                                     html_writer::link($CFG->wwwroot.'/mod/domoscio/view.php?id='.$cm->id,
+                                                       get_string('global_view', 'domoscio')
+                                                      ),
+                                     array('class' => ''));
+    $defnotionurl = html_writer::tag('li',
+                                     html_writer::link($CFG->wwwroot.'/mod/domoscio/select_notions.php?id='.$cm->id,
+                                                       get_string('def_notions', 'domoscio')
+                                                      ),
+                                     array('class' => 'active warning'));
+    $showstatsurl = html_writer::tag('li',
+                                     html_writer::link($CFG->wwwroot.'/mod/domoscio/stats.php?id='.$cm->id,
+                                                       get_string('stats', 'domoscio')
+                                                      ),
+                                     array('class' => ''));
+    echo html_writer::tag('ul', $overviewurl.$defnotionurl.$showstatsurl, array('class' => 'nav nav-tabs'));
 
     $mform = new mod_domoscio_select_notion_form("$CFG->wwwroot/mod/domoscio/select_notions.php?id=$cm->id", array('instance' => $domoscio->id,
                                                                                                                    'parent' => $domoscio->resource_id));
