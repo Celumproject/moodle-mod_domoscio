@@ -31,7 +31,7 @@ require_once(dirname(dirname(dirname(__FILE__))).'/config.php');
 require_once(dirname(__FILE__).'/lib.php');
 require_once(dirname(__FILE__).'/sdk/client.php');
 
-// $PAGE->requires->js('/mod/domoscio/jquery-1.11.3.min.js', true);
+$PAGE->requires->js('/mod/domoscio/jquery-1.11.3.min.js', true);
 $PAGE->requires->js('/mod/domoscio/bootstrap-collapse.js', true);
 $PAGE->requires->js('/mod/domoscio/Chart.min.js', true);
 
@@ -84,20 +84,23 @@ if (has_capability('moodle/course:create', $context)) {
                 html_writer::link($linkedresource->url, $linkedresource->display);
     echo html_writer::tag('div', $introbox, array('class' => 'block'));
 
-    $defnotionurl = html_writer::link($CFG->wwwroot.'/mod/domoscio/select_notions.php?id='.$cm->id,
-                                      html_writer::tag('button',
-                                                       '1. '.get_string('def_notions', 'domoscio'),
-                                                       array('class' => 'btn btn-primary btn-large')),
-                                      array('class' => 'span4'));
-    $showstatsurl = html_writer::link($CFG->wwwroot.'/mod/domoscio/stats.php?id='.$cm->id,
-                                      html_writer::tag('button',
-                                                       get_string('stats', 'domoscio'),
-                                                       array('class' => 'btn btn-default btn-large')),
-                                      array('class' => 'span4'));
+    $overviewurl = html_writer::tag('li',
+                                     html_writer::link($CFG->wwwroot.'/mod/domoscio/view.php?id='.$cm->id,
+                                                       get_string('global_view', 'domoscio')
+                                                      ),
+                                     array('class' => 'active'));
+    $defnotionurl = html_writer::tag('li',
+                                     html_writer::link($CFG->wwwroot.'/mod/domoscio/select_notions.php?id='.$cm->id,
+                                                       get_string('def_notions', 'domoscio')
+                                                      ),
+                                     array('class' => 'warning'));
 
-    echo html_writer::tag('div', $defnotionurl.$showstatsurl.'<br/><br/>').
-         html_writer::tag('div', '<h6>'.get_string('set_notions', 'domoscio').'</h6><hr/>');
-
+    $showstatsurl = html_writer::tag('li',
+                                     html_writer::link($CFG->wwwroot.'/mod/domoscio/stats.php?id='.$cm->id,
+                                                       get_string('stats', 'domoscio')
+                                                      ),
+                                     array('class' => ''));
+    $notionlist = "";
     foreach ($notions as $notion) {
         $renderq = '';
         $rest = new mod_domoscio_client();
@@ -112,9 +115,17 @@ if (has_capability('moodle/course:create', $context)) {
 
                 $renderq .= html_writer::tag('b', $linkedresource->display)." - ".$sco->title.html_writer::tag('hr', '');
             } else {
-                $question = $DB->get_record('question', array('id' => $qid->question_id), '*');
+                if ($qid->type == "quiz") {
+                    $question = $DB->get_record('question', array('id' => $qid->question_id), '*');
+                    $questionname = $question->name;
+                    $questiontext = $question->questiontext;
+                } else if ($qid->type == "lesson") {
+                    $question = $DB->get_record('lesson_pages', array('id' => $qid->question_id), '*');
+                    $questionname = $question->title;
+                    $questiontext = $question->contents;
+                }
 
-                $renderq .= html_writer::tag('b', $question->name." : ").strip_tags($question->questiontext).html_writer::tag('hr', '');
+                $renderq .= html_writer::tag('b', $questionname." : ").strip_tags($questiontext).html_writer::tag('hr', '');
             }
         }
         $accordioninner = html_writer::tag('div', $renderq, array('class' => 'accordion-inner'));
@@ -128,16 +139,20 @@ if (has_capability('moodle/course:create', $context)) {
                                                                                             'data-parent' => '#accordion2'));
         $togglers .= html_writer::link($CFG->wwwroot.'/mod/domoscio/linkto.php?id='.$cm->id.'&notion='.$notion->knowledge_node_id,
                                        html_writer::tag('button',
-                                                        '2. '.get_string('choose_q', 'domoscio'),
+                                                        get_string('choose_q', 'domoscio'),
                                                         array('type' => 'button', 'class' => 'btn btn-link pull-right')));
         $accordionheading = html_writer::tag('div', $togglers, array('class' => 'well well-small' , 'style' => 'margin-bottom:0px'));
         $accordiongroup = html_writer::tag('div', $accordionheading.$accordioncollapse, array('class' => 'accordion-group'));
-        echo $accordion = html_writer::tag('div', $accordiongroup, array('class' => 'accordion', 'id' => 'accordion'));
+        $notionlist .= html_writer::tag('div', $accordiongroup, array('class' => 'accordion', 'id' => 'accordion'));
     }
 
     if (empty($notions)) {
-        echo html_writer::tag('blockquote', get_string('notions_empty', 'domoscio'), array('class' => 'muted'));
+        $notionlist = html_writer::tag('blockquote', get_string('notions_empty', 'domoscio'), array('class' => 'muted'));
     }
+
+    echo html_writer::tag('ul', $overviewurl.$defnotionurl.$showstatsurl, array('class' => 'nav nav-tabs')).
+         html_writer::tag('div', '<h6 class="lead muted text-center">'.get_string('set_notions', 'domoscio').'</h6>'.$notionlist, array('class' => 'coursebox header'));
+
 
 } else if (is_enrolled($context)) {
     // --- STUDENT VIEW ---
@@ -185,15 +200,15 @@ if (has_capability('moodle/course:create', $context)) {
         $row = html_writer::tag('div', $introbox, array('class' => 'block span6')).
                html_writer::tag('div', $statsheader . $divcanvas, array('class' => 'block span6'));
 
-        echo html_writer::tag('div', $row, array('class' => 'row mod_introbox'));
+        echo html_writer::tag('div', $row, array('class' => 'row mod_introbox', 'style' => 'margin-left:-10px'));
 
         if (!empty($check) && $knstudent) {
-            $_SESSION['todo'] = $_SESSION['results'] = $_SESSION['no_history'] = array();
+            $SESSION->todo = $SESSION->results = $SESSION->no_history = array();
             $knstats = array();
 
             foreach ($knstudent as $notion) {
                 $item = json_decode($rest->seturl($config, 'knowledge_nodes', $notion->knowledge_node_id)->get());
-                $_SESSION['todo'][] = $item->id;
+                $SESSION->todo[] = $item->id;
                 $knstatsobj = new stdClass;
                 $knstatsobj->item = $item;
                 $knstatsobj->knstudent = $notion;
@@ -203,12 +218,11 @@ if (has_capability('moodle/course:create', $context)) {
                     $reminder = html_writer::tag('button',
                                                  get_string('do_test', 'domoscio'),
                                                  array('type' => 'button',
-                                                    'onclick' => "javascript:location.href='$CFG->wwwroot/mod/domoscio/doquiz.php?kn=
-                                                                $notion->knowledge_node_id"."&t=".time()."'"));
+                        'onclick' => "javascript:location.href='$CFG->wwwroot/mod/domoscio/doquiz.php?kn=$notion->knowledge_node_id"."&t=".time()."'"));
                     $accordioninner = html_writer::tag('div', get_string('no_history', 'domoscio').$reminder, array('class' => 'accordion-inner'));
                     $alerticon = " > ".html_writer::tag('i', '', array('class' => 'icon-exclamation-sign'));
                     $class = "alert-warning";
-                    $_SESSION['no_history'][] = $item->id;
+                    $SESSION->no_history[] = $item->id;
                 } else {
                     if (strtotime($notion->next_review_at) < time()) {
                         $alerticon = " > ".html_writer::tag('i', '', array('class' => 'icon-edit'));
@@ -216,8 +230,7 @@ if (has_capability('moodle/course:create', $context)) {
                         $btntest = html_writer::tag('button',
                                                     get_string('do_review_btn', 'domoscio'),
                                                     array('type' => 'button',
-                                                       'onclick' => "javascript:location.href='$CFG->wwwroot/mod/domoscio/doquiz.php?kn=
-                                                                   $notion->knowledge_node_id&solo=true&t=".time()."'",
+                        'onclick' => "javascript:location.href='$CFG->wwwroot/mod/domoscio/doquiz.php?kn=$notion->knowledge_node_id&solo=true&t=".time()."'",
                                                          'class' => 'btn btn-danger'));
                     } else {
                         $alerticon = '';
@@ -244,12 +257,12 @@ if (has_capability('moodle/course:create', $context)) {
 
         }
 
-        if ($_SESSION['no_history'] != null) {
+        if ($SESSION->no_history != null) {
             echo html_writer::tag('button',
                                   get_string('do_test', 'domoscio'),
                                   array('type' => 'button',
                                      'onclick' => "javascript:location.href='$CFG->wwwroot/mod/domoscio/doquiz.php?kn=".
-                                                                           array_shift($_SESSION['no_history'])."&t=".time()."'",
+                                                                           array_shift($SESSION->no_history)."&t=".time()."'",
                                        'class' => 'btn btn-primary'));
         }
 
@@ -257,7 +270,7 @@ if (has_capability('moodle/course:create', $context)) {
                               get_string('do_training', 'domoscio'),
                               array('type' => 'button',
                                  'onclick' => "javascript:location.href='$CFG->wwwroot/mod/domoscio/doquiz.php?kn=".
-                                                                        array_shift($_SESSION['todo'])."&t=".time()."'",
+                                                                        array_shift($SESSION->todo)."&t=".time()."'",
                                    'class' => 'btn btn-warning'));
     }
 
