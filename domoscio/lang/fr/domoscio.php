@@ -22,13 +22,14 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 $string['pluginname'] = 'Domoscio for Moodle';
-$string['domscio:addinstance'] = 'Ajouter un quiz';
-$string['domscio:view'] = 'View quiz information';
-$string['domscio:viewreports'] = 'View quiz reports';
-$string['domscio:attempt'] = 'Attempt adaptive quiz';
-$string['domscio:manage'] = 'Manage a lesson activity';
-$string['domscio:submit'] = 'Submit to Domoscio API';
-$string['domscio:view'] = 'View quiz information';
+$string['domoscio:addinstance'] = 'Ajouter un quiz';
+$string['domoscio:view'] = 'View quiz information';
+$string['domoscio:viewreports'] = 'View quiz reports';
+$string['domoscio:attempt'] = 'Attempt adaptive quiz';
+$string['domoscio:manage'] = 'Manage a lesson activity';
+$string['domoscio:submit'] = 'Submit to Domoscio API';
+$string['domoscio:view'] = 'View quiz information';
+$string['domoscio:savetrack'] = "Sauvegarder les résultats aux exercices SCORM";
 
 // Settings page
 $string['settings_id'] = 'Identifiant Domoscio';
@@ -63,6 +64,7 @@ $string['newnotion_intro'] = 'Créer une nouvelle notion';
 $string['linkto_intro'] = "Sélectionnez, parmi les modules contenant des exercices, les questions qui seront liées à la notion : ";
 $string['questions_assigned'] = 'Ce plugin propose les questions suivantes : ';
 $string['resource_assigned'] = 'Le plugin est lié à la ressource suivante : ';
+$string['global_view'] = "Vue d'ensemble";
 $string['def_notions'] = 'Définir des notions';
 $string['set_notions'] = 'Les notions que vous avez définies :';
 $string['add_notion_expl'] = 'Si vous ne trouvez pas la notion souhaitée parmi la liste ci-dessous, créez-en une :';
@@ -106,6 +108,7 @@ $string['do_training'] = "S'entrainer";
 $string['test_session'] = "Evaluation";
 $string['see_notion'] = 'Voir la notion';
 $string['stats'] = 'Statistiques';
+$string['no_stats'] = 'Aucune donnée disponible actuellement';
 $string['tests_empty'] = "Aucune question n'a été définie par le créateur de cours pour cette notion.";
 $string['start_tests'] = 'Commencer la session';
 $string['no_test'] = "Vous n'avez pas de rappel";
@@ -118,6 +121,9 @@ $string['back_btn'] = "Retour";
 $string['end_btn'] = "J'ai fini";
 $string['at'] = " à ";
 $string['gottatest'] = "Vous avez un rappel à faire sur la ressource ";
+$string['today'] = "Aujourd'hui";
+$string['tomorrow'] = "Demain";
+$string['days'] = "jours";
 
 $string['proxy_login_required'] = 'You must be logged in to access this url. Please log in and retry.';
 $string['proxy_permission_required'] = 'You don\'t have the permission to access this url.';

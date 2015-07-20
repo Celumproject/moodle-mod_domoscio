@@ -72,48 +72,31 @@ if (has_capability('moodle/course:create', $context)) {
 
     if ($exo == null) {
         echo html_writer::tag('div', get_string('linkto_intro', 'domoscio').
-             html_writer::tag('b', $linkedmodule->display." - ".$notion->name, array('class' => '')), array('class' => 'well'));
+             html_writer::tag('b', $linkedmodule->display." - ".$notion->name, array('class' => '')), array('class' => 'well well-small'));
         echo html_writer::link("$CFG->wwwroot/mod/domoscio/view.php?id=$cm->id", '<< '.get_string('back_btn', 'domoscio')."&nbsp");
 
         $quizzes = $DB->get_records('quiz', array(), '', 'id,name');
         $scorms = $DB->get_records('scorm', array(), '', '*');
+        $lessons = $DB->get_records('lesson', array(), '', 'id,name');
 
         $list = '';
 
         foreach ($quizzes as $quiz) {
-            $quizcm = $DB->get_record('course_modules', array('instance' => $quiz->id, 'module' => 16), '*');
-
-            if ($quizcm) {
-                $quizcontext = context_module::instance($quizcm->id);
-            }
-
-            if (has_capability('mod/quiz:manage', $quizcontext)) {
-                $icon = html_writer::tag('img', '', array('src' => $OUTPUT->pix_url('icon', 'quiz', 'quiz', array('class' => 'icon')),
-                                                         'class' => 'activityicon', 'alt' => 'disable'));
-                $url = html_writer::link("$CFG->wwwroot/mod/domoscio/linkto.php?id=$cm->id&notion=$kn&exo=quiz_$quiz->id", $icon." ".$quiz->name);
-                $list .= html_writer::tag('h5', $url, array('class' => 'well well-small'));
-            }
+            $list .= domoscio_display_activities_list($quiz, 'quiz', $kn, $cm);
         }
 
         foreach ($scorms as $scorm) {
-            $scormcm = $DB->get_record('course_modules', array('instance' => $scorm->id, 'module' => 18));
+            $list .= domoscio_display_activities_list($scorm, 'scorm', $kn, $cm);
+        }
 
-            if ($scormcm) {
-                $scormcontext = context_module::instance($scormcm->id);
-            }
-
-            if (has_capability('mod/scorm:viewreport', $scormcontext)) {
-                $icon = html_writer::tag('img', '', array('src' => $OUTPUT->pix_url('icon', 'scorm', 'scorm', array('class' => 'icon')),
-                                                        'class' => 'activityicon', 'alt' => 'disable'));
-                $url = html_writer::link("$CFG->wwwroot/mod/domoscio/linkto.php?id=$cm->id&notion=$kn&exo=scorm_$scorm->id", $icon." ".$scorm->name);
-                $list .= html_writer::tag('h5', $url, array('class' => 'well well-small'));
-            }
+        foreach ($lessons as $lesson) {
+            $list .= domoscio_display_activities_list($lesson, 'lesson', $kn, $cm);
         }
         $icon = html_writer::empty_tag('img', array('src' => $OUTPUT->pix_url('i/edit'), 'alt' => get_string('edit'), 'class' => 'smallicon'));
         $url = html_writer::link("#", $icon." ".get_string('create_q', 'domoscio')." (Coming Soon)", array('disabled' => 'disabled'));
-        $list .= "<hr/>".html_writer::tag('h5', $url, array('class' => 'well well-small'));
+        $list .= "<hr/>".html_writer::tag('p', $url, array('class' => ''));
 
-        echo $list;
+        echo html_writer::div($list, '', array('class' => 'offset2'));
     } else {
         $selected = explode('_', $exo);
 
@@ -123,8 +106,10 @@ if (has_capability('moodle/course:create', $context)) {
         } else if ($selected[0] == 'scorm') {
             $cap = 'mod/scorm:viewreport';
             $module = 18;
+        } else if ($selected[0] == 'lesson') {
+            $cap = 'mod/lesson:manage';
+            $module = 13;
         }
-
         $cmid = $DB->get_record('course_modules', array('instance' => $selected[1], 'module' => $module));
         $cmcontext = context_module::instance($cmid->id);
 

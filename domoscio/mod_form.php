@@ -102,7 +102,8 @@ class mod_domoscio_mod_form extends moodleform_mod {
         $query = "SELECT *
                     FROM {course_modules}
                    WHERE `module`
-                      IN (3,14,15,18)";
+                      IN (3,13,15,18)
+                     AND `course` = $COURSE->id";
 
         $modules = $DB->get_records_sql($query);
 
@@ -133,7 +134,7 @@ class mod_domoscio_mod_form extends moodleform_mod {
                 $modulename = "book";
                 break;
 
-            case 14:
+            case 13:
                 $modulename = "lesson";
                 break;
 
