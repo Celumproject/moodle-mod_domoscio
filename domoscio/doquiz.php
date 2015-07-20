@@ -156,9 +156,10 @@ if (!empty($lists)) {
 } else {
     echo html_writer::tag('blockquote', get_string('tests_empty', 'domoscio'), array('class' => 'muted'));
 }
+$urlresults->param('end', true);
 echo html_writer::tag('button',
                       get_string('end_btn', 'domoscio'),
                       array('type' => 'button',
-                            'onclick' => "javascript:location.href='$CFG->wwwroot/mod/domoscio/results.php?end=true'"));
+                            'onclick' => "javascript:location.href='$urlresults'"));
 
 echo $OUTPUT->footer();

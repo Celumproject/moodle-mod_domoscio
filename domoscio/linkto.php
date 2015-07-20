@@ -126,8 +126,11 @@ if (has_capability('moodle/course:create', $context)) {
                     if (is_numeric($k)) {
                         $check = $DB->get_record_sql("SELECT *
                                                         FROM {knowledge_node_questions}
-                                                       WHERE `question_id` = $k
-                                                         AND knowledge_node = $notion->id");
+                                                       WHERE `question_id` = :qid
+                                                         AND knowledge_node = :knid",
+                                                     array('qid' => $k,
+                                                          'knid' => $notion->id)
+                                                    );
 
                         if ($value == 1) {
                             if ($check == null) {
