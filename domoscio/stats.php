@@ -51,7 +51,7 @@ if ($id) {
     $cm         = get_coursemodule_from_instance('domoscio', $domoscio->id, $course->id, false, MUST_EXIST);
 } else if ($kn) {
     $module     = $DB->get_record('modules', array('name' => 'domoscio'), '*', MUST_EXIST);
-    $domoscio   = $DB->get_record('domoscio', array('resource_id' => $kn), '*', MUST_EXIST);
+    $domoscio   = $DB->get_record('domoscio', array('resourceid' => $kn), '*', MUST_EXIST);
     $course     = get_course($domoscio->course);
     $cm         = $DB->get_record('course_modules', array('instance' => $domoscio->id, 'module' => $module->id), '*', MUST_EXIST);
     $id         = $cm->id;
@@ -72,14 +72,14 @@ echo $OUTPUT->heading($domoscio->name);
 
 $rest = new mod_domoscio_client();
 
-$resource = json_decode($rest->seturl($config, 'knowledge_nodes', $domoscio->resource_id)->get());
+$resource = json_decode($rest->seturl($config, 'knowledge_nodes', $domoscio->resourceid)->get());
 
 $linkedresource = domoscio_get_resource_info($resource->id);
 
 // --- TEACHER VIEW ---
 
 if (has_capability('moodle/course:create', $context)) {
-    $notions = $DB->get_records('knowledge_nodes', array('instance' => $domoscio->id, 'active' => '1'), '', '*');
+    $notions = $DB->get_records('domoscio_knowledge_nodes', array('instance' => $domoscio->id, 'active' => '1'), '', '*');
 
     $introbox = html_writer::tag('b', get_string('resource_assigned', 'domoscio'), array('class' => 'content')).
                 html_writer::link($linkedresource->url, $linkedresource->display);
@@ -104,9 +104,9 @@ if (has_capability('moodle/course:create', $context)) {
     foreach ($notions as $notion) {
         $rest = new mod_domoscio_client();
 
-        $title = json_decode($rest->seturl($config, 'knowledge_nodes', $notion->knowledge_node_id)->get());
+        $title = json_decode($rest->seturl($config, 'knowledge_nodes', $notion->knodeid)->get());
 
-        $stat = domoscio_get_stats($notion->knowledge_node_id);
+        $stat = domoscio_get_stats($notion->knodeid);
 
         if (empty($stat)) {
             $blocks = html_writer::tag('div', get_string('no_stats', 'domoscio'), array('class' => 'content span12'));
@@ -122,7 +122,7 @@ if (has_capability('moodle/course:create', $context)) {
 
             $blocks = html_writer::tag('div',
                                        $enrolledstat.
-                                       html_writer::link("$CFG->wwwroot/mod/domoscio/stats_adv.php?id=$cm->id&kn=$notion->knowledge_node_id&stat=students",
+                                       html_writer::link("$CFG->wwwroot/mod/domoscio/stats_adv.php?id=$cm->id&kn=$notion->knodeid&stat=students",
                                                                 get_string('stats_adv', 'domoscio'),
                                                                 array('class' => 'content text-center')),
                                        array('class' => 'block span3'));

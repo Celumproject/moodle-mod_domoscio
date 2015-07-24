@@ -50,8 +50,8 @@ class mod_domoscio_linkto_form extends moodleform {
 
         // Retrive already selected questions
         $selectedquestions = $DB->get_records_sql("SELECT *
-                                                     FROM {knowledge_node_questions}
-                                                    WHERE `knowledge_node`= :knid
+                                                     FROM {domoscio_knowledge_node_questions}
+                                                    WHERE `knodeid`= :knid
                                                       AND `type` = :type",
                                                   array('knid' => $this->_customdata['kn_id'],
                                                         'type' => $this->_customdata['module'])
@@ -60,7 +60,7 @@ class mod_domoscio_linkto_form extends moodleform {
         $selected = array();
 
         foreach ($selectedquestions as $selectedquestion) {
-            $selected[] = $selectedquestion->question_id;
+            $selected[] = $selectedquestion->questionid;
         }
 
         if ($this->_customdata['module'] == 'quiz') {
@@ -96,11 +96,16 @@ class mod_domoscio_linkto_form extends moodleform {
         } else if ($this->_customdata['module'] == 'lesson') {
             $lesson = $DB->get_record('lesson', array('id' => $this->_customdata['exo_id']), 'id,name');
 
+            list($insql, $inparams) = $DB->get_in_or_equal(array(1, 2, 3, 5, 8, 10));
+
+            $sql = "SELECT `id`, `contents`, `qtype`, `title`
+                      FROM {lesson_pages}
+                     WHERE `qtype` $insql";
+
+            $questions = $DB->get_records_sql($sql, $inparams);
+
             $icon = html_writer::tag('img', '', array('src' => $OUTPUT->pix_url('icon', 'lesson', 'lesson', array('class' => 'icon')), 'class' => 'activityicon', 'alt' => 'disable'));
 
-            $questions = $DB->get_records_sql("SELECT `id`, `contents`, `qtype`, `title`
-                                              FROM {lesson_pages}
-                                              WHERE `qtype` IN (1,2,3,5,8,10)");
 
             $mform->addElement('html', "<h5 class='well well-small accordion-toggle' data-toggle='collapse' data-parent='#accordion'><a href='#collapse-".
                                         $lesson->id."'>".
