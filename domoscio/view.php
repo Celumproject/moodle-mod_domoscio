@@ -31,7 +31,7 @@ require_once(dirname(dirname(dirname(__FILE__))).'/config.php');
 require_once(dirname(__FILE__).'/lib.php');
 require_once(dirname(__FILE__).'/sdk/client.php');
 
-$PAGE->requires->js('/mod/domoscio/jquery-1.11.3.min.js', true);
+// $PAGE->requires->js('/mod/domoscio/jquery-1.11.3.min.js', true);
 $PAGE->requires->js('/mod/domoscio/bootstrap-collapse.js', true);
 $PAGE->requires->js('/mod/domoscio/Chart.min.js', true);
 
@@ -50,7 +50,7 @@ if ($id) {
     $cm         = get_coursemodule_from_instance('domoscio', $domoscio->id, $course->id, false, MUST_EXIST);
 } else if ($kn) {
     $module     = $DB->get_record('modules', array('name' => 'domoscio'), '*', MUST_EXIST);
-    $domoscio   = $DB->get_record('domoscio', array('resource_id' => $kn), '*', MUST_EXIST);
+    $domoscio   = $DB->get_record('domoscio', array('resourceid' => $kn), '*', MUST_EXIST);
     $course     = get_course($domoscio->course);
     $cm         = $DB->get_record('course_modules', array('instance' => $domoscio->id, 'module' => $module->id), '*', MUST_EXIST);
     $id         = $cm->id;
@@ -71,14 +71,14 @@ echo $OUTPUT->heading($domoscio->name);
 
 $rest = new mod_domoscio_client();
 
-$resource = json_decode($rest->seturl($config, 'knowledge_nodes', $domoscio->resource_id)->get());
+$resource = json_decode($rest->seturl($config, 'knowledge_nodes', $domoscio->resourceid)->get());
 
 $linkedresource = domoscio_get_resource_info($resource->id);
 
 if (has_capability('moodle/course:create', $context)) {
     // --- TEACHER VIEW ---
 
-    $notions = $DB->get_records('knowledge_nodes', array('instance' => $domoscio->id, 'active' => '1'), '', '*');
+    $notions = $DB->get_records('domoscio_knowledge_nodes', array('instance' => $domoscio->id, 'active' => '1'), '', '*');
 
     $introbox = html_writer::tag('b', get_string('resource_assigned', 'domoscio'), array('class' => 'content')).
                 html_writer::link($linkedresource->url, $linkedresource->display);
@@ -105,26 +105,26 @@ if (has_capability('moodle/course:create', $context)) {
         $renderq = '';
         $rest = new mod_domoscio_client();
 
-        $title = json_decode($rest->seturl($config, 'knowledge_nodes', $notion->knowledge_node_id)->get());
+        $title = json_decode($rest->seturl($config, 'knowledge_nodes', $notion->knodeid)->get());
 
         $qids = $DB->get_records_sql("SELECT *
-                                        FROM {knowledge_node_questions}
-                                       WHERE `knowledge_node`= :knid",
-                                     array('knid' => $notion->knowledge_node_id)
+                                        FROM {domoscio_knowledge_node_questions}
+                                       WHERE `knodeid`= :knid",
+                                     array('knid' => $notion->knodeid)
                                     );
 
         foreach ($qids as $qid) {
             if ($qid->type == "scorm") {
-                $sco = $DB->get_record('scorm_scoes', array('id' => $qid->question_id), '*');
+                $sco = $DB->get_record('scorm_scoes', array('id' => $qid->questionid), '*');
 
                 $renderq .= html_writer::tag('b', $linkedresource->display)." - ".$sco->title.html_writer::tag('hr', '');
             } else {
                 if ($qid->type == "quiz") {
-                    $question = $DB->get_record('question', array('id' => $qid->question_id), '*');
+                    $question = $DB->get_record('question', array('id' => $qid->questionid), '*');
                     $questionname = $question->name;
                     $questiontext = $question->questiontext;
                 } else if ($qid->type == "lesson") {
-                    $question = $DB->get_record('lesson_pages', array('id' => $qid->question_id), '*');
+                    $question = $DB->get_record('lesson_pages', array('id' => $qid->questionid), '*');
                     $questionname = $question->title;
                     $questiontext = $question->contents;
                 }
@@ -141,7 +141,7 @@ if (has_capability('moodle/course:create', $context)) {
                                                                                             'class' => 'accordion-toggle',
                                                                                             'data-toggle' => 'collapse',
                                                                                             'data-parent' => '#accordion2'));
-        $togglers .= html_writer::link($CFG->wwwroot.'/mod/domoscio/linkto.php?id='.$cm->id.'&notion='.$notion->knowledge_node_id,
+        $togglers .= html_writer::link($CFG->wwwroot.'/mod/domoscio/linkto.php?id='.$cm->id.'&notion='.$notion->knodeid,
                                        html_writer::tag('button',
                                                         get_string('choose_q', 'domoscio'),
                                                         array('type' => 'button', 'class' => 'btn btn-link pull-right')));
@@ -158,10 +158,10 @@ if (has_capability('moodle/course:create', $context)) {
          html_writer::tag('div', '<h6 class="lead muted text-center">'.get_string('set_notions', 'domoscio').'</h6>'.$notionlist, array('class' => 'coursebox header'));
 
 
-} else if (is_enrolled($context)) {
+} else if (has_capability('mod/domoscio:submit', $context)) {
     // --- STUDENT VIEW ---
     // Check if student already logged up the Domoscio plugin
-    $check = $DB->get_record('userapi', array('user_id' => $USER->id), '*');
+    $check = $DB->get_record('domoscio_userapi', array('userid' => $USER->id), '*');
 
     if (empty($check)) {
         // If not, plugin calls API for creating new student profile

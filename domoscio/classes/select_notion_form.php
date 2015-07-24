@@ -49,13 +49,13 @@ class mod_domoscio_select_notion_form extends moodleform {
         $config = get_config('domoscio');
         $mform = $this->_form;
 
-        $notions = $DB->get_records('knowledge_nodes', array('instance' => $this->_customdata['instance']), '', '*');
+        $notions = $DB->get_records('domoscio_knowledge_nodes', array('instance' => $this->_customdata['instance']), '', '*');
 
         // Fill the checkbox if already selected
         $selectednotions = $DB->get_records_sql("SELECT *
-                                                    FROM {knowledge_nodes}
-                                                   WHERE `instance` = :instance
-                                                     AND `active` = '1'",
+                                                   FROM {domoscio_knowledge_nodes}
+                                                  WHERE `instance` = :instance
+                                                    AND `active` = '1'",
                                                 array('instance' => $this->_customdata['instance'])
                                                );
 
@@ -68,7 +68,7 @@ class mod_domoscio_select_notion_form extends moodleform {
         $mform = $this->_form;
 
         foreach ($notions as $notion) {
-            $title = json_decode($this->seturl($config, "knowledge_nodes", $notion->knowledge_node_id)->get());
+            $title = json_decode($this->seturl($config, "knowledge_nodes", $notion->knodeid)->get());
 
             if (in_array($notion->id, $selected)) {
                 $check = true;
@@ -76,7 +76,7 @@ class mod_domoscio_select_notion_form extends moodleform {
                 $check = false;
             }
 
-            if (intval($notion->knowledge_node_id) == intval($this->_customdata['parent'])) {
+            if (intval($notion->knodeid) == intval($this->_customdata['parent'])) {
                 $mform->addElement('html', '<blockquote class="muted"><small>'.get_string('whole_expl', 'domoscio').'</small></blockquote>');
                 $notionname = html_writer::tag('span', get_string('global_module', 'domoscio'), array('class' => 'alert alert-info'));
                 $parentid = $notion->id;

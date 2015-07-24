@@ -46,7 +46,7 @@ class mod_domoscio_mod_form extends moodleform_mod {
 
         if ($this->_cm) {
             $domoscio = $DB->get_record('domoscio', array('id' => $this->_cm->instance), '*');
-            $module = $this->domoscio_get_resource_bykn($domoscio->resource_id);
+            $module = $this->domoscio_get_resource_bykn($domoscio->resourceid);
         }
 
         $mform = $this->_form;
@@ -164,9 +164,9 @@ class mod_domoscio_mod_form extends moodleform_mod {
 
         $query = "SELECT {course_modules}.`module`, {course_modules}.`instance`, {course_modules}.`id`
                     FROM {course_modules}
-              INNER JOIN {knowledge_nodes}
-                      ON {course_modules}.`id` = {knowledge_nodes}.`resource_id`
-                   WHERE {knowledge_nodes}.`knowledge_node_id` = :knid";
+              INNER JOIN {domoscio_knowledge_nodes}
+                      ON {course_modules}.`id` = {domoscio_knowledge_nodes}.`resourceid`
+                   WHERE {domoscio_knowledge_nodes}.`knodeid` = :knid";
 
         $resource = $DB->get_record_sql($query, array('knid' => $knowledgenode));
 

@@ -44,7 +44,7 @@ if ($id) {
     $cm         = get_coursemodule_from_instance('domoscio', $domoscio->id, $course->id, false, MUST_EXIST);
 } else if ($kn) {
     $module     = $DB->get_record('modules', array('name' => 'domoscio'), '*', MUST_EXIST);
-    $domoscio   = $DB->get_record('domoscio', array('resource_id' => $kn), '*', MUST_EXIST);
+    $domoscio   = $DB->get_record('domoscio', array('resourceid' => $kn), '*', MUST_EXIST);
     $course     = get_course($domoscio->course);
     $cm         = $DB->get_record('course_modules', array('instance' => $domoscio->id, 'module' => $module->id), '*', MUST_EXIST);
     $id         = $cm->id;
@@ -67,7 +67,7 @@ echo $OUTPUT->heading(get_string('add_notion_btn', 'domoscio'));
 
 $rest = new mod_domoscio_client();
 
-$resource = json_decode($rest->seturl($config, 'knowledge_nodes', $domoscio->resource_id)->get());
+$resource = json_decode($rest->seturl($config, 'knowledge_nodes', $domoscio->resourceid)->get());
 
 $linkedresource = domoscio_get_resource_info($resource->id);
 
@@ -81,7 +81,7 @@ if (has_capability('moodle/course:create', $context)) {
         redirect("$CFG->wwwroot/mod/domoscio/select_notions.php?id=".$cm->id);
         exit;
     } else if ($fromform = $mform->get_data()) {
-        $kngraph  = $DB->get_record('knowledge_graphs', array('course_id' => $course->id), '*', MUST_EXIST);
+        $kngraph  = $DB->get_record('domoscio_knowledge_graphs', array('courseid' => $course->id), '*', MUST_EXIST);
         $rest = new mod_domoscio_client();
 
         $json = json_encode(array('knowledge_graph_id' => strval($kngraph->knowledge_graph_id),
@@ -91,12 +91,12 @@ if (has_capability('moodle/course:create', $context)) {
 
         // Add new entry into knowledge_nodes table
         $record = new stdClass();
-        $record->knowledge_node_id = $newnotion->id;
+        $record->knodeid = $newnotion->id;
         $record->instance = $domoscio->id;
-        $record->resource_id = $linkedresource->cm;
-        $record->child_id = null;
+        $record->resourceid = $linkedresource->cm;
+        $record->childid = null;
 
-        $insert = $DB->insert_record('knowledge_nodes', $record);
+        $insert = $DB->insert_record('domoscio_knowledge_nodes', $record);
 
         // Store knowledge_edges
         $json = json_encode(array('knowledge_graph_id' => strval($kngraph->knowledge_graph_id),

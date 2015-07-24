@@ -25,9 +25,9 @@ if (!defined('MOODLE_INTERNAL')) {
     die('Direct access to this script is forbidden.');
 }
 
-$plugin->version   = 2015072000;
+$plugin->version   = 2015072401;
 $plugin->requires  = 2012062500;
 $plugin->component = 'mod_domoscio';
 $plugin->cron      = 0;
-$plugin->release   = '2015072000';
+$plugin->release   = '2015072401';
 $plugin->maturity  = MATURITY_BETA;

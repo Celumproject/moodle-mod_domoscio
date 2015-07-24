@@ -56,7 +56,7 @@ $PAGE->set_pagelayout('incourse');
 
 $rest = new mod_domoscio_client();
 
-$resource = json_decode($rest->seturl($config, 'knowledge_nodes', $domoscio->resource_id)->get());
+$resource = json_decode($rest->seturl($config, 'knowledge_nodes', $domoscio->resourceid)->get());
 $notion = json_decode($rest->seturl($config, 'knowledge_nodes', $kn)->get());
 
 echo $OUTPUT->header();
@@ -125,9 +125,9 @@ if (has_capability('moodle/course:create', $context)) {
                 foreach ($fromform as $k => $value) {
                     if (is_numeric($k)) {
                         $check = $DB->get_record_sql("SELECT *
-                                                        FROM {knowledge_node_questions}
-                                                       WHERE `question_id` = :qid
-                                                         AND knowledge_node = :knid",
+                                                        FROM {domoscio_knowledge_node_questions}
+                                                       WHERE `questionid` = :qid
+                                                         AND knodeid = :knid",
                                                      array('qid' => $k,
                                                           'knid' => $notion->id)
                                                     );
@@ -136,14 +136,14 @@ if (has_capability('moodle/course:create', $context)) {
                             if ($check == null) {
                                 $entry = new stdClass;
                                 $entry->instance = $domoscio->id;
-                                $entry->knowledge_node = $kn;
-                                $entry->question_id = $k;
+                                $entry->knodeid = $kn;
+                                $entry->questionid = $k;
                                 $entry->type = $selected[0];
-                                $write = $DB->insert_record('knowledge_node_questions', $entry);
+                                $write = $DB->insert_record('domoscio_knowledge_node_questions', $entry);
                             }
                         } else if ($value == 0) {
                             if (!empty($check)) {
-                                $DB->delete_records('knowledge_node_questions', array('question_id' => $k, 'knowledge_node' => $notion->id));
+                                $DB->delete_records('domoscio_knowledge_node_questions', array('questionid' => $k, 'knodeid' => $notion->id));
                             }
                         }
                     }
