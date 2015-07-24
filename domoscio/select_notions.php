@@ -49,7 +49,7 @@ if ($id) {
     $cm         = get_coursemodule_from_instance('domoscio', $domoscio->id, $course->id, false, MUST_EXIST);
 } else if ($kn) {
     $module     = $DB->get_record('modules', array('name' => 'domoscio'), '*', MUST_EXIST);
-    $domoscio   = $DB->get_record('domoscio', array('resource_id' => $kn), '*', MUST_EXIST);
+    $domoscio   = $DB->get_record('domoscio', array('resourceid' => $kn), '*', MUST_EXIST);
     $course     = get_course($domoscio->course);
     $cm         = $DB->get_record('course_modules', array('instance' => $domoscio->id, 'module' => $module->id), '*', MUST_EXIST);
     $id         = $cm->id;
@@ -73,7 +73,7 @@ echo $OUTPUT->heading(get_string('def_notions', 'domoscio'));
 
 $rest = new mod_domoscio_client();
 
-$resource = json_decode($rest->seturl($config, 'knowledge_nodes', $domoscio->resource_id)->get());
+$resource = json_decode($rest->seturl($config, 'knowledge_nodes', $domoscio->resourceid)->get());
 
 if (has_capability('moodle/course:create', $context)) {
 
@@ -96,7 +96,7 @@ if (has_capability('moodle/course:create', $context)) {
     echo html_writer::tag('ul', $overviewurl.$defnotionurl.$showstatsurl, array('class' => 'nav nav-tabs'));
 
     $mform = new mod_domoscio_select_notion_form("$CFG->wwwroot/mod/domoscio/select_notions.php?id=$cm->id", array('instance' => $domoscio->id,
-                                                                                                                   'parent' => $domoscio->resource_id));
+                                                                                                                   'parent' => $domoscio->resourceid));
 
     if ($mform->is_cancelled()) {
 
@@ -111,12 +111,12 @@ if (has_capability('moodle/course:create', $context)) {
                     $entry = new stdClass;
                     $entry->id = $k;
                     $entry->active = 1;
-                    $write = $DB->update_record('knowledge_nodes', $entry, $bulk = false);
+                    $write = $DB->update_record('domoscio_knowledge_nodes', $entry, $bulk = false);
                 } else if ($value == 0) {
                     $entry = new stdClass;
                     $entry->id = $k;
                     $entry->active = 0;
-                    $write = $DB->update_record('knowledge_nodes', $entry, $bulk = false);
+                    $write = $DB->update_record('domoscio_knowledge_nodes', $entry, $bulk = false);
                 }
             }
         }

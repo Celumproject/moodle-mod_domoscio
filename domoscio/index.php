@@ -27,8 +27,9 @@ require_once(dirname(__FILE__).'/lib.php');
 require_once(dirname(__FILE__).'/sdk/client.php');
 
 $config = get_config('domoscio');
-$PAGE->set_context(context_system::instance());
 require_login();
+$context = context_system::instance();
+$PAGE->set_context($context);
 
 $strname = get_string('modulename', 'mod_domoscio');
 $PAGE->set_url('/mod/domoscio/index.php');
@@ -37,68 +38,70 @@ $PAGE->set_title(get_string('pluginname', 'domoscio'));
 $PAGE->set_heading(get_string('pluginname', 'domoscio'));
 $PAGE->set_pagelayout('incourse');
 
-$date = usergetdate(time());
-list($d, $m, $y, $h, $min) = array($date['mday'], $date['mon'], $date['year'], $date['hours'], $date['minutes']);
-
 echo $OUTPUT->header();
-
-$todotests = domoscio_count_tests($config);
-$rest = new mod_domoscio_client();
-
 echo $OUTPUT->heading(get_string('desk', 'domoscio'));
 
-$check = $DB->get_record('userapi', array('user_id' => $USER->id), '*');
-$student = json_decode($rest->seturl($config, 'students', $check->uniq_id)->get());
+if (has_capability('mod/domoscio:submit', $context)) {
+    $date = usergetdate(time());
+    list($d, $m, $y, $h, $min) = array($date['mday'], $date['mon'], $date['year'], $date['hours'], $date['minutes']);
 
-$displayuser = html_writer::tag('p', get_string('welcome', 'domoscio').$student->id);
-$notification = userdate(make_timestamp($y, $m, $d, $h, $min))."<br/>".
-                html_writer::start_span('badge badge-important').
-                html_writer::tag('h4', count($todotests)).
-                html_writer::end_span().get_string('text2', 'domoscio').domoscio_plural($todotests).get_string('text3', 'domoscio');
 
-echo html_writer::tag('div', html_writer::tag('h5', $displayuser."<hr/>".$notification, array('class' => 'content')), array('class' => 'block'));
-
-if (!empty($todotests)) {
-    $SESSION->todo = array();
-    $trows = "";
+    $todotests = domoscio_count_tests($config);
     $rest = new mod_domoscio_client();
-    foreach ($todotests as $kn) {
-        $resource = domoscio_get_resource_info($kn);
-        $domoscioid = $DB->get_record('knowledge_nodes', array('knowledge_node_id' => $kn), '*');
-        $SESSION->todo[] = $kn;
 
-        $kninfo = json_decode($rest->seturl($config, 'knowledge_nodes', $kn)->get());
 
-        $trows .= html_writer::tag('tr', html_writer::tag('td', $resource->display." - ".$kninfo->name).
-                                         html_writer::tag('td', html_writer::link($CFG->wwwroot.'/mod/domoscio/doquiz.php?kn='.$kn.'&solo=true&t='.time(),
-                                                                                  '<i class="icon-edit icon-white"></i>',
-                                                                                  array('target' => '_blank',
-                                                                                         'class' => 'btn btn-danger')),
-                                                                                  array('style' => 'text-align:center')).
-                                         html_writer::tag('td', html_writer::link($resource->url,
-                                                                                  '<i class="icon-book icon-white"></i>',
-                                                                                  array('target' => '_blank',
-                                                                                        'class' => 'btn btn-primary')),
-                                                                                  array('style' => 'text-align:center')).
-                                         html_writer::tag('td', html_writer::link($CFG->wwwroot.'/mod/domoscio/view.php?d='.$domoscioid->instance,
-                                                                                  "<i class='icon-signal icon-white'></i>",
-                                                                                  array('target' => '_blank',
-                                                                                        'class' => 'btn btn-success')),
-                                                                                  array('style' => 'text-align:center'))
-                                  );
+    $check = $DB->get_record('domoscio_userapi', array('userid' => $USER->id), '*');
+    $student = json_decode($rest->seturl($config, 'students', $check->uniqid)->get());
+
+    $displayuser = html_writer::tag('p', get_string('welcome', 'domoscio').$student->id);
+    $notification = userdate(make_timestamp($y, $m, $d, $h, $min))."<br/>".
+                    html_writer::start_span('badge badge-important').
+                    html_writer::tag('h4', count($todotests)).
+                    html_writer::end_span().get_string('text2', 'domoscio').domoscio_plural($todotests).get_string('text3', 'domoscio');
+
+    echo html_writer::tag('div', html_writer::tag('h5', $displayuser."<hr/>".$notification, array('class' => 'content')), array('class' => 'block'));
+
+    if (!empty($todotests)) {
+        $SESSION->todo = array();
+        $trows = "";
+        $rest = new mod_domoscio_client();
+        foreach ($todotests as $kn) {
+            $resource = domoscio_get_resource_info($kn);
+            $domoscioid = $DB->get_record('domoscio_knowledge_nodes', array('knodeid' => $kn), '*');
+            $SESSION->todo[] = $kn;
+
+            $kninfo = json_decode($rest->seturl($config, 'knowledge_nodes', $kn)->get());
+
+            $trows .= html_writer::tag('tr', html_writer::tag('td', $resource->display." - ".$kninfo->name).
+                                             html_writer::tag('td', html_writer::link($CFG->wwwroot.'/mod/domoscio/doquiz.php?kn='.$kn.'&solo=true&t='.time(),
+                                                                                      '<i class="icon-edit icon-white"></i>',
+                                                                                      array('target' => '_blank',
+                                                                                             'class' => 'btn btn-danger')),
+                                                                                      array('style' => 'text-align:center')).
+                                             html_writer::tag('td', html_writer::link($resource->url,
+                                                                                      '<i class="icon-book icon-white"></i>',
+                                                                                      array('target' => '_blank',
+                                                                                            'class' => 'btn btn-primary')),
+                                                                                      array('style' => 'text-align:center')).
+                                             html_writer::tag('td', html_writer::link($CFG->wwwroot.'/mod/domoscio/view.php?d='.$domoscioid->instance,
+                                                                                      "<i class='icon-signal icon-white'></i>",
+                                                                                      array('target' => '_blank',
+                                                                                            'class' => 'btn btn-success')),
+                                                                                      array('style' => 'text-align:center'))
+                                      );
+        }
+        $th = html_writer::tag('tr', html_writer::tag('th', get_string('module', 'domoscio')).
+                                   html_writer::tag('th', get_string('do_test', 'domoscio')).
+                                   html_writer::tag('th', get_string('see_notion', 'domoscio')).
+                                   html_writer::tag('th', get_string('stats', 'domoscio')));
+        echo html_writer::tag('table', $th.$trows, array('class' => 'table table-striped table-bordered table-hover'));
+
+        echo html_writer::tag('button',
+                              get_string('start_tests', 'domoscio'),
+                              array('type' => 'button',
+                                    'onclick' => "javascript:location.href='$CFG->wwwroot/mod/domoscio/doquiz.php?kn=".array_shift($SESSION->todo)."&t=".time()."'"));
+    } else {
+        echo get_string('no_test', 'domoscio');
     }
-    $th = html_writer::tag('tr', html_writer::tag('th', get_string('module', 'domoscio')).
-                               html_writer::tag('th', get_string('do_test', 'domoscio')).
-                               html_writer::tag('th', get_string('see_notion', 'domoscio')).
-                               html_writer::tag('th', get_string('stats', 'domoscio')));
-    echo html_writer::tag('table', $th.$trows, array('class' => 'table table-striped table-bordered table-hover'));
-
-    echo html_writer::tag('button',
-                          get_string('start_tests', 'domoscio'),
-                          array('type' => 'button',
-                                'onclick' => "javascript:location.href='$CFG->wwwroot/mod/domoscio/doquiz.php?kn=".array_shift($SESSION->todo)."&t=".time()."'"));
-} else {
-    echo get_string('no_test', 'domoscio');
 }
-
 echo $OUTPUT->footer();
