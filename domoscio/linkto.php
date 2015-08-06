@@ -125,11 +125,13 @@ if (has_capability('moodle/course:create', $context)) {
                 foreach ($fromform as $k => $value) {
                     if (is_numeric($k)) {
                         $check = $DB->get_record_sql("SELECT *
-                                                        FROM {domoscio_knowledge_node_questions}
+                                                        FROM {domoscio_knode_questions}
                                                        WHERE `questionid` = :qid
-                                                         AND knodeid = :knid",
+                                                         AND knodeid = :knid
+                                                         AND type = :qtype",
                                                      array('qid' => $k,
-                                                          'knid' => $notion->id)
+                                                          'knid' => $notion->id,
+                                                         'qtype' => $selected[0])
                                                     );
 
                         if ($value == 1) {
@@ -139,11 +141,11 @@ if (has_capability('moodle/course:create', $context)) {
                                 $entry->knodeid = $kn;
                                 $entry->questionid = $k;
                                 $entry->type = $selected[0];
-                                $write = $DB->insert_record('domoscio_knowledge_node_questions', $entry);
+                                $write = $DB->insert_record('domoscio_knode_questions', $entry);
                             }
                         } else if ($value == 0) {
                             if (!empty($check)) {
-                                $DB->delete_records('domoscio_knowledge_node_questions', array('questionid' => $k, 'knodeid' => $notion->id));
+                                $DB->delete_records('domoscio_knode_questions', array('questionid' => $k, 'knodeid' => $notion->id, 'type' => $selected[0]));
                             }
                         }
                     }

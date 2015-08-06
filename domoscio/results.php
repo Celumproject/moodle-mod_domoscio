@@ -25,6 +25,8 @@ require_once(dirname(dirname(dirname(__FILE__))).'/config.php');
 require_once(dirname(dirname(dirname(__FILE__))).'/calendar/lib.php');
 require_once(dirname(dirname(__FILE__)).'/scorm/locallib.php');
 require_once(dirname(__FILE__).'/lib.php');
+require_once($CFG->dirroot . '/question/engine/lib.php');
+require_once($CFG->dirroot . '/question/previewlib.php');
 
 require_login();
 require_sesskey();
@@ -67,48 +69,69 @@ echo $OUTPUT->header();
 echo $OUTPUT->heading(get_string('results', 'domoscio'));
 
 if (has_capability('mod/domoscio:submit', $context)) {
+    unset($SESSION->selected);
     if ($q) {
         // If exercise is Quiz question or lesson question
         if (data_submitted() && confirm_sesskey()) {
             $answersubmitted = data_submitted();
 
             // Retrive answered question data
-            $selected = $DB->get_record('domoscio_knowledge_node_questions', array('questionid' => $q, 'knodeid' => $kn), '*');
-
+            $selected = $DB->get_record('domoscio_knode_questions', array('questionid' => $q, 'knodeid' => $kn), '*');
             if ($selected->type == "quiz") {
                 $question = $DB->get_record_sql("SELECT *
                                                    FROM {question}
                                                   WHERE `id` = :qid",
                                                 array('qid' => $q)
                                                );
+
+                $data = data_submitted();
+                $quba = question_engine::load_questions_usage_by_activity($data->usageid);
+                $correctresponse = $quba->get_correct_response($data->slots);
+
+                if (!is_null($correctresponse)) {
+                    $transaction = $DB->start_delegated_transaction();
+                    $timenow = time();
+                    $quba->process_all_actions($timenow);
+                    question_engine::save_questions_usage_by_activity($quba);
+                    $transaction->allow_commit();
+                    $quba->finish_question($data->slots, $timenow);
+                }
+
+                $options = new question_preview_options($question);
+                $options->readonly = true;
+                $result = new stdClass;
+                $result->score = round($quba->get_total_mark() * 100);
+
+                // Display question correction
+                echo $quba->render_question($data->slots, $options, $q);
             } else if ($selected->type == "lesson") {
                 $question = $DB->get_record('lesson_pages', array('id' => $q), '*');
+
+                // Retrieve question type
+                $qtype = domoscio_get_qtype($question, $selected->type);
+
+                if ($qtype == "calculated" || $qtype == "numerical" || $qtype == "shortanswer") {
+                    $result = domoscio_get_input_result($question, $answersubmitted, $selected->type);
+                } else if ($qtype == "multichoice" || $qtype == "calculatedmulti" || $qtype == "truefalse") {
+                    $result = domoscio_get_multi_choice_result($question, $answersubmitted, $selected->type);
+                } else if ($qtype == "multianswer") {
+                    $result = domoscio_get_multi_result($question, $answersubmitted, $selected->type);
+                } else if ($qtype == "match") {
+                    $result = domoscio_get_match_result($question, $answersubmitted, $selected->type);
+                }
+
+                // Display correction
+                $qspan = html_writer::start_span('qno') . $question->id . html_writer::end_span();
+                $qheader = html_writer::tag('h3', get_string('question', 'domoscio').$qspan, array('class' => 'no'));
+
+                $qcontent = html_writer::tag('div', $result->output, array('class' => 'formulation'));
+
+                $output = html_writer::tag('div', $qheader, array('class' => 'info'));
+                $output .= html_writer::tag('div', $qcontent, array('class' => 'content'));
+                $output = html_writer::tag('div', $output, array('class' => 'que '.$qtype.' deferredfeedback notyetanswered'));
+
+                echo $output;
             }
-
-            // Retrieve question type
-            $qtype = domoscio_get_qtype($question, $selected->type);
-
-            if ($qtype == "calculated" || $qtype == "numerical" || $qtype == "shortanswer") {
-                $result = domoscio_get_input_result($question, $answersubmitted, $selected->type);
-            } else if ($qtype == "multichoice" || $qtype == "calculatedmulti" || $qtype == "truefalse") {
-                $result = domoscio_get_multi_choice_result($question, $answersubmitted, $selected->type);
-            } else if ($qtype == "multianswer") {
-                $result = domoscio_get_multi_result($question, $answersubmitted, $selected->type);
-            } else if ($qtype == "match") {
-                $result = domoscio_get_match_result($question, $answersubmitted, $selected->type);
-            }
-
-            // Display correction
-            $qspan = html_writer::start_span('qno') . $question->id . html_writer::end_span();
-            $qheader = html_writer::tag('h3', get_string('question', 'domoscio').$qspan, array('class' => 'no'));
-
-            $qcontent = html_writer::tag('div', $result->output, array('class' => 'formulation'));
-
-            $output = html_writer::tag('div', $qheader, array('class' => 'info'));
-            $output .= html_writer::tag('div', $qcontent, array('class' => 'content'));
-            $output = html_writer::tag('div', $output, array('class' => 'que '.$qtype.' deferredfeedback notyetanswered'));
-
-            echo $output;
         }
     } else if ($scorm) {
         // else if exercise is SCO
@@ -140,7 +163,7 @@ if (has_capability('mod/domoscio:submit', $context)) {
                 unset($SESSION->scoid);
             }
         }
-    } else if ($end = true) {
+    } else if ($end == true) {
         // Once the todo list is empty, sum up all results at tests done
         if (isset($SESSION->start)) {
             $finish = time();
@@ -154,10 +177,11 @@ if (has_capability('mod/domoscio:submit', $context)) {
                                   array('class' => 'block'));
 
             unset($SESSION->start);
+            $trows = "";
 
             foreach ($SESSION->results as $rapport) {
                 // For each notion, display student result
-                $kns = $DB->get_record('domoscio_knowledge_node_students', array('knodestudentid' => $rapport->knowledge_node_student_id), '*');
+                $kns = $DB->get_record('domoscio_knode_students', array('knodestudentid' => $rapport->knowledge_node_student_id), '*');
 
                 $resource = domoscio_get_resource_info($kns->knodeid);
 
@@ -165,11 +189,11 @@ if (has_capability('mod/domoscio:submit', $context)) {
 
                 if ($rapport->value == 100) {
                     $state = get_string('notion_ok', 'domoscio');
-                    $class = "alert-success";
+                    $class = "success";
                     $feedbackclass = "correct";
                 } else {
                     $state = html_writer::link($resource->url, "<i class='icon-book'></i>".get_string('notion_rvw', 'domoscio'), array('target' => '_blank'));
-                    $class = "alert-danger";
+                    $class = "error";
                     $feedbackclass = "incorrect";
                 }
 
@@ -179,11 +203,18 @@ if (has_capability('mod/domoscio:submit', $context)) {
                     'class' => 'questioncorrectnessicon',
                 );
 
-                echo html_writer::tag('div', html_writer::empty_tag('img', $attributes).
-                                             html_writer::tag('span', $resource->display." - ".$kninfo->name, array('class' => 'mod_introbox')).
-                                             html_writer::tag('span', $rapport->value." ".$state, array('class' => 'pull-right')), array('class' => 'que '.$class));
-
+                $trows .= html_writer::tag('tr', html_writer::tag('td', $resource->display." - ".$kninfo->name).
+                                                html_writer::tag('td', $rapport->value).
+                                                html_writer::tag('td', html_writer::empty_tag('img', $attributes)." ".$state),
+                                                array("class" => $class)
+                                           );
             }
+            $th = html_writer::tag('tr', html_writer::tag('th', get_string('resourceset_resource', 'domoscio')).
+                                         html_writer::tag('th', get_string('score', 'domoscio')).
+                                         html_writer::tag('th', get_string('state', 'domoscio')
+                                         )
+                                  );
+            echo html_writer::tag('table', $th.$trows, array('class' => 'table table-bordered table-hover'));
 
             unset($SESSION->results);
             unset($SESSION->todo);
@@ -193,26 +224,29 @@ if (has_capability('mod/domoscio:submit', $context)) {
                                                                                'onclick' => "javascript:location.href='$CFG->wwwroot/'"));
     }
 
-    if ($q || $scorm) {
-        // Display an alert message about student Success
-        if ($result->score == 100) {
-            echo html_writer::tag('div', "<i class='icon-ok'></i> ".get_string('test_succeeded', 'domoscio'), array('class' => 'alert alert-success'));
-        } else {
-            echo html_writer::tag('div', "<i class='icon-remove'></i> ".get_string('test_failed', 'domoscio'), array('class' => 'alert alert-error'));
+    if ($end == false) {
+        if ($q || $scorm) {
+            // Display an alert message about student Success
+            if ($result->score == 100) {
+                echo html_writer::tag('div', "<i class='icon-ok'></i> ".get_string('test_succeeded', 'domoscio'), array('class' => 'alert alert-success'));
+            } else {
+                echo html_writer::tag('div', "<i class='icon-remove'></i> ".get_string('test_failed', 'domoscio'), array('class' => 'alert alert-error'));
+            }
+
+            // Write json, send it and retrive result from API
+            $knstudent = $DB->get_record('domoscio_knode_students', array('user' => $USER->id,
+                                                                                'knodeid' => $kn), '*');
+            $json = json_encode(array('knowledge_node_student_id' => intval($knstudent->knodestudentid),
+                                                          'value' => intval($result->score)));
+
+            $SESSION->results[] = json_decode($rest->seturl($config, 'results', null)->post($json));
+
+            // Put a new event in calendar
+            $knstudent = json_decode($rest->seturl($config, 'knowledge_node_students', $knstudent->knodestudentid)->get());
+            $resource = json_decode($rest->seturl($config, 'knowledge_nodes', $kn)->get());
+
+            $newevent = domoscio_create_event($domoscio, $knstudent, $kn, $resource);
         }
-
-        // Write json, send it and retrive result from API
-        $knstudent = $DB->get_record('domoscio_knowledge_node_students', array('user' => $USER->id,
-                                                                            'knodeid' => $kn), '*');
-        $json = json_encode(array('knowledge_node_student_id' => intval($knstudent->knodestudentid),
-                                                      'value' => intval($result->score)));
-
-        $SESSION->results[] = json_decode($rest->seturl($config, 'results', null)->post($json));
-
-        // Put a new event in calendar
-        $knstudent = json_decode($rest->seturl($config, 'knowledge_node_students', $knstudent->knodestudentid)->get());
-
-        $newevent = domoscio_create_event($domoscio, $course, $knstudent);
     }
 
     if (!empty($SESSION->todo)) {

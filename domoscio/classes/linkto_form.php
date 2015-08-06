@@ -50,7 +50,7 @@ class mod_domoscio_linkto_form extends moodleform {
 
         // Retrive already selected questions
         $selectedquestions = $DB->get_records_sql("SELECT *
-                                                     FROM {domoscio_knowledge_node_questions}
+                                                     FROM {domoscio_knode_questions}
                                                     WHERE `knodeid`= :knid
                                                       AND `type` = :type",
                                                   array('knid' => $this->_customdata['kn_id'],
@@ -104,8 +104,10 @@ class mod_domoscio_linkto_form extends moodleform {
 
             $questions = $DB->get_records_sql($sql, $inparams);
 
-            $icon = html_writer::tag('img', '', array('src' => $OUTPUT->pix_url('icon', 'lesson', 'lesson', array('class' => 'icon')), 'class' => 'activityicon', 'alt' => 'disable'));
-
+            $icon = html_writer::tag('img',
+                                     '',
+                                     array('src' => $OUTPUT->pix_url('icon', 'lesson', 'lesson', array('class' => 'icon')),
+                                         'class' => 'activityicon', 'alt' => 'disable'));
 
             $mform->addElement('html', "<h5 class='well well-small accordion-toggle' data-toggle='collapse' data-parent='#accordion'><a href='#collapse-".
                                         $lesson->id."'>".
@@ -113,9 +115,9 @@ class mod_domoscio_linkto_form extends moodleform {
 
             foreach ($questions as $question) {
                 if (in_array($question->id, $selected)) {
-                  $check = true;
+                    $check = true;
                 } else {
-                  $check = false;
+                    $check = false;
                 }
 
                 $mform->addElement('advcheckbox',

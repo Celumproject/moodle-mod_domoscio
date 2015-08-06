@@ -188,8 +188,8 @@ function domoscio_delete_instance($id) {
 
     // Delete any dependent records here.
 
-    $DB->delete_records('domoscio_knowledge_node_students', array('instance' => $domoscio->id));
-    $DB->delete_records('domoscio_knowledge_node_questions', array('instance' => $domoscio->id));
+    $DB->delete_records('domoscio_knode_students', array('instance' => $domoscio->id));
+    $DB->delete_records('domoscio_knode_questions', array('instance' => $domoscio->id));
     $DB->delete_records('domoscio', array('id' => $domoscio->id));
 
     domoscio_grade_item_delete($domoscio);
@@ -549,7 +549,7 @@ function domoscio_manage_student($config, $domoscio, $check) {
 
     // Check if kn student exist for each knowledgenode, retrive data if so or create new one if not set
     foreach ($knowledgenodes as $kn) {
-        if (!$knsquery = $DB->get_record('domoscio_knowledge_node_students', array('knodeid' => $kn->knodeid, 'user' => $USER->id))) {
+        if (!$knsquery = $DB->get_record('domoscio_knode_students', array('knodeid' => $kn->knodeid, 'user' => $USER->id))) {
             $jsonkn = json_encode(array('knowledge_node_id' => intval($kn->knodeid), 'student_id' => intval($student->id)));
 
             $kndata = json_decode($rest->seturl($config, 'knowledge_node_students', null)->post($jsonkn));
@@ -560,8 +560,8 @@ function domoscio_manage_student($config, $domoscio, $check) {
             $record->instance = $domoscio->id;
             $record->knodeid = $kn->knodeid;
             $record->knodestudentid = $kndata->id;
-            $insert = $DB->insert_record('domoscio_knowledge_node_students', $record, false);
-            $knsquery = $DB->get_record('domoscio_knowledge_node_students', array('knodeid' => $kn->knodeid, 'user' => $USER->id));
+            $insert = $DB->insert_record('domoscio_knode_students', $record, false);
+            $knsquery = $DB->get_record('domoscio_knode_students', array('knodeid' => $kn->knodeid, 'user' => $USER->id));
         }
 
         $knstudent[] = json_decode($rest->seturl($config, 'knowledge_node_students', $knsquery->knodestudentid)->get());
@@ -571,7 +571,7 @@ function domoscio_manage_student($config, $domoscio, $check) {
 
         if ($lastkn->history == "") {
             // Retrive list of exercises (SCORM & Quiz) selected by course creator
-            $questions = $DB->get_records('domoscio_knowledge_node_questions', array('instance' => $domoscio->id, 'knodeid' => $kn->knodeid), '', '*');
+            $questions = $DB->get_records('domoscio_knode_questions', array('instance' => $domoscio->id, 'knodeid' => $kn->knodeid), '', '*');
             $listquestions = $listscoes = $listlessonpages = array();
             $i = 0;
             foreach ($questions as $question) {
@@ -671,6 +671,8 @@ function domoscio_manage_student($config, $domoscio, $check) {
                 array_pop($knstudent);
 
                 $knstudent[] = json_decode($rest->seturl($config, 'knowledge_node_students', $lastkn->id)->get());
+
+                $newevent = domoscio_create_event($domoscio, end($knstudent));
             }
         }
     }
@@ -943,13 +945,13 @@ function domoscio_count_tests($config) {
         $queryparams = array('userid' => $USER->id);
 
         $sql = "SELECT *
-                FROM {domoscio_knowledge_node_students}
+                FROM {domoscio_knode_students}
                 INNER JOIN {domoscio_knowledge_nodes}
-                ON {domoscio_knowledge_nodes}.`knodeid` = {domoscio_knowledge_node_students}.`knodeid`
-                WHERE {domoscio_knowledge_node_students}.`user` = :userid
+                ON {domoscio_knowledge_nodes}.`knodeid` = {domoscio_knode_students}.`knodeid`
+                WHERE {domoscio_knode_students}.`user` = :userid
                 AND ({domoscio_knowledge_nodes}.`active` IS NULL
                     OR {domoscio_knowledge_nodes}.`active` = '1')
-                AND {domoscio_knowledge_node_students}.`instance` $insql";
+                AND {domoscio_knode_students}.`instance` $insql";
 
         $params = array_merge($inparams, $queryparams);
         $knstudents = $DB->get_records_sql($sql, $params);
@@ -971,20 +973,17 @@ function domoscio_count_tests($config) {
  * This function displays tests interface
  *
  * @param \stdClass $question the selected question data
- * @param \string $resourcetype the type of the exercise
  * @return \var $ouptut the question display
  */
-function domoscio_display_questions($question, $resourcetype) {
-    $qtype = domoscio_get_qtype($question, $resourcetype);
+function domoscio_display_questions($question) {
+    $qtype = domoscio_get_qtype($question);
 
     if ($qtype == "calculated" || $qtype == "numerical" || $qtype == "shortanswer") {
-        $display = domoscio_get_input_answers($question, $resourcetype);
-    } else if ($qtype == "multichoice" || $qtype == "calculatedmulti" || $qtype == "truefalse") {
-        $display = domoscio_get_multichoice_answer($question, $resourcetype);
-    } else if ($qtype == "multianswer") {
-        $display = domoscio_get_multi_answer($question, $resourcetype);
+        $display = domoscio_get_input_answers($question);
+    } else if ($qtype == "multichoice" || $qtype == "truefalse") {
+        $display = domoscio_get_multichoice_answer($question);
     } else if ($qtype == "match") {
-        $display = domoscio_get_match($question, $resourcetype);
+        $display = domoscio_get_match($question);
     }
 
     $qspan = html_writer::start_span('qno') . $question->id . html_writer::end_span();
@@ -1002,38 +1001,33 @@ function domoscio_display_questions($question, $resourcetype) {
  * This function retrives all answers for the question in params
  *
  * @param \stdClass $question the selected question data
- * @param \string $resourcetype the type of the exercise
  * @return \string $qtype the question type
  */
-function domoscio_get_qtype($question, $resourcetype) {
-    if ($resourcetype == "quiz") {
-        $qtype = $question->qtype;
-    } else if ($resourcetype == "lesson") {
-        switch($question->qtype) {
-            case 1:
-                $qtype = "shortanswer";
-                break;
+function domoscio_get_qtype($question) {
+    switch($question->qtype) {
+        case 1:
+            $qtype = "shortanswer";
+            break;
 
-            case 2:
-                $qtype = "truefalse";
-                break;
+        case 2:
+            $qtype = "truefalse";
+            break;
 
-            case 3:
-                $qtype = "multichoice";
-                break;
+        case 3:
+            $qtype = "multichoice";
+            break;
 
-            case 5:
-                $qtype = "match";
-                break;
+        case 5:
+            $qtype = "match";
+            break;
 
-            case 8:
-                $qtype = "numerical";
-                break;
+        case 8:
+            $qtype = "numerical";
+            break;
 
-            case 10:
-                $qtype = "essay";
-                break;
-        }
+        case 10:
+            $qtype = "essay";
+            break;
     }
     return $qtype;
 }
@@ -1042,36 +1036,19 @@ function domoscio_get_qtype($question, $resourcetype) {
  * This function retrives all answers for the question in params
  *
  * @param \int $qnum the selected question id
- * @param \string $resourcetype the type of the exercise
  * @return \stdClass $answers the answers list
  */
-function domoscio_get_answers($qnum, $resourcetype) {
+function domoscio_get_answers($qnum) {
     global $CFG, $DB;
 
-    if ($resourcetype == "generic") {
-        // If question stored in cell test tables
-        $sqlanswers = "SELECT {domoscio_propositions}.`content` as `answer`
-                         FROM {domoscio_propositions}
-                   INNER JOIN {domoscio_proposition_lists}
-                           ON {domoscio_proposition_lists}.`id` = {domoscio_propositions}.`proplistid`
-                        WHERE {domoscio_proposition_lists}.`cellqid` = :qnum";
-    } else if ($resourcetype == "quiz") {
-        // Else if stored in Quiz Moodle tables
-        $sqlanswers = "SELECT *
-                         FROM {question_answers}
-                        WHERE `question` = :qnum";
-    } else if ($resourcetype == "lesson") {
-        // Else if stored in Lesson Moodle tables
-        $sqlanswers = "SELECT *
-                         FROM {lesson_answers}
-                        WHERE `pageid` = :qnum";
-    }
+    $sqlanswers = "SELECT *
+                     FROM {lesson_answers}
+                    WHERE `pageid` = :qnum";
+
     $answers = $DB->get_records_sql($sqlanswers, array('qnum' => $qnum));
 
-    if ($resourcetype == "lesson") {
-        foreach($answers as $answer) {
-            $answer->fraction = $answer->grade;
-        }
+    foreach ($answers as $answer) {
+        $answer->fraction = $answer->grade;
     }
 
     return $answers;
@@ -1083,18 +1060,14 @@ function domoscio_get_answers($qnum, $resourcetype) {
  * @param \stdClass $question the selected question data
  * @return \var $output the interface display
  */
-function domoscio_get_input_answers($question, $resourcetype) {
-    if ($resourcetype == "quiz") {
-        $questiontext = $question->questiontext;
-    } else if ($resourcetype == "lesson") {
-        $questiontext = $question->contents;
-    }
+function domoscio_get_input_answers($question) {
+
     $qlabel = html_writer::tag('label', get_string('answer', 'domoscio'), array('for' => 'q0:'.$question->id.'_answer'));
     $qspan = html_writer::start_span('answer').
              html_writer::tag('input', '', array('id' => 'q0:'.$question->id.'_answer', 'type' => 'text', 'size' => '80', 'name' => 'q0:'.$question->id.'_answer')).
              html_writer::end_span();
 
-    $output = html_writer::tag('div', '<p>'.$questiontext.'</p>', array('class' => 'qtext'));
+    $output = html_writer::tag('div', '<p>'.$question->contents.'</p>', array('class' => 'qtext'));
     $output .= html_writer::tag('div', $qlabel . $qspan, array('class' => 'ablock'));
 
     return $output;
@@ -1104,32 +1077,21 @@ function domoscio_get_input_answers($question, $resourcetype) {
  * Displays multichoice questions interface
  *
  * @param \stdClass $question the selected question data
- * @param \string $resourcetype the type of the exercise
  * @return \var $output the interface display
  */
-function domoscio_get_multichoice_answer($question, $resourcetype) {
+function domoscio_get_multichoice_answer($question) {
     global $DB;
     $i = 0;
 
-    if ($resourcetype == "quiz") {
-        if (! $single = $DB->get_record('qtype_multichoice_options', array('questionid' => $question->id), 'single')) {
-            $single = 1;
-        } else {
-            $single = $single->single;
-        }
-        $questiontext = $question->questiontext;
-    } else if ($resourcetype == "lesson") {
-        $correctanswers = $DB->get_records('lesson_answers', array('pageid' => $question->id, 'grade' => '100'), '', '*');
-        if (count($correctanswers) > 1) {
-            $single = 0;
-        } else {
-            $single = 1;
-        }
-        $questiontext = $question->contents;
+    $correctanswers = $DB->get_records('lesson_answers', array('pageid' => $question->id, 'grade' => '100'), '', '*');
+    if (count($correctanswers) > 1) {
+        $single = 0;
+    } else {
+        $single = 1;
     }
 
     $answers = array();
-    $answerslist = domoscio_get_answers($question->id, $resourcetype);
+    $answerslist = domoscio_get_answers($question->id);
 
     foreach ($answerslist as $answer) {
         if (isset($single)) {
@@ -1164,163 +1126,33 @@ function domoscio_get_multichoice_answer($question, $resourcetype) {
 
     $qablock = html_writer::tag('div', get_string('select_answer', 'domoscio'), array('class' => 'prompt')).
                html_writer::tag('div', $answersfetched, array('class' => 'answer'));
-    $output = html_writer::tag('div', '<p>'.$questiontext.'</p>', array('class' => 'qtext'));
+    $output = html_writer::tag('div', '<p>'.$question->contents.'</p>', array('class' => 'qtext'));
     $output .= html_writer::tag('div', $qablock, array('class' => 'ablock'));
 
     return $output;
 }
 
 /**
- * Displays multianswer test interface
- *
- * @param \stdClass $question the selected question data
- * @param \string $resourcetype the type of the exercise
- * @return \var $output the interface display
- */
-function domoscio_get_multi_answer($question, $resourcetype) {
-    global $CFG, $DB;
-
-    // Retrives all subquestions
-    $result = array();
-    $i = 1;
-
-    if ($resourcetype == "generic") {
-        // If data stored in cell test tables
-        $answers = $DB->get_records_sql("SELECT {domoscio_propositions}.`content` as `answer`,
-                                                {domoscio_propositions}.`proplistid`,
-                                                {domoscio_proposition_lists}.`cellqtype`
-                                           FROM {domoscio_propositions}
-                                     INNER JOIN {domoscio_proposition_lists}
-                                             ON {domoscio_proposition_lists}.`id` = {domoscio_propositions}.`proplistid`
-                                          WHERE {domoscio_proposition_lists}.`cellqid` = :qid",
-                                        array('qid' => $question->id)
-                                       );
-
-        $j = reset($answers);
-
-        foreach ($answers as $answer) {
-            $result[$answer->cellqtype.$answer->proplistid][] = $answer->answer;
-        }
-    } else {
-        // Else if stored in Moodle Quiz tables
-        $answers = $DB->get_records_sql("SELECT {question_answers}.`id`, {question}.`qtype`, {question_answers}.`answer`, {question_answers}.`question`
-                                           FROM {question}
-                                     INNER JOIN {question_answers}
-                                             ON {question}.`id` = {question_answers}.`question`
-                                          WHERE {question}.`parent` = :qid",
-                                        array('qid' => $question->id)
-                                       );
-
-        $j = reset($answers);
-        foreach ($answers as $answer) {
-            $result[$answer->qtype.$answer->question][] = $answer->answer;
-        }
-    }
-
-    // Parse the text for each holes and replace by HTML select
-    preg_match_all("/({#.*?})/", $question->questiontext, $patterns);
-    $i = 0;
-    foreach ($patterns[0] as $pattern) {
-        $patterns[0][$i] = "'".$patterns[0][$i]."'";
-        $i++;
-    }
-
-    $replacements = array();
-    $i = 1;
-    if ($resourcetype == "generic") {
-        $j = $j->proplistid;
-    } else {
-        $j = $j->question;
-    }
-
-    foreach ($result as $key => $hole) {
-        if ($key == "multichoice".$j) {
-            $options = array();
-
-            foreach ($hole as $k => $option) {
-                $options[] = html_writer::tag('option', $option, array('value' => $option));
-            }
-
-            shuffle($options);
-            array_unshift($options , "<option value=''></option>");
-
-            $optionsfetched = implode("", $options);
-
-            $qlabel = html_writer::tag('label', get_string('answer', 'domoscio'), array('for' => 'q0:'.$question->id.'_sub'.$i.'_answer',
-                                                                                      'class' => 'subq accesshide'));
-            $qselect = html_writer::tag('select', $optionsfetched, array('id' => 'q0:'.$question->id.'_sub'.$i.'_answer',
-                                                                       'class' => 'select menuq0:'.$question->id.'_sub'.$i.'_answer',
-                                                                        'name' => 'q0:'.$question->id.'_sub'.$i.'_answer'));
-
-            $replacements[] = html_writer::start_span('subquestion') . $qlabel . $qselect . html_writer::end_span();
-        } else if ($key == "shortanswer".$j) {
-            $qlabel = html_writer::tag('label', get_string('answer', 'domoscio'), array('for' => 'q0:'.$question->id.'_sub'.$i.'_answer',
-                                                                                      'class' => 'subq accesshide'));
-            $qinput = html_writer::tag('input', '', array('id' => 'q0:'.$question->id.'_sub'.$i.'_answer',
-                                                        'type' => 'text',
-                                                        'size' => '7',
-                                                        'name' => 'q0:'.$question->id.'_sub'.$i.'_answer'));
-            $replacements[] = html_writer::start_span('subquestion') . $qlabel . $qinput . html_writer::end_span();
-        }
-        $i++;
-        $j++;
-    }
-
-    return preg_replace($patterns[0], $replacements, $question->questiontext);
-}
-
-/**
  * Displays match questions interface
  *
  * @param \stdClass $question the selected question data
- * @param \string $resourcetype the type of the exercise
  * @return \var $output the interface display
  */
-function domoscio_get_match($question, $resourcetype) {
+function domoscio_get_match($question) {
     global $CFG, $DB;
 
     $options = $lists = $subquestions = array();
-    if ($resourcetype == "generic") {
-        $proplists = $DB->get_records_sql("SELECT {domoscio_propositions}.`id`,
-                                                  {domoscio_propositions}.`content` as `answertext`,
-                                                  {domoscio_propositions}.`proplistid`
-                                             FROM {domoscio_propositions}
-                                       INNER JOIN {domoscio_proposition_lists}
-                                               ON {domoscio_proposition_lists}.`id` = {domoscio_propositions}.`proplistid`
-                                            WHERE {domoscio_proposition_lists}.`cellqid` = :qid",
-                                          array('qid' => $question->id)
-                                         );
 
-        foreach ($proplists as $proplist) {
-            $lists[$proplist->proplistid][] = $proplist->answertext;
-        }
+    $subquestions = $DB->get_records_sql("SELECT *
+                                            FROM {lesson_answers}
+                                           WHERE `pageid` = :pid
+                                             AND `response` IS NOT NULL",
+                                         array('pid' => $question->id)
+                                        );
 
-        foreach ($lists as $list) {
-            $pairs = new stdClass;
-            $pairs->questiontext = $list[0];
-            $pairs->answertext = $list[1];
-            $subquestions[] = $pairs;
-        }
-    } else if ($resourcetype == "quiz") {
-        $subquestions = $DB->get_records('qtype_match_subquestions', array('questionid' => $question->id), '', '*');
-        $questiontext = $question->questiontext;
-
-        foreach ($subquestions as $k => $subquestion) {
-            $options[] = html_writer::tag('option', $subquestion->answertext, array('value' => $subquestion->answertext));
-        }
-    } else if ($resourcetype == "lesson") {
-        $subquestions = $DB->get_records_sql("SELECT *
-                                                FROM {lesson_answers}
-                                               WHERE `pageid` = :pid
-                                                 AND `response` IS NOT NULL",
-                                             array('pid' => $question->id)
-                                            );
-        $questiontext = $question->contents;
-
-        foreach ($subquestions as $k => $subquestion) {
-            $options[] = html_writer::tag('option', $subquestion->response, array('value' => $subquestion->response));
-            $subquestion->questiontext = $subquestion->answer;
-        }
+    foreach ($subquestions as $k => $subquestion) {
+        $options[] = html_writer::tag('option', $subquestion->response, array('value' => $subquestion->response));
+        $subquestion->questiontext = $subquestion->answer;
     }
 
     shuffle($options);
@@ -1346,7 +1178,7 @@ function domoscio_get_match($question, $resourcetype) {
 
     $tablefetched = implode("", $table);
 
-    $output = html_writer::tag('div', '<p>'.$questiontext.'</p>', array('class' => 'qtext'));
+    $output = html_writer::tag('div', '<p>'.$question->contents.'</p>', array('class' => 'qtext'));
     $output .= html_writer::tag('table', '<tbody>'.$tablefetched.'</tbody>', array('class' => 'answer'));
 
     return $output;
@@ -1357,34 +1189,16 @@ function domoscio_get_match($question, $resourcetype) {
  * This function retrive right answers relative to their question
  *
  * @param \int $qnum the selected question id
- * @param \string $resourcetype the type of the exercise
  * @param \bool $single if question has one or many right answers
  * @return \stdClass $answers the right answer(s) list
  */
-function domoscio_get_right_answers($qnum, $resourcetype, $single) {
+function domoscio_get_right_answers($qnum, $single) {
     global $CFG, $DB;
 
-    if ($resourcetype == "generic") {
-        $sqlanswers = $DB->get_record_sql("SELECT {domoscio_propositions}.`content` as `answer`
-                                             FROM {domoscio_propositions}
-                                       INNER JOIN {domoscio_proposition_lists}
-                                               ON {domoscio_proposition_lists}.`id` = {domoscio_propositions}.`proplistid`
-                                            WHERE {domoscio_proposition_lists}.`cellqid` = :qnum
-                                              AND {domoscio_propositions}.`rightanswer` = 1",
-                                          array('qnum' => $qnum)
-                                         );
-    } else if ($resourcetype == "quiz") {
-        if (isset($single) && $single == 0) {
-            $answers = $DB->get_records_select('question_answers', "question = :qnum AND fraction > 0", array('qnum' => $qnum));
-        } else {
-            $answers = $DB->get_records_select('question_answers', "question = :qnum AND fraction = 1", array('qnum' => $qnum));
-        }
-    } else if ($resourcetype == "lesson") {
-        if (isset($single) && $single == 0) {
-            $answers = $DB->get_records_select('lesson_answers', "pageid = :qnum AND grade > 0", array('qnum' => $qnum));
-        } else {
-            $answers = $DB->get_records_select('lesson_answers', "pageid = :qnum AND grade = 100", array('qnum' => $qnum));
-        }
+    if (isset($single) && $single == 0) {
+        $answers = $DB->get_records_select('lesson_answers', "pageid = :qnum AND grade > 0", array('qnum' => $qnum));
+    } else {
+        $answers = $DB->get_records_select('lesson_answers', "pageid = :qnum AND grade = 100", array('qnum' => $qnum));
     }
 
     return $answers;
@@ -1395,18 +1209,11 @@ function domoscio_get_right_answers($qnum, $resourcetype, $single) {
  *
  * @param \stdClass $question the selected question data
  * @param \mixed $submitted the answer given by student
- * @param \string $resourcetype the type of the exercise
  * @return \var $result the correction display
  */
-function domoscio_get_input_result($question, $submitted, $resourcetype) {
+function domoscio_get_input_result($question, $submitted) {
     $result = new stdClass;
-    $rightanswer = domoscio_get_right_answers($question->id, $resourcetype, 1);
-
-    if ($resourcetype == "quiz") {
-        $questiontext = $question->questiontext;
-    } else if ($resourcetype == "lesson") {
-        $questiontext = $question->contents;
-    }
+    $rightanswer = domoscio_get_right_answers($question->id, 1);
 
     foreach ($rightanswer as $answer) {
         if (strtolower($submitted->{'q0:'.$question->id.'_answer'}) != strtolower($answer->answer)) {
@@ -1431,7 +1238,7 @@ function domoscio_get_input_result($question, $submitted, $resourcetype) {
     $qablock = $qlabel . $qspan;
     $divanswer = html_writer::tag('div', get_string('correction', 'domoscio').$answer->answer, array('class' => 'rightanswer'));
 
-    $output = html_writer::tag('div', '<p>'.$questiontext.'</p>', array('class' => 'qtext'));
+    $output = html_writer::tag('div', '<p>'.$question->contents.'</p>', array('class' => 'qtext'));
     $output .= html_writer::tag('div', $qablock, array('class' => 'ablock'));
     $output .= html_writer::tag('div', $divanswer, array('class' => 'outcome'));
 
@@ -1444,36 +1251,24 @@ function domoscio_get_input_result($question, $submitted, $resourcetype) {
  *
  * @param \stdClass $question the selected question data
  * @param \mixed $submitted the answer given by student
- * @param \string $resourcetype the type of the exercise
  * @return \var $result the correction display
  */
-function domoscio_get_multi_choice_result($question, $submitted, $resourcetype) {
+function domoscio_get_multi_choice_result($question, $submitted) {
     global $DB;
     $result = new stdClass;
     $i = $j = 0;
 
-    if ($resourcetype == "quiz") {
-        if (! $single = $DB->get_record('qtype_multichoice_options', array('questionid' => $question->id), 'single')) {
-            $single = 1;
-        } else {
-            $single = $single->single;
-        }
-        $questiontext = $question->questiontext;
-        // Grades are set by 1 with quiz and by 100 with lesson, they must be scaled to work with Domoscio pluign
-        $scale = 1;
-    } else if ($resourcetype == "lesson") {
-        $correctanswers = $DB->get_records('lesson_answers', array('pageid' => $question->id, 'grade' => '100'), '', '*');
-        if (count($correctanswers) > 1) {
-            $single = 0;
-        } else {
-            $single = 1;
-        }
-        $questiontext = $question->contents;
-        $scale = 0.01;
+    $correctanswers = $DB->get_records('lesson_answers', array('pageid' => $question->id, 'grade' => '100'), '', '*');
+    if (count($correctanswers) > 1) {
+        $single = 0;
+    } else {
+        $single = 1;
     }
 
-    $answerslist = domoscio_get_answers($question->id, $resourcetype);
-    $rightanswer = domoscio_get_right_answers($question->id, $resourcetype, $single);
+    $scale = 0.01;
+
+    $answerslist = domoscio_get_answers($question->id);
+    $rightanswer = domoscio_get_right_answers($question->id, $single);
     $rightanswer = array_shift($rightanswer);
     $length = count($rightanswer);
     $correctiondisplay = "";
@@ -1574,7 +1369,7 @@ function domoscio_get_multi_choice_result($question, $submitted, $resourcetype) 
                html_writer::tag('div', $answersfetched, array('class' => 'answer'));
     $divanswer = html_writer::tag('div', get_string('correction', 'domoscio').$correctiondisplay, array('class' => 'rightanswer'));
 
-    $output = html_writer::tag('div', '<p>'.$questiontext.'</p>', array('class' => 'qtext'));
+    $output = html_writer::tag('div', '<p>'.$question->contents.'</p>', array('class' => 'qtext'));
     $output .= html_writer::tag('div', $qablock, array('class' => 'ablock'));
     $output .= html_writer::tag('div', $divanswer, array('class' => 'outcome'));
 
@@ -1585,165 +1380,27 @@ function domoscio_get_multi_choice_result($question, $submitted, $resourcetype) 
 }
 
 /**
- * Displays correction for multi answer question
- *
- * @param \stdClass $question the selected question data
- * @param \mixed $submitted the answer given by student
- * @param \string $resourcetype the type of the exercise
- * @return \var $result the correction display
- */
-function domoscio_get_multi_result($question, $submitted, $resourcetype) {
-    global $CFG, $DB;
-    $result = new stdClass;
-    // Retrive subquestions
-    $response = array();
-    $i = 1;
-
-    if ($resourcetype == "generic") {
-        $answers = $DB->get_records_sql("SELECT {domoscio_propositions}.`content` as `answer`,
-                                                {domoscio_propositions}.`proplistid`,
-                                                {domoscio_proposition_lists}.`cellqtype`
-                                           FROM {domoscio_propositions}
-                                     INNER JOIN {domoscio_proposition_lists}
-                                             ON {domoscio_proposition_lists}.`id` = {domoscio_propositions}.`proplistid`
-                                          WHERE {domoscio_proposition_lists}.`cellqid` = :qid
-                                            AND {domoscio_propositions}.`rightanswer` = 1",
-                                        array('qid' => $question->id)
-                                       );
-
-        $j = reset($answers);
-
-        foreach ($answers as $answer) {
-            $response[$answer->cellqtype.$answer->proplistid][] = $answer->answer;
-        }
-    } else {
-        $answers = $DB->get_records_sql("SELECT {question_answers}.`id`, {question}.`qtype`, {question_answers}.`answer`, {question_answers}.`question`
-                                           FROM {question}
-                                     INNER JOIN {question_answers}
-                                             ON {question}.`id` = {question_answers}.`question`
-                                          WHERE {question}.`parent` = :qid",
-                                        array('qid' => $question->id)
-                                       );
-
-        $j = reset($answers);
-
-        foreach ($answers as $answer) {
-            $response[$answer->qtype.$answer->question][] = $answer->answer;
-        }
-    }
-
-    // Parse the text for each holes and replace by HTML select
-    preg_match_all("/({#.*?})/", $question->questiontext, $patterns);
-    $i = 0;
-    foreach ($patterns[0] as $pattern) {
-        $patterns[0][$i] = "'".$patterns[0][$i]."'";
-        $i++;
-    }
-
-    $replacements = array();
-    $i = 1;
-    if ($resourcetype == "generic") {
-        $j = $j->proplistid;
-    } else {
-        $j = $j->question;
-    }
-    $subresult = 0;
-    foreach ($response as $key => $answer) {
-        if (($submitted->{'q0:'.$question->id.'_sub'.$i.'_answer'}) == $answer[0]) {
-            $class = "correct";
-            $subresult += 1;
-        } else {
-            $class = "incorrect";
-            $subresult += 0;
-        }
-
-        if ($key == "multichoice".$j) {
-            $qlabel = html_writer::tag('label', 'Answer :', array('for' => 'q0:'.$question->id.'_sub'.$i.'_answer',
-                                                                'class' => 'subq accesshide'));
-            $qselect = html_writer::tag('select',
-                                        '<option>'.$submitted->{'q0:'.$question->id.'_sub'.$i.'_answer'}.'</option>',
-                                        array('id' => 'q0:'.$question->id.'_sub'.$i.'_answer',
-                                           'class' => 'select menuq0:'.$question->id.'_sub'.$i.'_answer '.$class,
-                                            'name' => 'q0:'.$question->id.'_sub'.$i.'_answer',
-                                        'disabled' => 'disabled'));
-
-            $replacements[] = html_writer::start_span('subquestion') . $qlabel . $qselect . html_writer::end_span();
-        } else if ($key == "shortanswer".$j) {
-            $qlabel = html_writer::tag('label', 'Answer :', array('for' => 'q0:'.$question->id.'_sub'.$i.'_answer',
-                                                                'class' => 'subq accesshide'));
-            $qinput = html_writer::tag('input', '', array('class' => $class,
-                                                             'id' => 'q0:'.$question->id.'_sub'.$i.'_answer',
-                                                          'value' => s($submitted->{'q0:'.$question->id.'_sub'.$i.'_answer'}),
-                                                           'type' => 'text', 'size' => '7',
-                                                           'name' => 'q0:'.$question->id.'_sub'.$i.'_answer',
-                                                           'readonly' => 'readonly', ));
-            $replacements[] = html_writer::start_span('subquestion') . $qlabel . $qinput . html_writer::end_span();
-        }
-        $i++;
-        $j++;
-    }
-
-    if (count($response) != $subresult) {
-        $result->score = 0;
-    } else {
-        $result->score = 100;
-    }
-
-    $display = preg_replace($patterns[0], $replacements, $question->questiontext);
-
-    $result->output = $display;
-    return $result;
-}
-
-/**
  * Displays correction for match question
  *
  * @param \stdClass $question the selected question data
  * @param \mixed $submitted the answer given by student
- * @param \string $resourcetype the type of the exercise
  * @return \var $result the correction display
  */
-function domoscio_get_match_result($question, $submitted, $resourcetype) {
+function domoscio_get_match_result($question, $submitted) {
     global $CFG, $DB;
     $result = new stdClass;
     $options = $lists = $subquestions = $table = array();
-    if ($resourcetype == "generic") {
-        $proplists = $DB->get_records_sql("SELECT {domoscio_propositions}.`id`,
-                                                  {domoscio_propositions}.`content` as `answertext`,
-                                                  {domoscio_propositions}.`proplistid`
-                                             FROM {domoscio_propositions}
-                                       INNER JOIN {domoscio_proposition_lists}
-                                               ON {domoscio_proposition_lists}.`id` = {domoscio_propositions}.`proplistid`
-                                            WHERE {domoscio_proposition_lists}.`cellqid` = :qid",
-                                          array('qid' => $question->id)
-                                         );
 
-        foreach ($proplists as $proplist) {
-            $lists[$proplist->proplistid][] = $proplist->answertext;
-        }
+    $subquestions = $DB->get_records_sql("SELECT *
+                                            FROM {lesson_answers}
+                                           WHERE `pageid` = :pid
+                                             AND `response` IS NOT NULL",
+                                         array('pid' => $question->id)
+                                        );
 
-        foreach ($lists as $list) {
-            $pairs = new stdClass;
-            $pairs->questiontext = $list[0];
-            $pairs->answertext = $list[1];
-            $subquestions[] = $pairs;
-        }
-
-    } else if ($resourcetype == "quiz") {
-        $subquestions = $DB->get_records('qtype_match_subquestions', array('questionid' => $question->id), '', '*');
-        $questiontext = $question->questiontext;
-    } else if ($resourcetype == "lesson") {
-        $subquestions = $DB->get_records_sql("SELECT *
-                                                FROM {lesson_answers}
-                                               WHERE `pageid` = :pid
-                                                 AND `response` IS NOT NULL",
-                                             array('pid' => $question->id)
-                                            );
-        $questiontext = $question->contents;
-        foreach ($subquestions as $subquestion) {
-            $subquestion->answertext = $subquestion->response;
-            $subquestion->questiontext = $subquestion->answer;
-        }
+    foreach ($subquestions as $subquestion) {
+        $subquestion->answertext = $subquestion->response;
+        $subquestion->questiontext = $subquestion->answer;
     }
 
     $i = 1;
@@ -1777,7 +1434,7 @@ function domoscio_get_match_result($question, $submitted, $resourcetype) {
 
     $tablefetched = implode("", $table);
 
-    $output = html_writer::tag('div', '<p>'.$questiontext.'</p>', array('class' => 'qtext'));
+    $output = html_writer::tag('div', '<p>'.$question->contents.'</p>', array('class' => 'qtext'));
     $output .= html_writer::tag('table', '<tbody>'.$tablefetched.'</tbody>', array('class' => 'answer'));
 
     $result->output = $output;
@@ -1795,15 +1452,16 @@ function domoscio_get_match_result($question, $submitted, $resourcetype) {
  * Add or update events with next due dates in user calendar
  *
  * @param \stdClass $domoscio the Domoscio plugin instance data
- * @param \stdClass $course the active course data
  * @param \stdClass $knstudent the knowledge node student data
+ * @param \integer $kn the knowledge node id
+ * @param \stdClass $resource the linked ressource module data
  * @return void
  */
-function domoscio_create_event($domoscio, $course, $knstudent) {
+function domoscio_create_event($domoscio, $knstudent, $kn, $resource) {
     global $DB, $CFG, $USER;
 
     $event = new stdClass;
-    $event->name    = get_string('do_review_btn', 'domoscio')." ".$domoscio->name;
+    $event->name    = $resource->name." : ".get_course($domoscio->course)->fullname;
     $event->description = get_string('gottatest', 'domoscio');
     $event->courseid    = 0;
     $event->groupid     = 0;
@@ -1830,15 +1488,17 @@ function domoscio_create_event($domoscio, $course, $knstudent) {
  * Compute various statistics to display to student and course creator
  *
  * @param \int $kn the knowledge node displayed
+ * @param \int $limitfrom the sql query offset for pagination
+ * @param \int $limitnum the sql query limit for pagination
  * @return \stdClass $stats all stats calculated
  */
-function domoscio_get_stats($kn) {
+function domoscio_get_stats($kn, $limitfrom = null, $limitnum = null) {
     global $DB;
     $config = get_config('domoscio');
     $rest = new mod_domoscio_client();
     $stats = new stdClass();
 
-    $knstudents = $DB->get_records('domoscio_knowledge_node_students', array('knodeid' => $kn), '', '*');
+    $knstudents = $DB->get_records('domoscio_knode_students', array('knodeid' => $kn), 'user ASC', '*', $limitfrom, $limitnum);
     $stats->count_students = count($knstudents);
 
     $history = $enrolledstudents = array();
@@ -1882,9 +1542,9 @@ function domoscio_get_student_by_kns($kns) {
 
     $student = $DB->get_record_sql("SELECT *
                                       FROM {user}
-                                INNER JOIN {domoscio_knowledge_node_students}
-                                        ON {domoscio_knowledge_node_students}.`user` = {user}.`id`
-                                     WHERE {domoscio_knowledge_node_students}.`knodestudentid` = :knsid",
+                                INNER JOIN {domoscio_knode_students}
+                                        ON {domoscio_knode_students}.`user` = {user}.`id`
+                                     WHERE {domoscio_knode_students}.`knodestudentid` = :knsid",
                                    array('knsid' => $kns)
                                   );
 

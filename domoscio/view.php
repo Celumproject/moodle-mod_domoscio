@@ -108,7 +108,7 @@ if (has_capability('moodle/course:create', $context)) {
         $title = json_decode($rest->seturl($config, 'knowledge_nodes', $notion->knodeid)->get());
 
         $qids = $DB->get_records_sql("SELECT *
-                                        FROM {domoscio_knowledge_node_questions}
+                                        FROM {domoscio_knode_questions}
                                        WHERE `knodeid`= :knid",
                                      array('knid' => $notion->knodeid)
                                     );
@@ -197,19 +197,18 @@ if (has_capability('moodle/course:create', $context)) {
 
         $introbox = html_writer::tag('div', $todocounter.$indexurl, array('class' => 'content'))."<hr/>".
                     html_writer::tag('b', get_string('reviewed', 'domoscio'), array('class' => 'content')).
-                    html_writer::link($linkedresource->url, $linkedresource->display);
+                    html_writer::link($linkedresource->url, $linkedresource->display).
+                    html_writer::tag('hr', '');
 
         $divcanvas = html_writer::tag('canvas', '', array('id' => 'polarChart'));
         $statsheader = html_writer::tag('p', get_string('stats', 'domoscio'), array('class' => 'content'));
-        $row = html_writer::tag('div', $introbox, array('class' => 'block span6')).
-               html_writer::tag('div', $statsheader . $divcanvas, array('class' => 'block span6'));
 
-        echo html_writer::tag('div', $row, array('class' => 'row mod_introbox', 'style' => 'margin-left:-10px'));
 
         if (!empty($check) && $knstudent) {
             $SESSION->todo = $SESSION->results = $SESSION->no_history = array();
             $knstats = array();
 
+            $accordion = "";
             foreach ($knstudent as $notion) {
                 $item = json_decode($rest->seturl($config, 'knowledge_nodes', $notion->knowledge_node_id)->get());
                 $SESSION->todo[] = $item->id;
@@ -256,26 +255,35 @@ if (has_capability('moodle/course:create', $context)) {
                                                                                                   'data-parent' => '#accordion'));
                 $accordionheading = html_writer::tag('div', $togglers, array('class' => 'well well-small '.$class , 'style' => 'margin-bottom:0px'));
                 $accordiongroup = html_writer::tag('div', $accordionheading.$accordioncollapse, array('class' => 'accordion-group'));
-                echo $accordion = html_writer::tag('div', $accordiongroup, array('class' => 'accordion', 'id' => 'accordion'));
+                $accordion .= html_writer::tag('div', $accordiongroup, array('class' => 'accordion', 'id' => 'accordion'));
             }
 
         }
 
         if ($SESSION->no_history != null) {
-            echo html_writer::tag('button',
-                                  get_string('do_test', 'domoscio'),
-                                  array('type' => 'button',
-                                     'onclick' => "javascript:location.href='$CFG->wwwroot/mod/domoscio/doquiz.php?kn=".
-                                                                           array_shift($SESSION->no_history)."&t=".time()."'",
-                                       'class' => 'btn btn-primary'));
+            $testbtn = html_writer::tag('button',
+                                         get_string('do_test', 'domoscio'),
+                                         array('type' => 'button',
+                                            'onclick' => "javascript:location.href='$CFG->wwwroot/mod/domoscio/doquiz.php?kn=".
+                                                         array_shift($SESSION->no_history)."&t=".time()."&first=1'",
+                                              'class' => 'btn btn-primary'));
+        } else {
+            $testbtn = "";
         }
 
-        echo html_writer::tag('button',
-                              get_string('do_training', 'domoscio'),
-                              array('type' => 'button',
-                                 'onclick' => "javascript:location.href='$CFG->wwwroot/mod/domoscio/doquiz.php?kn=".
-                                                                        array_shift($SESSION->todo)."&t=".time()."'",
-                                   'class' => 'btn btn-warning'));
+        $startbtn = html_writer::tag('button',
+                                      get_string('do_training', 'domoscio'),
+                                      array('type' => 'button',
+                                         'onclick' => "javascript:location.href='$CFG->wwwroot/mod/domoscio/doquiz.php?kn=".
+                                                      array_shift($SESSION->todo)."&t=".time()."'",
+                                           'class' => 'btn btn-warning'));
+
+        $row = html_writer::tag('div', $introbox.$testbtn.$startbtn, array('class' => 'block span6')).
+               html_writer::tag('div', $statsheader . $divcanvas, array('class' => 'block span6'));
+
+        echo html_writer::tag('div', $row, array('class' => 'row mod_introbox', 'style' => 'margin-left:-10px'));
+
+        echo $accordion;
     }
 
 ?>
