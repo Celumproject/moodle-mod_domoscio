@@ -30,17 +30,23 @@ require_once(dirname(__FILE__).'/lib.php');
 require_once(dirname(__FILE__).'/sdk/client.php');
 require_once($CFG->dirroot . '/mod/quiz/locallib.php');
 require_once($CFG->dirroot.'/mod/lesson/locallib.php');
+require_once($CFG->dirroot . '/question/engine/lib.php');
+require_once($CFG->dirroot . '/question/previewlib.php');
 
 $id = optional_param('id', 0, PARAM_INT); // Course_module ID, or
 $kn = optional_param('kn', 0, PARAM_INT); // Knowledge_node ID (Rappels)
 $solo = optional_param('solo', false, PARAM_INT); // Si test unitaire
 $t = optional_param('t', null, PARAM_INT); // Start test timestamp
+$first = optional_param('first', 0, PARAM_INT); // If initial test (no history)
 
 if ($solo == 'true') {
     $SESSION->todo = null;
 }
 if ($t) {
     $SESSION->start = $t;
+}
+if ($first == 1) {
+    $SESSION->todo = $SESSION->no_history;
 }
 
 if ($id) {
@@ -71,14 +77,21 @@ echo $OUTPUT->heading(get_string('test_session', 'domoscio'));
 
 if (has_capability('mod/domoscio:submit', $context)) {
     $urlresults = new moodle_url("$CFG->wwwroot/mod/domoscio/results.php");
+    $urlresultsend = new moodle_url("$CFG->wwwroot/mod/domoscio/results.php");
+
     $urlresults->param('sesskey', sesskey());
+    $urlresultsend->param('sesskey', sesskey());
 
     // Retrive selected questions id
-    $lists = $DB->get_records('domoscio_knowledge_node_questions', array('instance' => $domoscio->id, 'knodeid' => $kn), '', '*');
+    $lists = $DB->get_records('domoscio_knode_questions', array('instance' => $domoscio->id, 'knodeid' => $kn), '', '*');
 
     if (!empty($lists)) {
-        $random = array_rand($lists, 1);
-        $selected = $DB->get_record('domoscio_knowledge_node_questions', array('id' => $random), '*');
+        if (isset($SESSION->selected)) {
+            $random = $SESSION->selected;
+        } else {
+            $random = $SESSION->selected = array_rand($lists, 1);
+        }
+        $selected = $DB->get_record('domoscio_knode_questions', array('id' => $random), '*');
 
         if ($selected->type == "scorm") {
             $scorm = $DB->get_record('scorm_scoes', array('id' => $selected->questionid), '*');
@@ -126,16 +139,49 @@ if (has_capability('mod/domoscio:submit', $context)) {
                         // Retrieve selected question data
                         $question = $DB->get_record('question', array('id' => $selected->questionid), '*');
                     }
-
                     $qinstance = "kn_q".$question->id;
-                    $content = html_writer::tag('input', '', array('type' => 'hidden', 'value' => $domoscio->id, 'name' => $qinstance))
-                              .domoscio_display_questions($question, $selected->type);
                     $urlresults->param('kn', $kn);
                     $urlresults->param('q', $selected->questionid);
 
-                    $content .= html_writer::tag('input', '', array('type' => 'submit', 'value' => get_string('validate_btn', 'domoscio'), 'name' => 'next'));
-                    $output = html_writer::tag('form', $content, array('method' => 'POST', 'action' => $urlresults, 'id' => 'responseform'));
-                    echo $output;
+                    $actionurl = $urlresults;
+                    define('QUESTION_PREVIEW_MAX_VARIANTS', 100);
+                    $q = question_bank::load_question($selected->questionid);
+
+                    $quba = question_engine::make_questions_usage_by_activity(
+                            'mod_domoscio', context_user::instance($USER->id));
+                    $options = new question_preview_options($question);
+                    $quba->set_preferred_behaviour('deferredfeedback');
+                    $slot = $quba->add_question($q, $options->maxmark);
+                    $displaynumber = $selected->questionid;
+                    $maxvariant = min($q->get_num_variants(), QUESTION_PREVIEW_MAX_VARIANTS);
+                    if ($options->variant) {
+                        $options->variant = min($maxvariant, max(1, $options->variant));
+                    } else {
+                        $options->variant = rand(1, $maxvariant);
+                    }
+                    $quba->start_all_questions();
+                    question_engine::save_questions_usage_by_activity($quba);
+                    $usageid = $quba->get_id();
+
+                    // Start the question form.
+                    echo html_writer::start_tag('form', array('method' => 'post', 'action' => $actionurl,
+                            'enctype' => 'multipart/form-data', 'id' => 'responseform'));
+                    echo html_writer::start_tag('div');
+                    echo html_writer::empty_tag('input', array('type' => 'hidden', 'name' => 'usageid', 'value' => $usageid));
+                    echo html_writer::empty_tag('input', array('type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()));
+                    echo html_writer::empty_tag('input', array('type' => 'hidden', 'name' => 'slots', 'value' => $slot));
+                    echo html_writer::empty_tag('input', array('type' => 'hidden', 'name' => 'scrollpos', 'value' => '', 'id' => 'scrollpos'));
+                    echo html_writer::end_tag('div');
+
+                    echo $quba->render_question($slot, $options, $displaynumber);
+
+                    // Finish the question form.
+                    echo html_writer::start_tag('div', array('id' => 'previewcontrols', 'class' => 'controls'));
+                    echo html_writer::empty_tag('input', array('type' => 'submit',
+                                                               'name' => 'save',
+                                                              'value' => get_string('save', 'question')));
+                    echo html_writer::end_tag('div');
+                    echo html_writer::end_tag('form');
                 }
             } else {
                 echo get_string('nocapabilitytousethisservice', 'error');
@@ -159,10 +205,10 @@ if (has_capability('mod/domoscio:submit', $context)) {
     } else {
         echo html_writer::tag('blockquote', get_string('tests_empty', 'domoscio'), array('class' => 'muted'));
     }
-    $urlresults->param('end', true);
+    $urlresultsend->param('end', true);
     echo html_writer::tag('button',
                           get_string('end_btn', 'domoscio'),
                           array('type' => 'button',
-                                'onclick' => "javascript:location.href='$urlresults'"));
+                                'onclick' => "javascript:location.href='$urlresultsend'"));
 }
 echo $OUTPUT->footer();

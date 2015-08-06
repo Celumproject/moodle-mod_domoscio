@@ -70,6 +70,10 @@ class mod_domoscio_select_notion_form extends moodleform {
         foreach ($notions as $notion) {
             $title = json_decode($this->seturl($config, "knowledge_nodes", $notion->knodeid)->get());
 
+            $deletelink = html_writer::link($CFG->wwwroot.'/mod/domoscio/delete_notion.php?d='.$this->_customdata['instance'].'&kn='.$notion->knodeid,
+                                            "<i class='icon-remove'></i>"
+                                           );
+
             if (in_array($notion->id, $selected)) {
                 $check = true;
             } else {
@@ -80,12 +84,22 @@ class mod_domoscio_select_notion_form extends moodleform {
                 $mform->addElement('html', '<blockquote class="muted"><small>'.get_string('whole_expl', 'domoscio').'</small></blockquote>');
                 $notionname = html_writer::tag('span', get_string('global_module', 'domoscio'), array('class' => 'alert alert-info'));
                 $parentid = $notion->id;
-                $parent = $mform->addElement('advcheckbox', $notion->id, '', $notionname, array('group' => 1, 'class' => 'parent_notion'), array(0, 1))->setChecked($check);
+                $parent = $mform->addElement('advcheckbox',
+                                             $notion->id,
+                                             '',
+                                             $notionname." ".$deletelink,
+                                             array('group' => 1, 'class' => 'parent_notion'),
+                                             array(0, 1))->setChecked($check);
 
-                $mform->addElement('html', '<blockquote class="muted"><small>'.get_string('each_expl', 'domoscio').'</small></blockquote>');
+                $mform->addElement('html',
+                                   '<blockquote class="muted"><small>'.get_string('each_expl', 'domoscio').'</small></blockquote>');
             } else {
                 $notionname = $title->name;
-                $mform->addElement('advcheckbox', $notion->id, '', $notionname, array('group' => 1, 'class' => 'children_notions'), array(0, 1))->setChecked($check);
+                $mform->addElement('advcheckbox',
+                                   $notion->id,
+                                   '',
+                                   $notionname." ".$deletelink,
+                                   array('group' => 1, 'class' => 'children_notions'), array(0, 1))->setChecked($check);
             }
 
         }

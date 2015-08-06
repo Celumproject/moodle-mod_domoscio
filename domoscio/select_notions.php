@@ -96,7 +96,7 @@ if (has_capability('moodle/course:create', $context)) {
     echo html_writer::tag('ul', $overviewurl.$defnotionurl.$showstatsurl, array('class' => 'nav nav-tabs'));
 
     $mform = new mod_domoscio_select_notion_form("$CFG->wwwroot/mod/domoscio/select_notions.php?id=$cm->id", array('instance' => $domoscio->id,
-                                                                                                                   'parent' => $domoscio->resourceid));
+                                                                                                                     'parent' => $domoscio->resourceid));
 
     if ($mform->is_cancelled()) {
 

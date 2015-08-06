@@ -86,7 +86,6 @@ $capabilities = array(
         )
     ),
 
-
     'mod/domoscio:submit' => array(
 
         'captype' => 'write',
