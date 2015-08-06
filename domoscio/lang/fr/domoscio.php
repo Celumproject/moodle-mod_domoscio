@@ -24,7 +24,7 @@
 $string['pluginname'] = 'Domoscio for Moodle';
 $string['domoscio:addinstance'] = 'Ajouter un quiz';
 $string['domoscio:view'] = 'View quiz information';
-$string['domoscio:viewreports'] = 'View quiz reports';
+$string['domoscio:viewreport'] = 'View quiz reports';
 $string['domoscio:attempt'] = 'Attempt adaptive quiz';
 $string['domoscio:manage'] = 'Manage a lesson activity';
 $string['domoscio:submit'] = 'Submit to Domoscio API';
@@ -53,6 +53,7 @@ $string['domoscioname'] = 'domoscio name';
 $string['domoscioname_help'] = 'This is the content of the help tooltip associated with the domoscioname field. Markdown syntax is supported.';
 $string['domoscio'] = 'domoscio';
 $string['pluginadministration'] = 'Admin Domoscio';
+$string['warning'] = 'Attention';
 $string['num'] = 'N°';
 $string['delete'] = 'Supprimer';
 $string['edit'] = 'Modifier';
@@ -81,6 +82,9 @@ $string['enrol_students'] = "Etudiants inscrits";
 $string['avr_rate'] = "Réussite globale";
 $string['upd_qlist'] = 'La liste des questions est mise à jour.';
 $string['notion_created'] = 'La notion a bien été créée';
+$string['confirm_notiondel'] = 'Toutes les informations sur la notion et ses éventuels résultats seront définitivement supprimés.
+Souhaitez-vous poursuivre ?';
+$string['notion_deleted'] = 'Notion supprimée';
 $string['student_first_visit'] = "C'est votre première visite sur le plugin Domoscio. Nous en avons profité pour créer votre profil
 d'apprentissage. Cliquez sur le bouton ci-dessous pour continuer :";
 $string['reviewed'] = 'Vous révisez la ressource suivante : ';
@@ -108,6 +112,8 @@ $string['do_training'] = "S'entrainer";
 $string['test_session'] = "Evaluation";
 $string['see_notion'] = 'Voir la notion';
 $string['stats'] = 'Statistiques';
+$string['score'] = 'Score';
+$string['state'] = 'Etat';
 $string['no_stats'] = 'Aucune donnée disponible actuellement';
 $string['tests_empty'] = "Aucune question n'a été définie par le créateur de cours pour cette notion.";
 $string['start_tests'] = 'Commencer la session';

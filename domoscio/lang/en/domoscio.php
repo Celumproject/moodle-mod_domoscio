@@ -25,10 +25,10 @@ $string['pluginname'] = 'Domoscio for Moodle';
 
 $string['domoscio:addinstance'] = 'Add a new quiz';
 $string['domoscio:view'] = 'View quiz information';
-$string['domoscio:viewreports'] = 'View quiz reports';
+$string['domoscio:viewreport'] = 'View quiz reports';
 $string['domoscio:attempt'] = 'Attempt adaptive quiz';
 $string['domoscio:manage'] = 'Manage a lesson activity';
-$string['domoscio:submit']= 'Submit to Domoscio API';
+$string['domoscio:submit'] = 'Submit to Domoscio API';
 $string['domoscio:view'] = 'View quiz information';
 $string['domoscio:savetrack'] = "Store results from SCORM activities in the Domoscio plugin";
 
@@ -51,6 +51,7 @@ $string['domoscioresourceset'] = 'Link to a ressource';
 $string['resourceset_resource'] = 'Course module';
 $string['domoscioresourceset_help'] = 'The Domoscio plugin need to be linked to a resource from your course in order to display right questions to right people';
 $string['domoscioname'] = 'domoscio name';
+$string['warning'] = 'Warning';
 $string['domoscioname_help'] = 'This is the content of the help tooltip associated with the domoscioname field. Markdown syntax is supported.';
 $string['domoscio'] = 'domoscio';
 $string['pluginadministration'] = 'Admin Domoscio';
@@ -82,6 +83,8 @@ $string['results'] = 'Results';
 $string['question'] = "Question ";
 $string['upd_qlist'] = 'Question list updated.';
 $string['notion_created'] = 'Notion created';
+$string['confirm_notiondel'] = 'All notion data and potential results will be destroyed permanently. Are you sure you want to proceed ?';
+$string['notion_deleted'] = 'Notion deleted';
 $string['student_first_visit'] = "We created your learning profile as you lauched Domoscio for the first time. You are know ready
 to take off :";
 $string['start_btn'] = 'Go !';
@@ -110,6 +113,8 @@ $string['do_training'] = "Training";
 $string['test_session'] = "Test session";
 $string['see_notion'] = 'Show notion';
 $string['stats'] = 'Results';
+$string['score'] = 'Score';
+$string['state'] = 'Status';
 $string['tests_empty'] = "No question have been linked to this notion by the course creator.";
 $string['start_tests'] = 'Start session';
 $string['no_test'] = "You don't have to review something";
@@ -132,5 +137,3 @@ $string['proxy_curl_missing'] = 'The CURL lib is missing from your PHP server. T
 $string['proxy_action_missing'] = 'Action not set in request arguments.';
 $string['proxy_request_error'] = 'Error during request to MediaServer. Error:';
 $string['proxy_parsing_error'] = 'Response from MediaServer cannot be parsed.';
-
-?>

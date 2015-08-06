@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * In this view, course creator can define new notions
+ * Confirmation view when a course creator want to destroy a notion
  *
  * @package    mod_domoscio
  * @copyright  2015 Domoscio
@@ -25,7 +25,7 @@
 require_once(dirname(dirname(dirname(__FILE__))).'/config.php');
 require_once(dirname(__FILE__).'/lib.php');
 require_once(dirname(__FILE__).'/sdk/client.php');
-require_once(dirname(__FILE__).'/classes/create_notion_form.php');
+require_once(dirname(__FILE__).'/classes/delete_notion_form.php');
 
 $config = get_config('domoscio');
 $id = optional_param('id', 0, PARAM_INT); // Course_module ID, or
@@ -60,51 +60,27 @@ $PAGE->set_heading("Domoscio for Moodle");
 
 echo $OUTPUT->header();
 
-echo $OUTPUT->heading(get_string('add_notion_btn', 'domoscio'));
+echo $OUTPUT->heading(get_string('warning', 'domoscio'));
 
 $rest = new mod_domoscio_client();
 
-$resource = json_decode($rest->seturl($config, 'knowledge_nodes', $domoscio->resourceid)->get());
-
-$linkedresource = domoscio_get_resource_info($resource->id);
-
-echo html_writer::tag('div', html_writer::tag('b', get_string('newnotion_intro', 'domoscio'), array('class' => 'mod_introbox')), array('class' => 'block'));
-
 if (has_capability('moodle/course:create', $context)) {
 
-    $mform = new mod_domoscio_create_notion_form("$CFG->wwwroot/mod/domoscio/create_notion.php?id=$cm->id");
+    $mform = new mod_domoscio_create_notion_form("$CFG->wwwroot/mod/domoscio/delete_notion.php?d=$n&kn=$kn");
 
     if ($mform->is_cancelled()) {
         redirect("$CFG->wwwroot/mod/domoscio/select_notions.php?id=".$cm->id);
         exit;
     } else if ($fromform = $mform->get_data()) {
-        $kngraph  = $DB->get_record('domoscio_knowledge_graphs', array('courseid' => $course->id), '*', MUST_EXIST);
-        $rest = new mod_domoscio_client();
+        $deletenotion = $rest->seturl($config, 'knowledge_nodes', $kn)->delete();
 
-        $json = json_encode(array('knowledge_graph_id' => strval($kngraph->kgraphid),
-                                  'name' => strval($fromform->notion)));
+        $deletedb = $DB->delete_records('domoscio_knowledge_nodes', array('knodeid' => $kn));
 
-        $newnotion = json_decode($rest->seturl($config, 'knowledge_nodes', null)->post($json));
-
-        // Add new entry into knowledge_nodes table
-        $record = new stdClass();
-        $record->knodeid = $newnotion->id;
-        $record->instance = $domoscio->id;
-        $record->resourceid = $linkedresource->cm;
-        $record->childid = null;
-
-        $insert = $DB->insert_record('domoscio_knowledge_nodes', $record);
-
-        // Store knowledge_edges
-        $json = json_encode(array('knowledge_graph_id' => strval($kngraph->kgraphid),
-                                  'source_node_id' => strval($resource->id),
-                                  'destination_node_id' => strval($newnotion->id)));
-
-        $knedge = json_decode($rest->seturl($config, 'knowledge_edges', null)->post($json));
-
-        echo get_string('notion_created', 'domoscio')."<hr/>".
-             html_writer::link("$CFG->wwwroot/mod/domoscio/select_notions.php?id=$cm->id", '<< '.get_string('back_btn', 'domoscio')."&nbsp");
+        echo get_string('notion_deleted', 'domoscio')."<hr/>".
+                        html_writer::link("$CFG->wwwroot/mod/domoscio/select_notions.php?id=$cm->id",
+                        '<< '.get_string('back_btn', 'domoscio')."&nbsp");
     } else {
+        echo html_writer::tag('p', get_string('confirm_notiondel', 'domoscio'));
         $mform->display();
     }
 }

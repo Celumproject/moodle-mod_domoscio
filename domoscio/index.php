@@ -45,7 +45,6 @@ if (has_capability('mod/domoscio:submit', $context)) {
     $date = usergetdate(time());
     list($d, $m, $y, $h, $min) = array($date['mday'], $date['mon'], $date['year'], $date['hours'], $date['minutes']);
 
-
     $todotests = domoscio_count_tests($config);
     $rest = new mod_domoscio_client();
 
@@ -59,7 +58,7 @@ if (has_capability('mod/domoscio:submit', $context)) {
                     html_writer::tag('h4', count($todotests)).
                     html_writer::end_span().get_string('text2', 'domoscio').domoscio_plural($todotests).get_string('text3', 'domoscio');
 
-    echo html_writer::tag('div', html_writer::tag('h5', $displayuser."<hr/>".$notification, array('class' => 'content')), array('class' => 'block'));
+    $table = "";
 
     if (!empty($todotests)) {
         $SESSION->todo = array();
@@ -90,16 +89,19 @@ if (has_capability('mod/domoscio:submit', $context)) {
                                                                                       array('style' => 'text-align:center'))
                                       );
         }
+
+        $startbtn = html_writer::tag('button',
+                              get_string('start_tests', 'domoscio'),
+                              array('type' => 'button',
+                                    'onclick' => "javascript:location.href='$CFG->wwwroot/mod/domoscio/doquiz.php?kn=".array_shift($SESSION->todo)."&t=".time()."'"));
+
         $th = html_writer::tag('tr', html_writer::tag('th', get_string('module', 'domoscio')).
                                    html_writer::tag('th', get_string('do_test', 'domoscio')).
                                    html_writer::tag('th', get_string('see_notion', 'domoscio')).
                                    html_writer::tag('th', get_string('stats', 'domoscio')));
-        echo html_writer::tag('table', $th.$trows, array('class' => 'table table-striped table-bordered table-hover'));
 
-        echo html_writer::tag('button',
-                              get_string('start_tests', 'domoscio'),
-                              array('type' => 'button',
-                                    'onclick' => "javascript:location.href='$CFG->wwwroot/mod/domoscio/doquiz.php?kn=".array_shift($SESSION->todo)."&t=".time()."'"));
+        echo html_writer::tag('div', html_writer::tag('h5', $displayuser."<hr/>".$notification.$startbtn, array('class' => 'content')), array('class' => 'block'));
+        echo html_writer::tag('table', $th.$trows, array('class' => 'table table-striped table-bordered table-hover'));
     } else {
         echo get_string('no_test', 'domoscio');
     }
