@@ -903,7 +903,7 @@ function domoscio_write_knowledge_nodes($notions, $config, $resource, $graphid, 
 
         $knedge = json_decode($rest->seturl($config, 'knowledge_edges', null)->post($json));
 
-        // Inscrit le knowledge node du SCO en DB
+        // Write knowledge node SCO in database
         $knowledgenode = new stdClass;
         $knowledgenode->instance = $domoscio->id;
         $knowledgenode->knodeid = $kn->id;
@@ -1229,7 +1229,7 @@ function domoscio_get_input_result($question, $submitted) {
     $rightanswer = domoscio_get_right_answers($question->id, 1);
 
     foreach ($rightanswer as $answer) {
-        if (strtolower($submitted->{'q0:'.$question->id.'_answer'}) != strtolower($answer->answer)) {
+        if (strtolower($submitted) != strtolower($answer->answer)) {
             $class = 'incorrect';
             $result->score = 0;
         } else {
@@ -1243,7 +1243,7 @@ function domoscio_get_input_result($question, $submitted) {
             .html_writer::tag('input', '', array('class' => $class,
                                                     'id' => 'q0:'.$question->id.'_answer',
                                                   'type' => 'text',
-                                                 'value' => s($submitted->{'q0:'.$question->id.'_answer'}),
+                                                 'value' => s($submitted),
                                               'readonly' => 'readonly',
                                                   'size' => '80',
                                                   'name' => 'q0:'.$question->id.'_answer'))
@@ -1305,7 +1305,7 @@ function domoscio_get_multi_choice_result($question, $submitted) {
 
         if (isset($single)) {
             if ($single == 1) {
-                if ($i == $submitted->{'q0:'.$question->id.'_answer'}) {
+                if ($i == $submitted) {
                     $checkradio = "checked";
 
                     if ($answer->answer !== $rightanswer->answer) {
@@ -1326,7 +1326,7 @@ function domoscio_get_multi_choice_result($question, $submitted) {
                 $qlabel = html_writer::tag('label', strip_tags($answer->answer), array('for' => 'q0:'.$question->id.'_answer'));
                 $answers[] = html_writer::tag('div', $qinput . $qlabel, array('class' => 'r0 '.$class));
             } else {
-                if (isset($submitted->{'q0:'.$question->id.'_choice'.$i}) && $i == $submitted->{'q0:'.$question->id.'_choice'.$i}) {
+                if (isset($submitted) && $i == $submitted) {
                     $checkcheckbox = "checked";
 
                     if ($answer->fraction > 0) {
@@ -1352,7 +1352,7 @@ function domoscio_get_multi_choice_result($question, $submitted) {
                 $answers[] = html_writer::tag('div', $qinput . $qlabel, array('class' => 'r0 '.$class));
             }
         } else {
-            if ($i == $submitted->{'q0:'.$question->id.'_answer'}) {
+            if ($i == $submitted) {
                 $checkradio = "checked";
 
                 if ($answer->answer !== $rightanswer->answer) {
@@ -1421,7 +1421,7 @@ function domoscio_get_match_result($question, $submitted) {
 
     foreach ($subquestions as $subquestion) {
         $class = null;
-        if (($submitted->{'q0:'.$question->id.'_sub'.$i}) == $subquestion->answertext) {
+        if (($submitted) == $subquestion->answertext) {
             $class = "correct";
             $subresult += 1;
         } else {
@@ -1430,7 +1430,7 @@ function domoscio_get_match_result($question, $submitted) {
         }
 
         $tdselect = html_writer::tag('select',
-                                     '<option>'.$submitted->{'q0:'.$question->id.'_sub'.$i}.'</option>',
+                                     '<option>'.$submitted.'</option>',
                                      array('id' => 'menuq0:'.$question->id.'_sub'.$i,
                                         'class' => 'select '.$class.' menuq0:'.$question->id.'_sub'.$i,
                                          'name' => 'q0:'.$question->id.'_sub'.$i,
@@ -1619,7 +1619,7 @@ function domoscio_autoimport($config, $resource, $graphid, $domoscio) {
 
             $knedge = json_decode($rest->seturl($config, 'knowledge_edges', null)->post($json));
 
-            // Inscrit le knowledge node du SCO en DB
+            // Write knowledge node SCO in database
             $knowledgenode = new stdClass;
             $knowledgenode->instance = $domoscio->id;
             $knowledgenode->knodeid = $kn->id;

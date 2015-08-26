@@ -131,6 +131,8 @@ $string['today'] = "Aujourd'hui";
 $string['tomorrow'] = "Demain";
 $string['days'] = "jours";
 $string['scorm_warning'] = "Attention : Veuillez valider vos résultats dans la fenêtre SCORM avant de passer à la suite.";
+$string['next_page'] = "Page suivante";
+$string['prev_page'] = "Page précédente";
 
 $string['proxy_login_required'] = 'You must be logged in to access this url. Please log in and retry.';
 $string['proxy_permission_required'] = 'You don\'t have the permission to access this url.';

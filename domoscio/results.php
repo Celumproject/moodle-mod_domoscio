@@ -36,6 +36,8 @@ $q = optional_param('q', 0, PARAM_INT); // Course_module ID, or
 $kn = optional_param('kn', 0, PARAM_INT);
 $scorm = optional_param('scorm', '', PARAM_INT);
 $end = optional_param('end', false, PARAM_INT);
+$usageid = optional_param('usageid', '', PARAM_INT);
+$slots = optional_param('slots', '', PARAM_INT);
 
 $config = get_config('domoscio');
 $context = context_system::instance();
@@ -67,7 +69,6 @@ $urlresults->param('sesskey', sesskey());
 echo $OUTPUT->header();
 
 echo $OUTPUT->heading(get_string('results', 'domoscio'));
-
 if (has_capability('mod/domoscio:submit', $context)) {
     unset($SESSION->selected);
     if ($q) {
@@ -82,9 +83,8 @@ if (has_capability('mod/domoscio:submit', $context)) {
                                                 array('qid' => $q)
                                                );
 
-                $data = data_submitted();
-                $quba = question_engine::load_questions_usage_by_activity($data->usageid);
-                $correctresponse = $quba->get_correct_response($data->slots);
+                $quba = question_engine::load_questions_usage_by_activity($usageid);
+                $correctresponse = $quba->get_correct_response($slots);
 
                 if (!is_null($correctresponse)) {
                     $transaction = $DB->start_delegated_transaction();
@@ -92,7 +92,7 @@ if (has_capability('mod/domoscio:submit', $context)) {
                     $quba->process_all_actions($timenow);
                     question_engine::save_questions_usage_by_activity($quba);
                     $transaction->allow_commit();
-                    $quba->finish_question($data->slots, $timenow);
+                    $quba->finish_question($slots, $timenow);
                 }
 
                 $options = new question_preview_options($question);
@@ -101,21 +101,22 @@ if (has_capability('mod/domoscio:submit', $context)) {
                 $result->score = round($quba->get_total_mark() * 100);
 
                 // Display question correction
-                echo $quba->render_question($data->slots, $options, $q);
+                echo $quba->render_question($slots, $options, $q);
             } else if ($selected->type == "lesson") {
                 $question = $DB->get_record('lesson_pages', array('id' => $q), '*');
 
                 // Retrieve question type
                 $qtype = domoscio_get_qtype($question, $selected->type);
+                $submitted = optional_param('q0:'.$question->id.'_answer', '', PARAM_TEXT);
 
                 if ($qtype == "calculated" || $qtype == "numerical" || $qtype == "shortanswer") {
-                    $result = domoscio_get_input_result($question, $data, $selected->type);
+                    $result = domoscio_get_input_result($question, $submitted);
                 } else if ($qtype == "multichoice" || $qtype == "calculatedmulti" || $qtype == "truefalse") {
-                    $result = domoscio_get_multi_choice_result($question, $data, $selected->type);
+                    $result = domoscio_get_multi_choice_result($question, $submitted);
                 } else if ($qtype == "multianswer") {
-                    $result = domoscio_get_multi_result($question, $data, $selected->type);
+                    $result = domoscio_get_multi_result($question, $submitted);
                 } else if ($qtype == "match") {
-                    $result = domoscio_get_match_result($question, $data, $selected->type);
+                    $result = domoscio_get_match_result($question, $submitted);
                 }
 
                 // Display correction
@@ -134,14 +135,14 @@ if (has_capability('mod/domoscio:submit', $context)) {
     } else if ($scorm) {
         // else if exercise is SCO
         if (data_submitted() && confirm_sesskey()) {
-            $answersubmitted = data_submitted();
+            $scoid = optional_param('scoid', null, PARAM_INT);
         }
         $redirect = optional_param('redirect', true, PARAM_BOOL);
 
         // Redirect once to search for student answer being written in DB
         if ($redirect == true && confirm_sesskey()) {
-            if (isset($answersubmitted->scoid)) {
-                $SESSION->scoid = $answersubmitted->scoid;
+            if (isset($scoid)) {
+                $SESSION->scoid = $scoid;
             }
 
             $urlresults->param('id', $id);

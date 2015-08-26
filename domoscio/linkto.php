@@ -75,23 +75,26 @@ if (has_capability('moodle/course:create', $context)) {
              html_writer::tag('b', $linkedmodule->display." - ".$notion->name, array('class' => '')), array('class' => 'well well-small'));
         echo html_writer::link("$CFG->wwwroot/mod/domoscio/view.php?id=$cm->id", '<< '.get_string('back_btn', 'domoscio')."&nbsp");
 
-        $quizzes = $DB->get_records('quiz', array(), '', 'id,name');
-        $scorms = $DB->get_records('scorm', array(), '', '*');
-        $lessons = $DB->get_records('lesson', array(), '', 'id,name');
-
         $list = '';
 
+        $quizzes = $DB->get_recordset('quiz', array(), '', 'id,name');
         foreach ($quizzes as $quiz) {
             $list .= domoscio_display_activities_list($quiz, 'quiz', $kn, $cm);
         }
+        $quizzes->close();
 
+        $scorms = $DB->get_recordset('scorm', array(), '', '*');
         foreach ($scorms as $scorm) {
             $list .= domoscio_display_activities_list($scorm, 'scorm', $kn, $cm);
         }
+        $scorms->close();
 
+        $lessons = $DB->get_recordset('lesson', array(), '', 'id,name');
         foreach ($lessons as $lesson) {
             $list .= domoscio_display_activities_list($lesson, 'lesson', $kn, $cm);
         }
+        $lessons->close();
+        
         $icon = html_writer::empty_tag('img', array('src' => $OUTPUT->pix_url('i/edit'), 'alt' => get_string('edit'), 'class' => 'smallicon'));
         $url = html_writer::link("#", $icon." ".get_string('create_q', 'domoscio')." (Coming Soon)", array('disabled' => 'disabled'));
         $list .= "<hr/>".html_writer::tag('p', $url, array('class' => ''));

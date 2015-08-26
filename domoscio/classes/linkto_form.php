@@ -74,7 +74,7 @@ class mod_domoscio_linkto_form extends moodleform {
                                  ON {question}.`id` = {quiz_slots}.`questionid`
                               WHERE {quiz_slots}.`quizid` = :quizid";
 
-            $questions = $DB->get_records_sql($sqlquestions, array('quizid' => $quiz->id));
+            $questions = $DB->get_recordset_sql($sqlquestions, array('quizid' => $quiz->id));
 
             $mform->addElement('html', "<h5 class='well well-small accordion-toggle' data-toggle='collapse' data-parent='#accordion'><a href='#collapse-".
                                         $quiz->id."'>".
@@ -93,6 +93,8 @@ class mod_domoscio_linkto_form extends moodleform {
                                     "<hr/>".$question->questiontext,
                                     array('group' => 1), array(0, 1))->setChecked($check);
             }
+            $questions->close();
+            
         } else if ($this->_customdata['module'] == 'lesson') {
             $lesson = $DB->get_record('lesson', array('id' => $this->_customdata['exo_id']), 'id,name');
 

@@ -65,7 +65,7 @@ require_login($course, true, $cm);
 // Print the page header.
 $PAGE->set_url('/mod/domoscio/view.php', array('id' => $cm->id));
 $PAGE->set_title(format_string($domoscio->name));
-$PAGE->set_heading("Domoscio for Moodle");
+$PAGE->set_heading(get_string('pluginname', 'domoscio'));
 
 echo $OUTPUT->header();
 
