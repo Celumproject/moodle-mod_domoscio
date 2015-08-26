@@ -73,8 +73,6 @@ if (has_capability('mod/domoscio:submit', $context)) {
     if ($q) {
         // If exercise is Quiz question or lesson question
         if (data_submitted() && confirm_sesskey()) {
-            $answersubmitted = data_submitted();
-
             // Retrive answered question data
             $selected = $DB->get_record('domoscio_knode_questions', array('questionid' => $q, 'knodeid' => $kn), '*');
             if ($selected->type == "quiz") {
@@ -111,13 +109,13 @@ if (has_capability('mod/domoscio:submit', $context)) {
                 $qtype = domoscio_get_qtype($question, $selected->type);
 
                 if ($qtype == "calculated" || $qtype == "numerical" || $qtype == "shortanswer") {
-                    $result = domoscio_get_input_result($question, $answersubmitted, $selected->type);
+                    $result = domoscio_get_input_result($question, $data, $selected->type);
                 } else if ($qtype == "multichoice" || $qtype == "calculatedmulti" || $qtype == "truefalse") {
-                    $result = domoscio_get_multi_choice_result($question, $answersubmitted, $selected->type);
+                    $result = domoscio_get_multi_choice_result($question, $data, $selected->type);
                 } else if ($qtype == "multianswer") {
-                    $result = domoscio_get_multi_result($question, $answersubmitted, $selected->type);
+                    $result = domoscio_get_multi_result($question, $data, $selected->type);
                 } else if ($qtype == "match") {
-                    $result = domoscio_get_match_result($question, $answersubmitted, $selected->type);
+                    $result = domoscio_get_match_result($question, $data, $selected->type);
                 }
 
                 // Display correction
@@ -154,13 +152,24 @@ if (has_capability('mod/domoscio:submit', $context)) {
             exit;
         } else {
             // Once student result is written, retrive the answer
-            $tracks = scorm_get_tracks($SESSION->scoid, $USER->id);
-            $score = $tracks->{"cmi.score.scaled"};
-            // Scale the result to be used by Domoscio API
-            if (isset($score) && confirm_sesskey()) {
-                $result = new stdClass;
-                $result->score = $score * 100;
-                unset($SESSION->scoid);
+            if ($tracks = scorm_get_tracks($SESSION->scoid, $USER->id)) {
+                if (isset($tracks->{"cmi.score.scaled"})) {
+                    $score = $tracks->{"cmi.score.scaled"};
+                } else if (isset($tracks->{"cmi.core.score.raw"})) {
+                    $scoreraw = $tracks->{"cmi.core.score.raw"};
+                    $scoremax = $tracks->{"cmi.core.score.max"};
+                    $score = $scoreraw / $scoremax;
+                } else {
+                    // If student didn't answered, reload doquiz page
+                    redirect("$CFG->wwwroot/mod/domoscio/doquiz.php?kn=".$kn."&alert=true");
+                    exit;
+                }
+                // Scale the result to be used by Domoscio API
+                if (isset($score) && confirm_sesskey()) {
+                    $result = new stdClass;
+                    $result->score = $score * 100;
+                    unset($SESSION->scoid);
+                }
             }
         }
     } else if ($end == true) {
@@ -187,7 +196,7 @@ if (has_capability('mod/domoscio:submit', $context)) {
 
                 $kninfo = json_decode($rest->seturl($config, 'knowledge_nodes', $kns->knodeid)->get());
 
-                if ($rapport->value == 100) {
+                if ($rapport->payload == 100) {
                     $state = get_string('notion_ok', 'domoscio');
                     $class = "success";
                     $feedbackclass = "correct";
@@ -204,7 +213,7 @@ if (has_capability('mod/domoscio:submit', $context)) {
                 );
 
                 $trows .= html_writer::tag('tr', html_writer::tag('td', $resource->display." - ".$kninfo->name).
-                                                html_writer::tag('td', $rapport->value).
+                                                html_writer::tag('td', $rapport->payload).
                                                 html_writer::tag('td', html_writer::empty_tag('img', $attributes)." ".$state),
                                                 array("class" => $class)
                                            );
@@ -235,11 +244,11 @@ if (has_capability('mod/domoscio:submit', $context)) {
 
             // Write json, send it and retrive result from API
             $knstudent = $DB->get_record('domoscio_knode_students', array('user' => $USER->id,
-                                                                                'knodeid' => $kn), '*');
+                                                                       'knodeid' => $kn), '*');
             $json = json_encode(array('knowledge_node_student_id' => intval($knstudent->knodestudentid),
-                                                          'value' => intval($result->score)));
+                                                        'payload' => $result->score));
 
-            $SESSION->results[] = json_decode($rest->seturl($config, 'results', null)->post($json));
+            $SESSION->results[] = json_decode($rest->seturl($config, 'events', null, "&type=EventResult")->post($json));
 
             // Put a new event in calendar
             $knstudent = json_decode($rest->seturl($config, 'knowledge_node_students', $knstudent->knodestudentid)->get());

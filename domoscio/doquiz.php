@@ -36,6 +36,7 @@ require_once($CFG->dirroot . '/question/previewlib.php');
 $id = optional_param('id', 0, PARAM_INT); // Course_module ID, or
 $kn = optional_param('kn', 0, PARAM_INT); // Knowledge_node ID (Rappels)
 $solo = optional_param('solo', false, PARAM_INT); // Si test unitaire
+$alert = optional_param('alert', false, PARAM_INT); // Si test unitaire
 $t = optional_param('t', null, PARAM_INT); // Start test timestamp
 $first = optional_param('first', 0, PARAM_INT); // If initial test (no history)
 
@@ -133,6 +134,10 @@ if (has_capability('mod/domoscio:submit', $context)) {
                     $urlresults->param('kn', $kn);
 
                     $output = $scormframe.html_writer::tag('form', $content, array('method' => 'POST', 'action' => $urlresults, 'id' => 'responseform'));
+
+                    if ($alert == 'true') {
+                        echo html_writer::tag('div', get_string('scorm_warning', 'domoscio'), array('class' => 'notifyproblem'));
+                    }
                     echo $output;
                 } else {
                     if ($selected->type == "quiz") {

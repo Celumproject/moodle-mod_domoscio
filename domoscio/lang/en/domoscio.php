@@ -130,6 +130,7 @@ $string['gottatest'] = "You have a review to do on ";
 $string['today'] = "Today";
 $string['tomorrow'] = "Tomorrow";
 $string['days'] = "days";
+$string['scorm_warning'] = "Warning : Please validate your answers in the SCORM frame before proceed to the next step.";
 
 $string['proxy_login_required'] = 'You must be logged in to access this url. Please log in and retry.';
 $string['proxy_permission_required'] = 'You don\'t have the permission to access this url.';

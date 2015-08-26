@@ -123,7 +123,7 @@ class mod_domoscio_select_notion_form extends moodleform {
      * @return url
      */
     public function seturl($config, $feature, $var) {
-        $this->_url = $config->domoscio_apiurl."/companies/".$config->domoscio_id."/".$feature."/".$var."?token=".$config->domoscio_apikey;
+        $this->_url = $config->domoscio_apiurl."/instances/".$config->domoscio_id."/".$feature."/".$var."?token=".$config->domoscio_apikey;
         return $this;
     }
 
