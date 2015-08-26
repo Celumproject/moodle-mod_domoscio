@@ -123,9 +123,13 @@ function domoscio_add_instance(stdClass $domoscio, mod_domoscio_mod_form $mform 
 
     // If linkedresource is SCORM package, create new knowledge node for each SCO
     if ($linkedresource->modulename == "scorm") {
-        $scoes = domoscio_get_scorm_scoes($resource->id);
+        if (domoscio_check_domstructure(context_module::instance($domoscio->resource))) {
+            domoscio_autoimport($config, $resource, $graphid, $domoscio);
+        } else {
+            $scoes = domoscio_get_scorm_scoes($resource->id);
 
-        domoscio_write_knowledge_nodes($scoes, $config, $resource, $graphid, $domoscio);
+            domoscio_write_knowledge_nodes($scoes, $config, $resource, $graphid, $domoscio);
+        }
     }
 
     if ($linkedresource->modulename == "book") {
@@ -593,7 +597,14 @@ function domoscio_manage_student($config, $domoscio, $check) {
                 $scoredata = array();
                 foreach ($listscoes as $sco) {
                     if ($tracks = scorm_get_tracks($sco, $USER->id)) {
-                        $scoredata[] = $tracks->{"cmi.score.scaled"};
+                echo $sco;
+                        if (isset($tracks->{"cmi.score.scaled"})) {
+                            $scoredata[] = $tracks->{"cmi.score.scaled"};
+                        } else {
+                            $scoreraw = $tracks->{"cmi.core.score.raw"};
+                            $scoremax = $tracks->{"cmi.core.score.max"};
+                            $scoredata[] = $scoreraw / $scoremax;
+                        }
                     }
                 }
 
@@ -662,17 +673,19 @@ function domoscio_manage_student($config, $domoscio, $check) {
             if ($total > 0) {
                 $scoreglobal = ($scorequestions + $scorescoes + $scorelessons) / $total;
                 $scorejson = json_encode(array('knowledge_node_student_id' => intval($lastkn->id),
-                                                                   'value' => intval($scoreglobal)));
+                                                                 'payload' => $scoreglobal));
             }
 
             if ($scorejson !== "") {
-                $sending = $rest->seturl($config, 'results', null)->post($scorejson);
+                $sending = $rest->seturl($config, 'events', null, "&type=EventResult")->post($scorejson);
 
                 array_pop($knstudent);
 
                 $knstudent[] = json_decode($rest->seturl($config, 'knowledge_node_students', $lastkn->id)->get());
 
-                $newevent = domoscio_create_event($domoscio, end($knstudent));
+                $resource = json_decode($rest->seturl($config, 'knowledge_nodes', $kn)->get());
+
+                $newevent = domoscio_create_event($domoscio, end($knstudent), $kn, $resource);
             }
         }
     }
@@ -1549,6 +1562,87 @@ function domoscio_get_student_by_kns($kns) {
                                   );
 
     return $student;
+}
+
+function domoscio_check_domstructure($context) {
+    $fs = get_file_storage();
+
+    // Prepare file record object
+    $fileinfo = array(
+        'component' => 'mod_scorm',     // usually = table name
+        'filearea' => 'content',     // usually = table name
+        'itemid' => 0,               // usually = ID of row in table
+        'contextid' => $context->id, // ID of context
+        'filepath' => '/',           // any path beginning and ending in /
+        'filename' => 'dom_structure.xml'); // any filename
+
+    // Get file
+    $file = $fs->get_file($fileinfo['contextid'], $fileinfo['component'], $fileinfo['filearea'],
+                          $fileinfo['itemid'], $fileinfo['filepath'], $fileinfo['filename']);
+
+    // Read contents
+    if ($file) {
+        return $contents = $file->get_content();
+    } else {
+        return false;
+    }
+}
+
+/**
+ * This function automatically build up tests sessions from an xml file added in SCORM package
+ *
+ * @param \stdClass $config the config data
+ * @param \stdClass $resource the coursemodule linked to the plugin
+ * @param \int $graphid the knowledge graph id of the course
+ * @param \stdClass $domoscio the plugin instance data
+ * @return \string $domoscioplural leave empty or fill with a 's'
+ */
+function domoscio_autoimport($config, $resource, $graphid, $domoscio) {
+    global $DB;
+
+    $rest = new mod_domoscio_client();
+
+    if ($structurefile = domoscio_check_domstructure(context_module::instance($domoscio->resource))) {
+        $xml = simplexml_load_string($structurefile) or die("Error: Cannot create object");
+        foreach ($xml->notion as $notion) {
+            $n = $DB->get_record('scorm_scoes', array('identifier' => strval($notion['identifier'])), '*');
+
+            // Create new knowledge node
+            $json = json_encode(array('knowledge_graph_id' => strval($graphid),
+                                        'name' => strval($n->title)));
+            $kn = json_decode($rest->seturl($config, 'knowledge_nodes', null)->post($json));
+
+            // Create knowledge edges
+            $json = json_encode(array('knowledge_graph_id' => strval($graphid),
+                                        'source_node_id' => strval($resource->id),
+                                        'destination_node_id' => strval($kn->id)));
+
+            $knedge = json_decode($rest->seturl($config, 'knowledge_edges', null)->post($json));
+
+            // Inscrit le knowledge node du SCO en DB
+            $knowledgenode = new stdClass;
+            $knowledgenode->instance = $domoscio->id;
+            $knowledgenode->knodeid = $kn->id;
+            $knowledgenode->resourceid = $domoscio->resource;
+            $knowledgenode->childid = $n->id;
+            $knowledgenode->active = true;
+
+            $writekn = $DB->insert_record('domoscio_knowledge_nodes', $knowledgenode);
+
+            foreach ($notion->test as $test) {
+                $identifier = strval($test['identifier']);
+                $sco = $DB->get_record('scorm_scoes', array('identifier' => $identifier), '*');
+
+                $record = new stdClass;
+                $record->instance = $domoscio->id;
+                $record->knodeid = $knowledgenode->knodeid;
+                $record->questionid = $sco->id;
+                $record->type = "scorm";
+
+                $import = $DB->insert_record('domoscio_knode_questions', $record);
+            }
+        }
+    }
 }
 
 /**
