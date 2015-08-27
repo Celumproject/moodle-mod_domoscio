@@ -115,6 +115,7 @@ $string['see_notion'] = 'Show notion';
 $string['stats'] = 'Results';
 $string['score'] = 'Score';
 $string['state'] = 'Status';
+$string['update'] = 'Update';
 $string['tests_empty'] = "No question have been linked to this notion by the course creator.";
 $string['start_tests'] = 'Start session';
 $string['no_test'] = "You don't have to review something";

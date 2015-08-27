@@ -51,8 +51,8 @@ class mod_domoscio_linkto_form extends moodleform {
         // Retrive already selected questions
         $selectedquestions = $DB->get_records_sql("SELECT *
                                                      FROM {domoscio_knode_questions}
-                                                    WHERE `knodeid`= :knid
-                                                      AND `type` = :type",
+                                                    WHERE knodeid= :knid
+                                                      AND type = :type",
                                                   array('knid' => $this->_customdata['kn_id'],
                                                         'type' => $this->_customdata['module'])
                                                  );
@@ -68,11 +68,11 @@ class mod_domoscio_linkto_form extends moodleform {
 
             $icon = html_writer::tag('img', '', array('src' => $OUTPUT->pix_url('icon', 'quiz', 'quiz', array('class' => 'icon')), 'class' => 'activityicon', 'alt' => 'disable'));
 
-            $sqlquestions = "SELECT {question}.`id`, {question}.`name`, {question}.`questiontext`
+            $sqlquestions = "SELECT {question}.id, {question}.name, {question}.questiontext
                                FROM {question}
                          INNER JOIN {quiz_slots}
-                                 ON {question}.`id` = {quiz_slots}.`questionid`
-                              WHERE {quiz_slots}.`quizid` = :quizid";
+                                 ON {question}.id = {quiz_slots}.questionid
+                              WHERE {quiz_slots}.quizid = :quizid";
 
             $questions = $DB->get_recordset_sql($sqlquestions, array('quizid' => $quiz->id));
 
@@ -100,9 +100,9 @@ class mod_domoscio_linkto_form extends moodleform {
 
             list($insql, $inparams) = $DB->get_in_or_equal(array(1, 2, 3, 5, 8, 10));
 
-            $sql = "SELECT `id`, `contents`, `qtype`, `title`
+            $sql = "SELECT id, contents, qtype, title
                       FROM {lesson_pages}
-                     WHERE `qtype` $insql";
+                     WHERE qtype $insql";
 
             $questions = $DB->get_records_sql($sql, $inparams);
 

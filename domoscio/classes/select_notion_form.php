@@ -54,8 +54,8 @@ class mod_domoscio_select_notion_form extends moodleform {
         // Fill the checkbox if already selected
         $selectednotions = $DB->get_records_sql("SELECT *
                                                    FROM {domoscio_knowledge_nodes}
-                                                  WHERE `instance` = :instance
-                                                    AND `active` = '1'",
+                                                  WHERE instance = :instance
+                                                    AND active = '1'",
                                                 array('instance' => $this->_customdata['instance'])
                                                );
 
