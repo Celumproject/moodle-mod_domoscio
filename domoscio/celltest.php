@@ -128,9 +128,9 @@ if (has_capability('moodle/course:create', $context)) {
 
     foreach ($questions as $question) {
         $deleteicon = "<form action='$CFG->wwwroot/mod/domoscio/quiz.php?id=".$id."&q=".$question->id."&delete=true' method='POST'>
-                       <input type='submit' value='x'></input></form>";
+                       <input type='submit'><i class='icon-remove'></i></input></form>";
         $updateicon = "<form action='$CFG->wwwroot/mod/domoscio/quiz.php?id=".$id."&q=".$question->id."&update=true' method='POST'>
-                       <input type='submit' value='Update'></input></form>";
+                       <input type='submit'><i class='icon-pencil'></input></form>";
 
         $datas[] = array($question->id, $question->title, $deleteicon, $updateicon);
     }

@@ -25,6 +25,7 @@ require_once(dirname(dirname(dirname(__FILE__))).'/config.php');
 require_once(dirname(dirname(dirname(__FILE__))).'/calendar/lib.php');
 require_once(dirname(dirname(__FILE__)).'/scorm/locallib.php');
 require_once(dirname(__FILE__).'/lib.php');
+require_once($CFG->dirroot.'/mod/lesson/locallib.php');
 require_once($CFG->dirroot . '/question/engine/lib.php');
 require_once($CFG->dirroot . '/question/previewlib.php');
 
@@ -79,7 +80,7 @@ if (has_capability('mod/domoscio:submit', $context)) {
             if ($selected->type == "quiz") {
                 $question = $DB->get_record_sql("SELECT *
                                                    FROM {question}
-                                                  WHERE `id` = :qid",
+                                                  WHERE id = :qid",
                                                 array('qid' => $q)
                                                );
 
@@ -104,9 +105,11 @@ if (has_capability('mod/domoscio:submit', $context)) {
                 echo $quba->render_question($slots, $options, $q);
             } else if ($selected->type == "lesson") {
                 $question = $DB->get_record('lesson_pages', array('id' => $q), '*');
+                $lesson = new lesson($DB->get_record('lesson', array('id' => $question->lessonid), '*', MUST_EXIST));
+                $page = $lesson->load_page($q);
 
                 // Retrieve question type
-                $qtype = domoscio_get_qtype($question, $selected->type);
+                $qtype = $page->get_idstring();
                 $submitted = optional_param('q0:'.$question->id.'_answer', '', PARAM_TEXT);
 
                 if ($qtype == "calculated" || $qtype == "numerical" || $qtype == "shortanswer") {
@@ -115,7 +118,7 @@ if (has_capability('mod/domoscio:submit', $context)) {
                     $result = domoscio_get_multi_choice_result($question, $submitted);
                 } else if ($qtype == "multianswer") {
                     $result = domoscio_get_multi_result($question, $submitted);
-                } else if ($qtype == "match") {
+                } else if ($qtype == "matching") {
                     $result = domoscio_get_match_result($question, $submitted);
                 }
 
@@ -244,8 +247,8 @@ if (has_capability('mod/domoscio:submit', $context)) {
             }
 
             // Write json, send it and retrive result from API
-            $knstudent = $DB->get_record('domoscio_knode_students', array('user' => $USER->id,
-                                                                       'knodeid' => $kn), '*');
+            $knstudent = $DB->get_record('domoscio_knode_students', array('userid' => $USER->id,
+                                                                         'knodeid' => $kn), '*');
             $json = json_encode(array('knowledge_node_student_id' => intval($knstudent->knodestudentid),
                                                         'payload' => $result->score));
 

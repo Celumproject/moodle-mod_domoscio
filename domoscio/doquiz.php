@@ -193,10 +193,11 @@ if (has_capability('mod/domoscio:submit', $context)) {
             }
         } else if ($lesson->is_accessible()) {
             $question = $DB->get_record('lesson_pages', array('id' => $selected->questionid), '*');
+            $page = $lesson->load_page($selected->questionid);
 
             $qinstance = "kn_q".$question->id;
             $content = html_writer::tag('input', '', array('type' => 'hidden', 'value' => $domoscio->id, 'name' => $qinstance))
-                      .domoscio_display_questions($question, $selected->type);
+                      .domoscio_display_questions($question, $page->get_idstring());
             $urlresults->param('kn', $kn);
             $urlresults->param('q', $selected->questionid);
 

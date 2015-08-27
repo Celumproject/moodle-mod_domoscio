@@ -129,7 +129,7 @@ if (has_capability('moodle/course:create', $context)) {
                     if (is_numeric($k)) {
                         $check = $DB->get_record_sql("SELECT *
                                                         FROM {domoscio_knode_questions}
-                                                       WHERE `questionid` = :qid
+                                                       WHERE questionid = :qid
                                                          AND knodeid = :knid
                                                          AND type = :qtype",
                                                      array('qid' => $k,

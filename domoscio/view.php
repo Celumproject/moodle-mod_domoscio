@@ -110,7 +110,7 @@ if (has_capability('moodle/course:create', $context)) {
 
         $qids = $DB->get_records_sql("SELECT *
                                         FROM {domoscio_knode_questions}
-                                       WHERE `knodeid`= :knid",
+                                       WHERE knodeid= :knid",
                                      array('knid' => $notion->knodeid)
                                     );
 

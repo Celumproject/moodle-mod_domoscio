@@ -101,9 +101,13 @@ class mod_domoscio_mod_form extends moodleform_mod {
         // Search for course modules to display
         $query = "SELECT *
                     FROM {course_modules}
-                   WHERE `module`
-                      IN (3,13,15,18)
-                     AND `course` = :courseid";
+                   WHERE {course_modules}.module
+                      IN (SELECT id
+                          FROM {modules}
+                          WHERE name
+                          IN ('book', 'lesson', 'page', 'scorm')
+                         )
+                     AND course = :courseid";
 
         $modules = $DB->get_records_sql($query, array('courseid' => $COURSE->id));
 
@@ -127,25 +131,7 @@ class mod_domoscio_mod_form extends moodleform_mod {
 
         global $DB, $CFG;
 
-        $modulename = null;
-
-        switch($module) {
-            case 3:
-                $modulename = "book";
-                break;
-
-            case 13:
-                $modulename = "lesson";
-                break;
-
-            case 15:
-                $modulename = "page";
-                break;
-
-            case 18:
-                $modulename = "scorm";
-                break;
-        }
+        $modulename = $DB->get_record('modules', array('id' => $module), 'name')->name;
 
         $moduleinfo = $DB->get_record($modulename, array('id' => $instance), 'name');
 
@@ -162,11 +148,11 @@ class mod_domoscio_mod_form extends moodleform_mod {
 
         global $DB, $CFG, $OUTPUT;
 
-        $query = "SELECT {course_modules}.`module`, {course_modules}.`instance`, {course_modules}.`id`
+        $query = "SELECT {course_modules}.module, {course_modules}.instance, {course_modules}.id
                     FROM {course_modules}
               INNER JOIN {domoscio_knowledge_nodes}
-                      ON {course_modules}.`id` = {domoscio_knowledge_nodes}.`resourceid`
-                   WHERE {domoscio_knowledge_nodes}.`knodeid` = :knid";
+                      ON {course_modules}.id = {domoscio_knowledge_nodes}.resourceid
+                   WHERE {domoscio_knowledge_nodes}.knodeid = :knid";
 
         $resource = $DB->get_record_sql($query, array('knid' => $knowledgenode));
 

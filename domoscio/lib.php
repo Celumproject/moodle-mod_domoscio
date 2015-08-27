@@ -553,19 +553,19 @@ function domoscio_manage_student($config, $domoscio, $check) {
 
     // Check if kn student exist for each knowledgenode, retrive data if so or create new one if not set
     foreach ($knowledgenodes as $kn) {
-        if (!$knsquery = $DB->get_record('domoscio_knode_students', array('knodeid' => $kn->knodeid, 'user' => $USER->id))) {
+        if (!$knsquery = $DB->get_record('domoscio_knode_students', array('knodeid' => $kn->knodeid, 'userid' => $USER->id))) {
             $jsonkn = json_encode(array('knowledge_node_id' => intval($kn->knodeid), 'student_id' => intval($student->id)));
 
             $kndata = json_decode($rest->seturl($config, 'knowledge_node_students', null)->post($jsonkn));
 
             // Get knowledgenodestudent created and store it into database
             $record = new stdClass();
-            $record->user = $USER->id;
+            $record->userid = $USER->id;
             $record->instance = $domoscio->id;
             $record->knodeid = $kn->knodeid;
             $record->knodestudentid = $kndata->id;
             $insert = $DB->insert_record('domoscio_knode_students', $record, false);
-            $knsquery = $DB->get_record('domoscio_knode_students', array('knodeid' => $kn->knodeid, 'user' => $USER->id));
+            $knsquery = $DB->get_record('domoscio_knode_students', array('knodeid' => $kn->knodeid, 'userid' => $USER->id));
         }
 
         $knstudent[] = json_decode($rest->seturl($config, 'knowledge_node_students', $knsquery->knodestudentid)->get());
@@ -619,14 +619,14 @@ function domoscio_manage_student($config, $domoscio, $check) {
                 $queryparams = array('userid' => $USER->id);
                 list($insql, $inparams) = $DB->get_in_or_equal($listquestions, SQL_PARAMS_NAMED);
 
-                $sql = "SELECT AVG({question_attempt_steps}.`fraction`) AS score
+                $sql = "SELECT AVG({question_attempt_steps}.fraction) AS score
                           FROM {question_attempt_steps}
                     INNER JOIN {question_attempts}
-                            ON {question_attempts}.`id` = {question_attempt_steps}.`questionattemptid`
-                         WHERE {question_attempt_steps}.`userid` = :userid
-                           AND {question_attempt_steps}.`sequencenumber` = 2
-                           AND {question_attempts}.`questionid` $insql
-                        HAVING MAX({question_attempts}.`timemodified`)";
+                            ON {question_attempts}.id = {question_attempt_steps}.questionattemptid
+                         WHERE {question_attempt_steps}.userid = :userid
+                           AND {question_attempt_steps}.sequencenumber = 2
+                           AND {question_attempts}.questionid $insql
+                        HAVING MAX({question_attempts}.timemodified)";
 
                 $params = array_merge($inparams, $queryparams);
                 $scoredata = $DB->get_records_sql($sql, $params);
@@ -642,10 +642,10 @@ function domoscio_manage_student($config, $domoscio, $check) {
                 $queryparams = array('userid' => $USER->id);
                 list($insql, $inparams) = $DB->get_in_or_equal($listlessonpages, SQL_PARAMS_NAMED);
 
-                $sql = "SELECT AVG(`correct`) AS score
+                $sql = "SELECT AVG(correct) AS score
                           FROM {lesson_attempts}
-                         WHERE `userid` = :userid
-                           AND `pageid` $insql";
+                         WHERE userid = :userid
+                           AND pageid $insql";
 
                 $params = array_merge($inparams, $queryparams);
                 $scoredata = $DB->get_records_sql($sql, $params);
@@ -703,33 +703,15 @@ function domoscio_get_resource_info($knowledgenode) {
 
     global $DB, $CFG, $OUTPUT;
 
-    $query = "SELECT {course_modules}.`module`, {course_modules}.`instance`, {course_modules}.`id`
+    $query = "SELECT {course_modules}.module, {course_modules}.instance, {course_modules}.id
                 FROM {course_modules}
           INNER JOIN {domoscio_knowledge_nodes}
-                  ON {course_modules}.`id` = {domoscio_knowledge_nodes}.`resourceid`
-               WHERE {domoscio_knowledge_nodes}.`knodeid` = :knowledgenode";
+                  ON {course_modules}.id = {domoscio_knowledge_nodes}.resourceid
+               WHERE {domoscio_knowledge_nodes}.knodeid = :knowledgenode";
 
     $resource = $DB->get_record_sql($query, array('knowledgenode' => $knowledgenode));
 
-    $modulename = null;
-
-    switch($resource->module) {
-        case 3:
-            $modulename = "book";
-            break;
-
-        case 13:
-            $modulename = "lesson";
-            break;
-
-        case 15:
-            $modulename = "page";
-            break;
-
-        case 18:
-            $modulename = "scorm";
-            break;
-    }
+    $modulename = $DB->get_record('modules', array('id' => $resource->module), 'name')->name;
 
     $moduleinfo = $DB->get_record($modulename, array('id' => $resource->instance), 'name');
 
@@ -750,8 +732,8 @@ function domoscio_get_resource_info($knowledgenode) {
         $sco = $DB->get_record_sql("SELECT *
                                     FROM {scorm_scoes}
                               INNER JOIN {domoscio_knowledge_nodes}
-                                      ON {domoscio_knowledge_nodes}.`childid` = {scorm_scoes}.`id`
-                                   WHERE {domoscio_knowledge_nodes}.`knodeid` = :knowledgenode",
+                                      ON {domoscio_knowledge_nodes}.childid = {scorm_scoes}.id
+                                   WHERE {domoscio_knowledge_nodes}.knodeid = :knowledgenode",
                                    array('knowledgenode' => $knowledgenode)
                                   );
 
@@ -781,8 +763,8 @@ function domoscio_get_scorm_scoes($kn) {
 
     $scoes = $DB->get_records_sql("SELECT *
                                    FROM {scorm_scoes}
-                                  WHERE `scorm` = :instance
-                                    AND `scormtype` = 'sco'",
+                                  WHERE scorm = :instance
+                                    AND scormtype = 'sco'",
                                   array('instance' => $instance)
                                  );
 
@@ -802,7 +784,7 @@ function domoscio_get_book_chapters($cm) {
 
     $chapters = $DB->get_records_sql("SELECT *
                                         FROM {book_chapters}
-                                       WHERE `bookid` = :instance",
+                                       WHERE bookid = :instance",
                                      array('instance' => $instance)
                                     );
 
@@ -822,8 +804,8 @@ function domoscio_get_lesson_content($cm) {
 
     $contents = $DB->get_records_sql("SELECT *
                                         FROM {lesson_pages}
-                                       WHERE `lessonid` = :instance
-                                         AND `qtype` = 20",
+                                       WHERE lessonid = :instance
+                                         AND qtype = 20",
                                        array('instance' => $instance)
                                     );
 
@@ -841,20 +823,18 @@ function domoscio_get_lesson_content($cm) {
  */
 function domoscio_display_activities_list($activity, $moduletype, $kn, $cm) {
     global $DB, $CFG, $OUTPUT;
+    $moduleid = $DB->get_record('modules', array('name' => $moduletype), 'id')->id;
 
     switch($moduletype) {
         case "lesson":
-            $moduleid = 13;
             $cap = 'mod/lesson:manage';
             break;
 
         case "quiz":
-            $moduleid = 16;
             $cap = 'mod/quiz:manage';
             break;
 
         case "scorm":
-            $moduleid = 18;
             $cap = 'mod/scorm:viewreport';
             break;
     }
@@ -924,11 +904,11 @@ function domoscio_count_tests($config) {
     global $DB, $USER, $CFG;
 
     // Check courses student is enrolled
-    $courseenrol = $DB->get_records_sql("SELECT `courseid`
+    $courseenrol = $DB->get_records_sql("SELECT courseid
                                           FROM {enrol}
                                     INNER JOIN {user_enrolments}
-                                            ON {user_enrolments}.`enrolid` = {enrol}.`id`
-                                         WHERE {user_enrolments}.`userid` = :userid",
+                                            ON {user_enrolments}.enrolid = {enrol}.id
+                                         WHERE {user_enrolments}.userid = :userid",
                                        array('userid' => $USER->id)
                                        );
 
@@ -960,11 +940,11 @@ function domoscio_count_tests($config) {
         $sql = "SELECT *
                 FROM {domoscio_knode_students}
                 INNER JOIN {domoscio_knowledge_nodes}
-                ON {domoscio_knowledge_nodes}.`knodeid` = {domoscio_knode_students}.`knodeid`
-                WHERE {domoscio_knode_students}.`user` = :userid
-                AND ({domoscio_knowledge_nodes}.`active` IS NULL
-                    OR {domoscio_knowledge_nodes}.`active` = '1')
-                AND {domoscio_knode_students}.`instance` $insql";
+                ON {domoscio_knowledge_nodes}.knodeid = {domoscio_knode_students}.knodeid
+                WHERE {domoscio_knode_students}.userid = :userid
+                AND ({domoscio_knowledge_nodes}.active IS NULL
+                    OR {domoscio_knowledge_nodes}.active = '1')
+                AND {domoscio_knode_students}.instance $insql";
 
         $params = array_merge($inparams, $queryparams);
         $knstudents = $DB->get_records_sql($sql, $params);
@@ -988,14 +968,12 @@ function domoscio_count_tests($config) {
  * @param \stdClass $question the selected question data
  * @return \var $ouptut the question display
  */
-function domoscio_display_questions($question) {
-    $qtype = domoscio_get_qtype($question);
-
+function domoscio_display_questions($question, $qtype) {
     if ($qtype == "calculated" || $qtype == "numerical" || $qtype == "shortanswer") {
         $display = domoscio_get_input_answers($question);
     } else if ($qtype == "multichoice" || $qtype == "truefalse") {
         $display = domoscio_get_multichoice_answer($question);
-    } else if ($qtype == "match") {
+    } else if ($qtype == "matching") {
         $display = domoscio_get_match($question);
     }
 
@@ -1013,41 +991,6 @@ function domoscio_display_questions($question) {
 /**
  * This function retrives all answers for the question in params
  *
- * @param \stdClass $question the selected question data
- * @return \string $qtype the question type
- */
-function domoscio_get_qtype($question) {
-    switch($question->qtype) {
-        case 1:
-            $qtype = "shortanswer";
-            break;
-
-        case 2:
-            $qtype = "truefalse";
-            break;
-
-        case 3:
-            $qtype = "multichoice";
-            break;
-
-        case 5:
-            $qtype = "match";
-            break;
-
-        case 8:
-            $qtype = "numerical";
-            break;
-
-        case 10:
-            $qtype = "essay";
-            break;
-    }
-    return $qtype;
-}
-
-/**
- * This function retrives all answers for the question in params
- *
  * @param \int $qnum the selected question id
  * @return \stdClass $answers the answers list
  */
@@ -1056,7 +999,7 @@ function domoscio_get_answers($qnum) {
 
     $sqlanswers = "SELECT *
                      FROM {lesson_answers}
-                    WHERE `pageid` = :qnum";
+                    WHERE pageid = :qnum";
 
     $answers = $DB->get_records_sql($sqlanswers, array('qnum' => $qnum));
 
@@ -1158,8 +1101,8 @@ function domoscio_get_match($question) {
 
     $subquestions = $DB->get_records_sql("SELECT *
                                             FROM {lesson_answers}
-                                           WHERE `pageid` = :pid
-                                             AND `response` IS NOT NULL",
+                                           WHERE pageid = :pid
+                                             AND response IS NOT NULL",
                                          array('pid' => $question->id)
                                         );
 
@@ -1406,8 +1349,8 @@ function domoscio_get_match_result($question, $submitted) {
 
     $subquestions = $DB->get_records_sql("SELECT *
                                             FROM {lesson_answers}
-                                           WHERE `pageid` = :pid
-                                             AND `response` IS NOT NULL",
+                                           WHERE pageid = :pid
+                                             AND response IS NOT NULL",
                                          array('pid' => $question->id)
                                         );
 
@@ -1435,7 +1378,7 @@ function domoscio_get_match_result($question, $submitted) {
                                         'class' => 'select '.$class.' menuq0:'.$question->id.'_sub'.$i,
                                          'name' => 'q0:'.$question->id.'_sub'.$i,
                                      'disabled' => 'disabled'));
-        $tdcontrol = html_writer::tag('label', 'Answer :', array('for' => 'q0:'.$question->id.'_sub'.$i.'_answer',
+        $tdcontrol = html_writer::tag('label', get_string('answer', 'domoscio'), array('for' => 'q0:'.$question->id.'_sub'.$i.'_answer',
                                                                'class' => 'subq accesshide')) . $tdselect;
         $rowcontent = html_writer::tag('td', '<p>'.$subquestion->questiontext.'</p>', array('class' => 'text')).
                       html_writer::tag('td', $tdcontrol, array('class' => 'control'));
@@ -1511,8 +1454,7 @@ function domoscio_get_stats($kn, $limitfrom = null, $limitnum = null) {
     $rest = new mod_domoscio_client();
     $stats = new stdClass();
 
-    $knstudents = $DB->get_records('domoscio_knode_students', array('knodeid' => $kn), 'user ASC', '*', $limitfrom, $limitnum);
-    $stats->count_students = count($knstudents);
+    $knstudents = $DB->get_recordset('domoscio_knode_students', array('knodeid' => $kn), 'userid ASC', '*', $limitfrom, $limitnum);
 
     $history = $enrolledstudents = array();
     $attempts = $rightattempts = $todotests = 0;
@@ -1527,6 +1469,9 @@ function domoscio_get_stats($kn, $limitfrom = null, $limitnum = null) {
 
         $enrolledstudents[] = $apicall;
     }
+
+    $stats->count_students = count($enrolledstudents);
+    $knstudents->close();
 
     foreach ($history as $studenthistory) {
         $attempts += count(str_split($studenthistory));
@@ -1556,8 +1501,8 @@ function domoscio_get_student_by_kns($kns) {
     $student = $DB->get_record_sql("SELECT *
                                       FROM {user}
                                 INNER JOIN {domoscio_knode_students}
-                                        ON {domoscio_knode_students}.`user` = {user}.`id`
-                                     WHERE {domoscio_knode_students}.`knodestudentid` = :knsid",
+                                        ON {domoscio_knode_students}.userid = {user}.id
+                                     WHERE {domoscio_knode_students}.knodestudentid = :knsid",
                                    array('knsid' => $kns)
                                   );
 
