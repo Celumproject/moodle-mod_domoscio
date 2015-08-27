@@ -502,13 +502,14 @@ function domoscio_create_student() {
     global $USER, $DB;
     $config = get_config('domoscio');
 
+    // sexe and day of birth aren't stored by Moodle, so these fields are hardcoded but doesn't impact plugin usage
     $json = json_encode(array(
         'student_group_id' => strval("0"),
         'civil_profile_attributes' => array(
                                           'name' => strval($USER->firstname." ".$USER->lastname),
                                           'sexe' => strval("male"),
-                                          'day_of_birth' => strval("11-05-1989"),
-                                          'place_of_birth' => strval("FR"),
+                                          'day_of_birth' => strval("01-01-1970"),
+                                          'place_of_birth' => strval($USER->country),
                                           'country_of_residence' => strval($USER->country),
                                           'city_of_residence' => strval($USER->city)
                                           ),
@@ -1509,6 +1510,12 @@ function domoscio_get_student_by_kns($kns) {
     return $student;
 }
 
+/**
+ * Retrive a Domoscio specfic XML file into SCORM package
+ *
+ * @param \stdClass $context Moodle context for getting the file
+ * @return \stdClass $student the student datas
+ */
 function domoscio_check_domstructure($context) {
     $fs = get_file_storage();
 

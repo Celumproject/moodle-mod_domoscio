@@ -55,6 +55,8 @@ if ($id) {
     $course     = get_course($domoscio->course);
     $cm         = $DB->get_record('course_modules', array('instance' => $domoscio->id, 'module' => $module->id), '*', MUST_EXIST);
     $id         = $cm->id;
+} else {
+    print_error('missingparameter');
 }
 
 $strname = get_string('modulename', 'mod_domoscio');

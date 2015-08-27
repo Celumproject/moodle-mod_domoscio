@@ -48,7 +48,6 @@ if (has_capability('mod/domoscio:submit', $context)) {
     $todotests = domoscio_count_tests($config);
     $rest = new mod_domoscio_client();
 
-
     $check = $DB->get_record('domoscio_userapi', array('userid' => $USER->id), '*');
     $student = json_decode($rest->seturl($config, 'students', $check->uniqid)->get());
 

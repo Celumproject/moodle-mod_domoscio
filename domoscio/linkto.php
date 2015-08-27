@@ -42,6 +42,8 @@ if ($id) {
     $cm         = $DB->get_record('course_modules', array('id' => $id), '*', MUST_EXIST);
     $course     = get_course($cm->course);
     $domoscio  = $DB->get_record('domoscio', array('id' => $cm->instance), '*', MUST_EXIST);
+} else {
+    print_error('missingparameter');
 }
 
 $context = context_module::instance($cm->id);
@@ -94,7 +96,7 @@ if (has_capability('moodle/course:create', $context)) {
             $list .= domoscio_display_activities_list($lesson, 'lesson', $kn, $cm);
         }
         $lessons->close();
-        
+
         $icon = html_writer::empty_tag('img', array('src' => $OUTPUT->pix_url('i/edit'), 'alt' => get_string('edit'), 'class' => 'smallicon'));
         $url = html_writer::link("#", $icon." ".get_string('create_q', 'domoscio')." (Coming Soon)", array('disabled' => 'disabled'));
         $list .= "<hr/>".html_writer::tag('p', $url, array('class' => ''));
