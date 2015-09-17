@@ -627,7 +627,7 @@ function domoscio_manage_student($config, $domoscio, $check) {
                          WHERE {question_attempt_steps}.userid = :userid
                            AND {question_attempt_steps}.sequencenumber = 2
                            AND {question_attempts}.questionid $insql
-                        HAVING MAX({question_attempts}.timemodified)";
+                        HAVING MAX({question_attempts}.timemodified) > 1";
 
                 $params = array_merge($inparams, $queryparams);
                 $scoredata = $DB->get_records_sql($sql, $params);
@@ -1475,7 +1475,7 @@ function domoscio_get_stats($kn, $limitfrom = null, $limitnum = null) {
     $knstudents->close();
 
     foreach ($history as $studenthistory) {
-        $attempts += count(str_split($studenthistory));
+        $attempts += count(array_filter(str_split($studenthistory), 'strlen'));
         $rightattempts += count(array_filter(str_split($studenthistory)));
     }
 

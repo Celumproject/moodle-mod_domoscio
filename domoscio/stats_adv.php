@@ -115,7 +115,7 @@ if (has_capability('moodle/course:create', $context)) {
 
         foreach ($students as $student) {
             $studentinfo = domoscio_get_student_by_kns($student->id);
-            $attempts = count(str_split($student->history));
+            $attempts = count(array_filter(str_split($student->history), 'strlen'));
             $rightattempts = count(array_filter(str_split($student->history)));
             $wrongattempts = $attempts - $rightattempts;
 
