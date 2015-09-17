@@ -51,7 +51,7 @@ if ($id) {
     $course     = get_course($domoscio->course);
     $cm         = get_coursemodule_from_instance('domoscio', $domoscio->id, $course->id, false, MUST_EXIST);
 } else {
-    error('You must specify a course_module ID or an instance ID');
+    print_error('missingparameter');
 }
 
 $context = context_module::instance($cm->id);
@@ -59,7 +59,7 @@ require_login($course, true, $cm);
 
 $PAGE->set_url('/mod/domoscio/view.php', array('id' => $cm->id));
 $PAGE->set_title(format_string($domoscio->name));
-$PAGE->set_heading("Domoscio for Moodle");
+$PAGE->set_heading(get_string('pluginname', 'domoscio'));
 
 echo $OUTPUT->header();
 echo $OUTPUT->heading($domoscio->name);
@@ -115,7 +115,7 @@ if (has_capability('moodle/course:create', $context)) {
 
         foreach ($students as $student) {
             $studentinfo = domoscio_get_student_by_kns($student->id);
-            $attempts = count(str_split($student->history));
+            $attempts = count(array_filter(str_split($student->history), 'strlen'));
             $rightattempts = count(array_filter(str_split($student->history)));
             $wrongattempts = $attempts - $rightattempts;
 
@@ -137,12 +137,12 @@ if (has_capability('moodle/course:create', $context)) {
         // Display pagination
         if (in_array($pageminusone, $pagesarr)) {
             echo html_writer::link("$CFG->wwwroot/mod/domoscio/stats_adv.php?id=$cm->id&kn=$kn&stat=students&page=$pageminusone",
-                                     'page précédente');
+                                     get_string('prev_page', 'domoscio'));
         }
         echo html_writer::tag('p', 'Page '.$pagenum.'/'.$pagestotal);
         if (in_array($pageplusone, $pagesarr)) {
             echo html_writer::link("$CFG->wwwroot/mod/domoscio/stats_adv.php?id=$cm->id&kn=$kn&stat=students&page=$pageplusone",
-                                     'page suivante');
+                                     get_string('next_page', 'domoscio'));
         }
     }
 }

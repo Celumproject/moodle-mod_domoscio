@@ -25,6 +25,7 @@ require_once(dirname(dirname(dirname(__FILE__))).'/config.php');
 require_once(dirname(dirname(dirname(__FILE__))).'/calendar/lib.php');
 require_once(dirname(dirname(__FILE__)).'/scorm/locallib.php');
 require_once(dirname(__FILE__).'/lib.php');
+require_once($CFG->dirroot.'/mod/lesson/locallib.php');
 require_once($CFG->dirroot . '/question/engine/lib.php');
 require_once($CFG->dirroot . '/question/previewlib.php');
 
@@ -36,6 +37,8 @@ $q = optional_param('q', 0, PARAM_INT); // Course_module ID, or
 $kn = optional_param('kn', 0, PARAM_INT);
 $scorm = optional_param('scorm', '', PARAM_INT);
 $end = optional_param('end', false, PARAM_INT);
+$usageid = optional_param('usageid', '', PARAM_INT);
+$slots = optional_param('slots', '', PARAM_INT);
 
 $config = get_config('domoscio');
 $context = context_system::instance();
@@ -67,7 +70,6 @@ $urlresults->param('sesskey', sesskey());
 echo $OUTPUT->header();
 
 echo $OUTPUT->heading(get_string('results', 'domoscio'));
-
 if (has_capability('mod/domoscio:submit', $context)) {
     unset($SESSION->selected);
     if ($q) {
@@ -78,13 +80,12 @@ if (has_capability('mod/domoscio:submit', $context)) {
             if ($selected->type == "quiz") {
                 $question = $DB->get_record_sql("SELECT *
                                                    FROM {question}
-                                                  WHERE `id` = :qid",
+                                                  WHERE id = :qid",
                                                 array('qid' => $q)
                                                );
 
-                $data = data_submitted();
-                $quba = question_engine::load_questions_usage_by_activity($data->usageid);
-                $correctresponse = $quba->get_correct_response($data->slots);
+                $quba = question_engine::load_questions_usage_by_activity($usageid);
+                $correctresponse = $quba->get_correct_response($slots);
 
                 if (!is_null($correctresponse)) {
                     $transaction = $DB->start_delegated_transaction();
@@ -92,7 +93,7 @@ if (has_capability('mod/domoscio:submit', $context)) {
                     $quba->process_all_actions($timenow);
                     question_engine::save_questions_usage_by_activity($quba);
                     $transaction->allow_commit();
-                    $quba->finish_question($data->slots, $timenow);
+                    $quba->finish_question($slots, $timenow);
                 }
 
                 $options = new question_preview_options($question);
@@ -101,21 +102,24 @@ if (has_capability('mod/domoscio:submit', $context)) {
                 $result->score = round($quba->get_total_mark() * 100);
 
                 // Display question correction
-                echo $quba->render_question($data->slots, $options, $q);
+                echo $quba->render_question($slots, $options, $q);
             } else if ($selected->type == "lesson") {
                 $question = $DB->get_record('lesson_pages', array('id' => $q), '*');
+                $lesson = new lesson($DB->get_record('lesson', array('id' => $question->lessonid), '*', MUST_EXIST));
+                $page = $lesson->load_page($q);
 
                 // Retrieve question type
-                $qtype = domoscio_get_qtype($question, $selected->type);
+                $qtype = $page->get_idstring();
+                $submitted = optional_param('q0:'.$question->id.'_answer', '', PARAM_TEXT);
 
                 if ($qtype == "calculated" || $qtype == "numerical" || $qtype == "shortanswer") {
-                    $result = domoscio_get_input_result($question, $data, $selected->type);
+                    $result = domoscio_get_input_result($question, $submitted);
                 } else if ($qtype == "multichoice" || $qtype == "calculatedmulti" || $qtype == "truefalse") {
-                    $result = domoscio_get_multi_choice_result($question, $data, $selected->type);
+                    $result = domoscio_get_multi_choice_result($question, $submitted);
                 } else if ($qtype == "multianswer") {
-                    $result = domoscio_get_multi_result($question, $data, $selected->type);
-                } else if ($qtype == "match") {
-                    $result = domoscio_get_match_result($question, $data, $selected->type);
+                    $result = domoscio_get_multi_result($question, $submitted);
+                } else if ($qtype == "matching") {
+                    $result = domoscio_get_match_result($question, $submitted);
                 }
 
                 // Display correction
@@ -134,14 +138,14 @@ if (has_capability('mod/domoscio:submit', $context)) {
     } else if ($scorm) {
         // else if exercise is SCO
         if (data_submitted() && confirm_sesskey()) {
-            $answersubmitted = data_submitted();
+            $scoid = optional_param('scoid', null, PARAM_INT);
         }
         $redirect = optional_param('redirect', true, PARAM_BOOL);
 
         // Redirect once to search for student answer being written in DB
         if ($redirect == true && confirm_sesskey()) {
-            if (isset($answersubmitted->scoid)) {
-                $SESSION->scoid = $answersubmitted->scoid;
+            if (isset($scoid)) {
+                $SESSION->scoid = $scoid;
             }
 
             $urlresults->param('id', $id);
@@ -243,8 +247,8 @@ if (has_capability('mod/domoscio:submit', $context)) {
             }
 
             // Write json, send it and retrive result from API
-            $knstudent = $DB->get_record('domoscio_knode_students', array('user' => $USER->id,
-                                                                       'knodeid' => $kn), '*');
+            $knstudent = $DB->get_record('domoscio_knode_students', array('userid' => $USER->id,
+                                                                         'knodeid' => $kn), '*');
             $json = json_encode(array('knowledge_node_student_id' => intval($knstudent->knodestudentid),
                                                         'payload' => $result->score));
 
