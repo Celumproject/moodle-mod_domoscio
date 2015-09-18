@@ -525,7 +525,7 @@ function domoscio_create_student() {
     // Plugin retrive uniqid and store id in DB
     $record = new stdClass();
     $record->userid = $USER->id;
-    $record->uniqid = $student->id;
+    $record->uniqid = $student[0]->id;
     $insert = $DB->insert_record('domoscio_userapi', $record, false);
 }
 
@@ -555,7 +555,7 @@ function domoscio_manage_student($config, $domoscio, $check) {
     // Check if kn student exist for each knowledgenode, retrive data if so or create new one if not set
     foreach ($knowledgenodes as $kn) {
         if (!$knsquery = $DB->get_record('domoscio_knode_students', array('knodeid' => $kn->knodeid, 'userid' => $USER->id))) {
-            $jsonkn = json_encode(array('knowledge_node_id' => intval($kn->knodeid), 'student_id' => intval($student->id)));
+            $jsonkn = json_encode(array('knowledge_node_id' => intval($kn->knodeid), 'student_id' => intval($student[0]->id)));
 
             $kndata = json_decode($rest->seturl($config, 'knowledge_node_students', null)->post($jsonkn));
 
@@ -598,7 +598,6 @@ function domoscio_manage_student($config, $domoscio, $check) {
                 $scoredata = array();
                 foreach ($listscoes as $sco) {
                     if ($tracks = scorm_get_tracks($sco, $USER->id)) {
-                echo $sco;
                         if (isset($tracks->{"cmi.score.scaled"})) {
                             $scoredata[] = $tracks->{"cmi.score.scaled"};
                         } else {

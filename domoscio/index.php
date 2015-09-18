@@ -48,11 +48,9 @@ if (has_capability('mod/domoscio:submit', $context)) {
     $todotests = domoscio_count_tests($config);
     $rest = new mod_domoscio_client();
 
-
     $check = $DB->get_record('domoscio_userapi', array('userid' => $USER->id), '*');
     $student = json_decode($rest->seturl($config, 'students', $check->uniqid)->get());
-
-    $displayuser = html_writer::tag('p', get_string('welcome', 'domoscio').$student->id);
+    $displayuser = html_writer::tag('p', get_string('welcome', 'domoscio').$student[0]->id);
     $notification = userdate(make_timestamp($y, $m, $d, $h, $min))."<br/>".
                     html_writer::start_span('badge badge-important').
                     html_writer::tag('h4', count($todotests)).
