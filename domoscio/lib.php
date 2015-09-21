@@ -525,7 +525,7 @@ function domoscio_create_student() {
     // Plugin retrive uniqid and store id in DB
     $record = new stdClass();
     $record->userid = $USER->id;
-    $record->uniqid = $student[0]->id;
+    $record->uniqid = $student->id;
     $insert = $DB->insert_record('domoscio_userapi', $record, false);
 }
 
