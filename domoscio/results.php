@@ -269,10 +269,7 @@ if (has_capability('mod/domoscio:submit', $context)) {
                                  'onclick' => "javascript:location.href='$CFG->wwwroot/mod/domoscio/doquiz.php?kn=".array_shift($SESSION->todo)."'"));
     } else if (empty($SESSION->todo) && $end == false) {
         $urlresults->param('end', true);
-        echo html_writer::tag('button',
-                              get_string('end_btn', 'domoscio'),
-                              array('type' => 'button',
-                                 'onclick' => "javascript:location.href='$urlresults'"));
+        echo $OUTPUT->single_button($urlresults, get_string('end_btn', 'domoscio'));
     }
 }
 

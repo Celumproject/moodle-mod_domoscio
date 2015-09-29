@@ -215,9 +215,6 @@ if (has_capability('mod/domoscio:submit', $context)) {
         echo html_writer::tag('blockquote', get_string('tests_empty', 'domoscio'), array('class' => 'muted'));
     }
     $urlresultsend->param('end', true);
-    echo html_writer::tag('button',
-                          get_string('end_btn', 'domoscio'),
-                          array('type' => 'button',
-                                'onclick' => "javascript:location.href='$urlresultsend'"));
+    echo $OUTPUT->single_button($urlresultsend, get_string('end_btn', 'domoscio'));
 }
 echo $OUTPUT->footer();
