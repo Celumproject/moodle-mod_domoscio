@@ -114,6 +114,7 @@ $string['see_notion'] = 'Voir la notion';
 $string['stats'] = 'Statistiques';
 $string['score'] = 'Score';
 $string['state'] = 'Etat';
+$string['update'] = 'Modifier';
 $string['no_stats'] = 'Aucune donnée disponible actuellement';
 $string['tests_empty'] = "Aucune question n'a été définie par le créateur de cours pour cette notion.";
 $string['start_tests'] = 'Commencer la session';
@@ -131,6 +132,9 @@ $string['today'] = "Aujourd'hui";
 $string['tomorrow'] = "Demain";
 $string['days'] = "jours";
 $string['scorm_warning'] = "Attention : Veuillez valider vos résultats dans la fenêtre SCORM avant de passer à la suite.";
+$string['next_page'] = "Page suivante";
+$string['prev_page'] = "Page précédente";
+$string['students_list'] = "Liste des étudiants";
 
 $string['proxy_login_required'] = 'You must be logged in to access this url. Please log in and retry.';
 $string['proxy_permission_required'] = 'You don\'t have the permission to access this url.';

@@ -61,7 +61,10 @@ if ($id) {
     $course     = get_course($domoscio->course);
     $cm         = $DB->get_record('course_modules', array('instance' => $domoscio->id, 'module' => $module->id), '*', MUST_EXIST);
     $id         = $cm->id;
+} else {
+    print_error('missingparameter');
 }
+
 $config = get_config('domoscio');
 require_login();
 $context = context_system::instance();
@@ -193,10 +196,11 @@ if (has_capability('mod/domoscio:submit', $context)) {
             }
         } else if ($lesson->is_accessible()) {
             $question = $DB->get_record('lesson_pages', array('id' => $selected->questionid), '*');
+            $page = $lesson->load_page($selected->questionid);
 
             $qinstance = "kn_q".$question->id;
             $content = html_writer::tag('input', '', array('type' => 'hidden', 'value' => $domoscio->id, 'name' => $qinstance))
-                      .domoscio_display_questions($question, $selected->type);
+                      .domoscio_display_questions($question, $page->get_idstring());
             $urlresults->param('kn', $kn);
             $urlresults->param('q', $selected->questionid);
 
@@ -211,9 +215,6 @@ if (has_capability('mod/domoscio:submit', $context)) {
         echo html_writer::tag('blockquote', get_string('tests_empty', 'domoscio'), array('class' => 'muted'));
     }
     $urlresultsend->param('end', true);
-    echo html_writer::tag('button',
-                          get_string('end_btn', 'domoscio'),
-                          array('type' => 'button',
-                                'onclick' => "javascript:location.href='$urlresultsend'"));
+    echo $OUTPUT->single_button($urlresultsend, get_string('end_btn', 'domoscio'));
 }
 echo $OUTPUT->footer();

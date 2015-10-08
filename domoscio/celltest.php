@@ -58,7 +58,7 @@ if (has_capability('moodle/course:create', $context)) {
     // Creating questions form
 
     // Writing new question
-    if ($delete == null && $update == null) {
+    if ($delete == null && $update == null && confirm_sesskey()) {
         echo $OUTPUT->heading(get_string('create_q', 'domoscio'));
 
         $mform = new mod_domoscio_create_celltest_form();
@@ -81,7 +81,7 @@ if (has_capability('moodle/course:create', $context)) {
             $mform->set_data($formdata);
             $mform->display();
         }
-    } else if ($update == true) {
+    } else if ($update == true && confirm_sesskey()) {
         // Updating existing question
         echo $OUTPUT->heading(get_string('create_q', 'domoscio'));
 
@@ -113,7 +113,7 @@ if (has_capability('moodle/course:create', $context)) {
             $mform->display();
         }
 
-    } else if ($delete == true) {
+    } else if ($delete == true && confirm_sesskey()) {
         // Question list
         $DB->delete_records('domoscio_celltests', array('knowledge_cell_id' => $id, 'id' => $q));
         redirect("$CFG->wwwroot/mod/domoscio/quiz.php?id=".$id);
@@ -128,9 +128,9 @@ if (has_capability('moodle/course:create', $context)) {
 
     foreach ($questions as $question) {
         $deleteicon = "<form action='$CFG->wwwroot/mod/domoscio/quiz.php?id=".$id."&q=".$question->id."&delete=true' method='POST'>
-                       <input type='submit' value='x'></input></form>";
+                       <input type='submit'><i class='icon-remove'></i></input></form>";
         $updateicon = "<form action='$CFG->wwwroot/mod/domoscio/quiz.php?id=".$id."&q=".$question->id."&update=true' method='POST'>
-                       <input type='submit' value='Update'></input></form>";
+                       <input type='submit'><i class='icon-pencil'></input></form>";
 
         $datas[] = array($question->id, $question->title, $deleteicon, $updateicon);
     }

@@ -56,7 +56,7 @@ if ($id) {
     $cm         = $DB->get_record('course_modules', array('instance' => $domoscio->id, 'module' => $module->id), '*', MUST_EXIST);
     $id         = $cm->id;
 } else {
-    error('You must specify a course_module ID or an instance ID');
+    print_error('missingparameter');
 }
 
 $context = context_module::instance($cm->id);
@@ -67,7 +67,6 @@ $PAGE->set_title(format_string($domoscio->name));
 $PAGE->set_heading(get_string('pluginname', 'domoscio'));
 
 echo $OUTPUT->header();
-
 echo $OUTPUT->heading($domoscio->name);
 
 $rest = new mod_domoscio_client();
@@ -110,7 +109,7 @@ if (has_capability('moodle/course:create', $context)) {
 
         $qids = $DB->get_records_sql("SELECT *
                                         FROM {domoscio_knode_questions}
-                                       WHERE `knodeid`= :knid",
+                                       WHERE knodeid= :knid",
                                      array('knid' => $notion->knodeid)
                                     );
 
