@@ -101,8 +101,17 @@ function domoscio_add_instance(stdClass $domoscio, mod_domoscio_mod_form $mform 
     $rest = new mod_domoscio_client();
 
     // Create new parent knowledge node for this new instance
+    $query = "SELECT {course_modules}.instance, {modules}.name
+              FROM {course_modules}
+              INNER JOIN {modules}
+              ON {course_modules}.module = {modules}.id
+              WHERE {course_modules}.id = :coursemodule";
+
+    $cmdata = $DB->get_record_sql($query, array('coursemodule' => $domoscio->resource));
+    $cmselected = $DB->get_record($cmdata->name, array('id' => $cmdata->instance));
+
     $json = json_encode(array('knowledge_graph_id' => strval($graphid),
-                              'name' => strval($domoscio->resource)));
+                              'name' => strval($cmselected->name)));
 
     $resource = json_decode($rest->seturl($config, 'knowledge_nodes', null)->post($json));
 
@@ -120,6 +129,10 @@ function domoscio_add_instance(stdClass $domoscio, mod_domoscio_mod_form $mform 
     $domoscio->resourcetype = $linkedresource->modulename;
 
     $domoscio->id = $DB->insert_record('domoscio', $domoscio);
+
+    // Update knowledge node table with freshly created Domoscio instance
+    $knowledgenode->instance = $domoscio->id;
+    $DB->update_record('domoscio_knowledge_nodes', $knowledgenode);
 
     // If linkedresource is SCORM package, create new knowledge node for each SCO
     if ($linkedresource->modulename == "scorm") {
@@ -490,7 +503,16 @@ function domoscio_pluginfile($course, $cm, $context, $filearea, array $args, $fo
  * @param navigation_node $domoscionode domoscio administration node
  */
 function domoscio_extend_settings_navigation(settings_navigation $settingsnav, navigation_node $domoscionode=null) {
-    // TODO Delete this function and its docblock, or implement it.
+    global $PAGE;
+    $cm = $PAGE->cm;
+    $context = $cm->context;
+
+    // Link to students list
+    if (has_capability('moodle/course:create', $context)) {
+        $url = new moodle_url('index.php');
+        $urlname = get_string('students_list', 'domoscio');
+        $node = $domoscionode->add($urlname, $url, navigation_node::TYPE_SETTING);
+    }
 }
 
 /**
@@ -549,22 +571,32 @@ function domoscio_manage_student($config, $domoscio, $check) {
 
     // Retrive all active knowledge nodes relative to this instance of Domoscio
     $knowledgenodes = $DB->get_records_select('domoscio_knowledge_nodes', "instance = :instance AND active <> 0", array('instance' => $domoscio->id));
+    // Retrive all knowledge nodes students for selected students
+    $knsarray = json_decode($rest->seturl($config, 'students', $student[0]->id, 'knowledge_node_students')->get());
 
     $knstudent = array();
 
     // Check if kn student exist for each knowledgenode, retrive data if so or create new one if not set
     foreach ($knowledgenodes as $kn) {
         if (!$knsquery = $DB->get_record('domoscio_knode_students', array('knodeid' => $kn->knodeid, 'userid' => $USER->id))) {
-            $jsonkn = json_encode(array('knowledge_node_id' => intval($kn->knodeid), 'student_id' => intval($student[0]->id)));
-
-            $kndata = json_decode($rest->seturl($config, 'knowledge_node_students', null)->post($jsonkn));
-
-            // Get knowledgenodestudent created and store it into database
             $record = new stdClass();
+            foreach ($knsarray as $kns) {
+                if ($kns->knowledge_node_id == $kn->knodeid) {
+                    $kndata = $kns;
+                }
+            }
+
+            if (!isset($kndata)) {
+                $jsonkn = json_encode(array('knowledge_node_id' => intval($kn->knodeid), 'student_id' => intval($student[0]->id)));
+
+                $kndata = json_decode($rest->seturl($config, 'knowledge_node_students', null)->post($jsonkn));
+            }
+            // Get knowledgenodestudent created and store it into database
             $record->userid = $USER->id;
             $record->instance = $domoscio->id;
             $record->knodeid = $kn->knodeid;
             $record->knodestudentid = $kndata->id;
+            $record->userapiid = $student[0]->id;
             $insert = $DB->insert_record('domoscio_knode_students', $record, false);
             $knsquery = $DB->get_record('domoscio_knode_students', array('knodeid' => $kn->knodeid, 'userid' => $USER->id));
         }
@@ -677,7 +709,7 @@ function domoscio_manage_student($config, $domoscio, $check) {
             }
 
             if ($scorejson !== "") {
-                $sending = $rest->seturl($config, 'events', null, "&type=EventResult")->post($scorejson);
+                $sending = $rest->seturl($config, 'events', null, null, "&type=EventResult")->post($scorejson);
 
                 array_pop($knstudent);
 
@@ -1342,7 +1374,7 @@ function domoscio_get_multi_choice_result($question, $submitted) {
  * @param \mixed $submitted the answer given by student
  * @return \var $result the correction display
  */
-function domoscio_get_match_result($question, $submitted) {
+function domoscio_get_match_result($question) {
     global $CFG, $DB;
     $result = new stdClass;
     $options = $lists = $subquestions = $table = array();
@@ -1364,6 +1396,7 @@ function domoscio_get_match_result($question, $submitted) {
 
     foreach ($subquestions as $subquestion) {
         $class = null;
+        $submitted = optional_param('q0:'.$question->id.'_sub'.$i, '', PARAM_TEXT);
         if (($submitted) == $subquestion->answertext) {
             $class = "correct";
             $subresult += 1;

@@ -50,8 +50,8 @@ class mod_domoscio_client
      * @param \int $var
      * @return url
      */
-    public function seturl($config, $feature, $var, $optvar = null) {
-        $this->_url = $config->domoscio_apiurl."/instances/".$config->domoscio_id."/".$feature."/".$var."?token=".$config->domoscio_apikey.$optvar;
+    public function seturl($config, $feature, $var, $optvar = null, $optvar2 = null) {
+        $this->_url = $config->domoscio_apiurl."/instances/".$config->domoscio_id."/".$feature."/".$var."/".$optvar."?token=".$config->domoscio_apikey.$optvar2;
         return $this;
     }
 
