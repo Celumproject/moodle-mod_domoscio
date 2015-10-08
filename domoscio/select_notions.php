@@ -54,7 +54,7 @@ if ($id) {
     $cm         = $DB->get_record('course_modules', array('instance' => $domoscio->id, 'module' => $module->id), '*', MUST_EXIST);
     $id         = $cm->id;
 } else {
-    error('You must specify a course_module ID or an instance ID');
+    print_error('missingparameter');
 }
 
 $context = context_module::instance($cm->id);
@@ -64,7 +64,7 @@ require_login($course, true, $cm);
 // Print the page header.
 $PAGE->set_url('/mod/domoscio/view.php', array('id' => $cm->id));
 $PAGE->set_title(format_string($domoscio->name));
-$PAGE->set_heading("Domoscio for Moodle");
+$PAGE->set_heading(get_string('pluginname', 'domoscio'));
 
 echo $OUTPUT->header();
 

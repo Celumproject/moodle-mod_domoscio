@@ -119,7 +119,7 @@ if (has_capability('mod/domoscio:submit', $context)) {
                 } else if ($qtype == "multianswer") {
                     $result = domoscio_get_multi_result($question, $submitted);
                 } else if ($qtype == "matching") {
-                    $result = domoscio_get_match_result($question, $submitted);
+                    $result = domoscio_get_match_result($question);
                 }
 
                 // Display correction
@@ -252,7 +252,7 @@ if (has_capability('mod/domoscio:submit', $context)) {
             $json = json_encode(array('knowledge_node_student_id' => intval($knstudent->knodestudentid),
                                                         'payload' => $result->score));
 
-            $SESSION->results[] = json_decode($rest->seturl($config, 'events', null, "&type=EventResult")->post($json));
+            $SESSION->results[] = json_decode($rest->seturl($config, 'events', null, null, "&type=EventResult")->post($json));
 
             // Put a new event in calendar
             $knstudent = json_decode($rest->seturl($config, 'knowledge_node_students', $knstudent->knodestudentid)->get());
@@ -269,10 +269,7 @@ if (has_capability('mod/domoscio:submit', $context)) {
                                  'onclick' => "javascript:location.href='$CFG->wwwroot/mod/domoscio/doquiz.php?kn=".array_shift($SESSION->todo)."'"));
     } else if (empty($SESSION->todo) && $end == false) {
         $urlresults->param('end', true);
-        echo html_writer::tag('button',
-                              get_string('end_btn', 'domoscio'),
-                              array('type' => 'button',
-                                 'onclick' => "javascript:location.href='$urlresults'"));
+        echo $OUTPUT->single_button($urlresults, get_string('end_btn', 'domoscio'));
     }
 }
 
