@@ -66,7 +66,7 @@ class mod_domoscio_mod_form extends moodleform_mod {
         $mform->addHelpButton('name', 'domoscioname', 'domoscio');
 
         // Adding the standard "intro" and "introformat" fields.
-        $this->add_intro_editor();
+        $this->standard_intro_elements();
 
         // Adding the rest of domoscio settings, spreading all them into this fieldset
         // ... or adding more fieldsets ('header' elements) if needed for better logic.
