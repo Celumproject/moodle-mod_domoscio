@@ -580,6 +580,7 @@ function domoscio_manage_student($config, $domoscio, $check) {
     foreach ($knowledgenodes as $kn) {
         if (!$knsquery = $DB->get_record('domoscio_knode_students', array('knodeid' => $kn->knodeid, 'userid' => $USER->id))) {
             $record = new stdClass();
+            $kndata = null;
             foreach ($knsarray as $kns) {
                 if ($kns->knowledge_node_id == $kn->knodeid) {
                     $kndata = $kns;
