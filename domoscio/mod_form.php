@@ -44,13 +44,16 @@ class mod_domoscio_mod_form extends moodleform_mod {
     public function definition() {
         global $DB;
 
+        $config = get_config("domoscio");
         if ($this->_cm) {
             $domoscio = $DB->get_record('domoscio', array('id' => $this->_cm->instance), '*');
             $module = $this->domoscio_get_resource_bykn($domoscio->resourceid);
         }
 
         $mform = $this->_form;
-
+        if (!$config->domoscio_id || !$config->domoscio_apikey || !$config->domoscio_apiurl) {
+          $mform->addElement('html', '<div class="well">'.get_string('settings_required', 'domoscio').'</div>');
+        }
         // Adding the "general" fieldset, where all the common settings are showed.
         $mform->addElement('header', 'general', get_string('general', 'form'));
 
@@ -66,7 +69,7 @@ class mod_domoscio_mod_form extends moodleform_mod {
         $mform->addHelpButton('name', 'domoscioname', 'domoscio');
 
         // Adding the standard "intro" and "introformat" fields.
-        $this->add_intro_editor();
+        $this->standard_intro_elements();
 
         // Adding the rest of domoscio settings, spreading all them into this fieldset
         // ... or adding more fieldsets ('header' elements) if needed for better logic.
@@ -86,7 +89,11 @@ class mod_domoscio_mod_form extends moodleform_mod {
         $this->standard_coursemodule_elements();
 
         // Add standard buttons, common to all modules.
-        $this->add_action_buttons();
+        if ($config->domoscio_id && $config->domoscio_apikey && $config->domoscio_apiurl) {
+          $this->add_action_buttons();
+        } else {
+          $mform->addElement('html', '<hr/>');
+        }
     }
 
     /**
