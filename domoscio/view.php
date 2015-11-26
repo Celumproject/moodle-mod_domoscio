@@ -67,6 +67,7 @@ $PAGE->set_heading(get_string('pluginname', 'domoscio'));
 
 echo $OUTPUT->header();
 echo $OUTPUT->heading($domoscio->name);
+domoscio_check_settings($config);
 
 $rest = new mod_domoscio_client();
 
@@ -76,7 +77,6 @@ $linkedresource = domoscio_get_resource_info($resource->id);
 
 if (has_capability('moodle/course:create', $context)) {
     // --- TEACHER VIEW ---
-
     $notions = $DB->get_records('domoscio_knowledge_nodes', array('instance' => $domoscio->id, 'active' => '1'), '', '*');
 
     $introbox = html_writer::tag('b', get_string('resource_assigned', 'domoscio'), array('class' => 'content')).

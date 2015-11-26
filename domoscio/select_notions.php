@@ -35,6 +35,7 @@ require_once(dirname(__FILE__).'/classes/select_notion_form.php');
 $PAGE->requires->js('/mod/domoscio/script.js', true);
 
 $config = get_config('domoscio');
+domoscio_check_settings($config);
 $id = optional_param('id', 0, PARAM_INT); // Course_module ID, or
 $n  = optional_param('d', 0, PARAM_INT);  // ... domoscio instance ID - it should be named as the first character of the module.
 $kn = optional_param('kn', 0, PARAM_INT); // Knowledge_node ID (Rappels)

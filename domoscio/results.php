@@ -32,6 +32,8 @@ require_once($CFG->dirroot . '/question/previewlib.php');
 require_login();
 require_sesskey();
 
+$config = get_config('domoscio');
+
 $id = optional_param('id', 0, PARAM_INT); // Course_module ID, or
 $q = optional_param('q', 0, PARAM_INT); // Course_module ID, or
 $kn = optional_param('kn', 0, PARAM_INT);
@@ -39,10 +41,6 @@ $scorm = optional_param('scorm', '', PARAM_INT);
 $end = optional_param('end', false, PARAM_INT);
 $usageid = optional_param('usageid', '', PARAM_INT);
 $slots = optional_param('slots', '', PARAM_INT);
-
-$config = get_config('domoscio');
-$context = context_system::instance();
-$PAGE->set_context($context);
 
 if ($id) {
     $cm         = $DB->get_record('course_modules', array('id' => $id), '*', MUST_EXIST);
@@ -57,6 +55,8 @@ if ($id) {
     $id         = $cm->id;
 }
 
+$context = context_system::instance();
+$PAGE->set_context($context);
 $strname = get_string('modulename', 'mod_domoscio');
 $PAGE->set_url('/mod/domoscio/index.php', array('id' => $id));
 $PAGE->navbar->add($strname);
@@ -66,10 +66,12 @@ $PAGE->set_pagelayout('incourse');
 $rest = new mod_domoscio_client();
 $urlresults = new moodle_url("$CFG->wwwroot/mod/domoscio/results.php");
 $urlresults->param('sesskey', sesskey());
+$urlresults->param('id', $id);
 
 echo $OUTPUT->header();
-
 echo $OUTPUT->heading(get_string('results', 'domoscio'));
+domoscio_check_settings($config);
+
 if (has_capability('mod/domoscio:submit', $context)) {
     unset($SESSION->selected);
     if ($q) {
@@ -148,7 +150,6 @@ if (has_capability('mod/domoscio:submit', $context)) {
                 $SESSION->scoid = $scoid;
             }
 
-            $urlresults->param('id', $id);
             $urlresults->param('scorm', $scorm);
             $urlresults->param('kn', $kn);
             $urlresults->param('redirect', false);
@@ -177,7 +178,7 @@ if (has_capability('mod/domoscio:submit', $context)) {
             }
         }
     } else if ($end == true) {
-        // Once the todo list is empty, sum up all results at tests done
+        // Once the todo list is empty, sum up all results for tests done
         if (isset($SESSION->start)) {
             $finish = time();
             $runningtime = $finish - $SESSION->start;

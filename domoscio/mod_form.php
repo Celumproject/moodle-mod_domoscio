@@ -44,13 +44,16 @@ class mod_domoscio_mod_form extends moodleform_mod {
     public function definition() {
         global $DB;
 
+        $config = get_config("domoscio");
         if ($this->_cm) {
             $domoscio = $DB->get_record('domoscio', array('id' => $this->_cm->instance), '*');
             $module = $this->domoscio_get_resource_bykn($domoscio->resourceid);
         }
 
         $mform = $this->_form;
-
+        if (!$config->domoscio_id || !$config->domoscio_apikey || !$config->domoscio_apiurl) {
+          $mform->addElement('html', '<div class="well">'.get_string('settings_required', 'domoscio').'</div>');
+        }
         // Adding the "general" fieldset, where all the common settings are showed.
         $mform->addElement('header', 'general', get_string('general', 'form'));
 
@@ -86,7 +89,11 @@ class mod_domoscio_mod_form extends moodleform_mod {
         $this->standard_coursemodule_elements();
 
         // Add standard buttons, common to all modules.
-        $this->add_action_buttons();
+        if ($config->domoscio_id && $config->domoscio_apikey && $config->domoscio_apiurl) {
+          $this->add_action_buttons();
+        } else {
+          $mform->addElement('html', '<hr/>');
+        }
     }
 
     /**
@@ -105,7 +112,7 @@ class mod_domoscio_mod_form extends moodleform_mod {
                       IN (SELECT id
                           FROM {modules}
                           WHERE name
-                          IN ('book', 'lesson', 'page', 'scorm')
+                          IN ('book', 'lesson', 'page', 'scorm', 'url', 'resource')
                          )
                      AND course = :courseid";
 

@@ -135,6 +135,7 @@ $string['scorm_warning'] = "Warning : Please validate your answers in the SCORM 
 $string['next_page'] = "Next page";
 $string['prev_page'] = "Previous page";
 $string['students_list'] = "Students list";
+$string['settings_required'] = "Domoscio settings are missing. Please contact your administrator.";
 
 $string['proxy_login_required'] = 'You must be logged in to access this url. Please log in and retry.';
 $string['proxy_permission_required'] = 'You don\'t have the permission to access this url.';

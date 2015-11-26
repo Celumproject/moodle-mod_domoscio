@@ -62,6 +62,7 @@ $PAGE->set_heading(get_string('pluginname', 'domoscio'));
 
 echo $OUTPUT->header();
 echo $OUTPUT->heading($domoscio->name);
+domoscio_check_settings($config);
 
 $rest = new mod_domoscio_client();
 
