@@ -62,8 +62,8 @@ $resource = json_decode($rest->seturl($config, 'knowledge_nodes', $domoscio->res
 $notion = json_decode($rest->seturl($config, 'knowledge_nodes', $kn)->get());
 
 echo $OUTPUT->header();
-
 echo $OUTPUT->heading(get_string('choose_q', 'domoscio'));
+domoscio_check_settings($config);
 
 $linkedmodule = domoscio_get_resource_info($resource->id);
 
@@ -107,14 +107,12 @@ if (has_capability('moodle/course:create', $context)) {
 
         if ($selected[0] == 'quiz') {
             $cap = 'mod/quiz:manage';
-            $module = 16;
         } else if ($selected[0] == 'scorm') {
             $cap = 'mod/scorm:viewreport';
-            $module = 18;
         } else if ($selected[0] == 'lesson') {
             $cap = 'mod/lesson:manage';
-            $module = 13;
         }
+        $module = $DB->get_record('modules', array('name' => $selected[0]), 'id')->id;;
         $cmid = $DB->get_record('course_modules', array('instance' => $selected[1], 'module' => $module));
         $cmcontext = context_module::instance($cmid->id);
 

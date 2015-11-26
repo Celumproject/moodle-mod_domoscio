@@ -32,9 +32,9 @@ require_once(dirname(dirname(dirname(__FILE__))).'/config.php');
 require_once(dirname(__FILE__).'/lib.php');
 require_once(dirname(__FILE__).'/sdk/client.php');
 
-$PAGE->requires->js('/mod/domoscio/jquery-1.11.3.min.js', true);
 $PAGE->requires->js('/mod/domoscio/bootstrap-collapse.js', true);
 $PAGE->requires->js('/mod/domoscio/Chart.min.js', true);
+$PAGE->requires->js('/mod/domoscio/jquery-1.11.3.min.js', true);
 
 $config = get_config('domoscio');
 $id = optional_param('id', 0, PARAM_INT); // Course_module ID, or
@@ -69,6 +69,7 @@ $PAGE->set_heading(get_string('pluginname', 'domoscio'));
 echo $OUTPUT->header();
 
 echo $OUTPUT->heading($domoscio->name);
+domoscio_check_settings($config);
 
 $rest = new mod_domoscio_client();
 

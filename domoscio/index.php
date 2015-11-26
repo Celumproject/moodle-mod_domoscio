@@ -32,10 +32,10 @@ $activate = optional_param('activate', null, PARAM_RAW);
 $student = optional_param('student', null, PARAM_INT);
 $sort    = optional_param('sort', 'name', PARAM_ALPHANUM);
 
+require_login();
 $config = get_config('domoscio');
 $context = context_system::instance();
 $PAGE->set_context($context);
-require_login();
 
 $strname = get_string('modulename', 'mod_domoscio');
 $PAGE->set_url('/mod/domoscio/index.php');
@@ -46,6 +46,7 @@ $PAGE->set_pagelayout('incourse');
 
 $rest = new mod_domoscio_client();
 echo $OUTPUT->header();
+domoscio_check_settings($config);
 
 if (has_capability('moodle/course:create', $context)) {
     // --- TEACHER VIEW ---
