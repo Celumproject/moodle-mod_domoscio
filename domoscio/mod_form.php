@@ -112,7 +112,7 @@ class mod_domoscio_mod_form extends moodleform_mod {
                       IN (SELECT id
                           FROM {modules}
                           WHERE name
-                          IN ('book', 'lesson', 'page', 'scorm')
+                          IN ('book', 'lesson', 'page', 'scorm', 'url', 'resource')
                          )
                      AND course = :courseid";
 

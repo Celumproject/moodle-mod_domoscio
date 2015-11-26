@@ -134,7 +134,7 @@ $string['days'] = "días";
 $string['scorm_warning'] = "Advertencia: valide sus resultados en la ventana SCORM antes de pasar a la siguiente.";
 $string['next_page'] = "Página siguiente";
 $string['prev_page'] = "Página anterior";
-
+$string['settings_required'] = "Missing";
 $string['proxy_login_required'] = 'Debe estar conectado/a para acceder a esta url. Conéctese y reintente.';
 $string['proxy_permission_required'] = 'No tiene permiso para accader a esta url.';
 $string['proxy_curl_missing'] = 'Falta la LibcURL en su servidor PHP. Es necesaria para utilizar el plugin MediaServer.';

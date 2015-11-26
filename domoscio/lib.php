@@ -579,8 +579,8 @@ function domoscio_manage_student($config, $domoscio, $check) {
     // Check if kn student exist for each knowledgenode, retrive data if so or create new one if not set
     foreach ($knowledgenodes as $kn) {
         if (!$knsquery = $DB->get_record('domoscio_knode_students', array('knodeid' => $kn->knodeid, 'userid' => $USER->id))) {
-            $record = new stdClass();
             $kndata = null;
+            $record = new stdClass();
             foreach ($knsarray as $kns) {
                 if ($kns->knowledge_node_id == $kn->knodeid) {
                     $kndata = $kns;
@@ -716,9 +716,9 @@ function domoscio_manage_student($config, $domoscio, $check) {
 
                 $knstudent[] = json_decode($rest->seturl($config, 'knowledge_node_students', $lastkn->id)->get());
 
-                $resource = json_decode($rest->seturl($config, 'knowledge_nodes', $kn)->get());
+                $resource = json_decode($rest->seturl($config, 'knowledge_nodes', $kn->knodeid)->get());
 
-                $newevent = domoscio_create_event($domoscio, end($knstudent), $kn, $resource);
+                $newevent = domoscio_create_event($domoscio, end($knstudent), $kn->knodeid, $resource);
             }
         }
     }
@@ -736,32 +736,27 @@ function domoscio_get_resource_info($knowledgenode) {
 
     global $DB, $CFG, $OUTPUT;
 
-    $query = "SELECT {course_modules}.module, {course_modules}.instance, {course_modules}.id
+    $query = "SELECT {course_modules}.module, {course_modules}.instance, {course_modules}.course, {course_modules}.id
                 FROM {course_modules}
           INNER JOIN {domoscio_knowledge_nodes}
                   ON {course_modules}.id = {domoscio_knowledge_nodes}.resourceid
                WHERE {domoscio_knowledge_nodes}.knodeid = :knowledgenode";
 
-    $resource = $DB->get_record_sql($query, array('knowledgenode' => $knowledgenode));
-
-    $modulename = $DB->get_record('modules', array('id' => $resource->module), 'name')->name;
-
-    $moduleinfo = $DB->get_record($modulename, array('id' => $resource->instance), 'name');
+    $cminfo = $DB->get_record_sql($query, array('knowledgenode' => $knowledgenode));
+    $modinfo = get_fast_modinfo($cminfo->course);
+    $cm = $modinfo->cms[$cminfo->id];
 
     $return = new stdClass();
 
-    $return->display = html_writer::img($OUTPUT->pix_url('icon',
-                                                         $modulename,
-                                                         $modulename,
-                                                         array('class' => 'icon')),
+    $return->display = html_writer::img($OUTPUT->pix_url($cm->get_icon_url()),
                                                          '',
-                                                         array('class' => 'activityicon')) . " <span>$moduleinfo->name</span>";
-    $return->modulename = $modulename;
-    $return->instance = $resource->instance;
-    $return->url = "$CFG->wwwroot/mod/$modulename/view.php?id=$resource->id";
-    $return->cm = $resource->id;
+                                                         array('class' => 'activityicon')) . " <span>$cm->name</span>";
+    $return->modulename = $cm->modname;
+    $return->instance = $cm->instance;
+    $return->url = $cm->url;
+    $return->cm = $cm->id;
 
-    if ($modulename == "scorm") {
+    if ($cm->modname == "scorm") {
         $sco = $DB->get_record_sql("SELECT *
                                     FROM {scorm_scoes}
                               INNER JOIN {domoscio_knowledge_nodes}
@@ -1590,7 +1585,14 @@ function domoscio_autoimport($config, $resource, $graphid, $domoscio) {
     if ($structurefile = domoscio_check_domstructure(context_module::instance($domoscio->resource))) {
         $xml = simplexml_load_string($structurefile) or die("Error: Cannot create object");
         foreach ($xml->notion as $notion) {
-            $n = $DB->get_record('scorm_scoes', array('identifier' => strval($notion['identifier'])), '*');
+            // Check if notion has content
+            if (isset($notion['identifier'])) {
+                $n = $DB->get_record('scorm_scoes', array('identifier' => strval($notion['identifier'])), '*');
+            } else {
+                $n = new stdClass;
+                $n->title = $notion->title;
+                $n->id = null;
+            }
 
             // Create new knowledge node
             $json = json_encode(array('knowledge_graph_id' => strval($graphid),
@@ -1614,8 +1616,10 @@ function domoscio_autoimport($config, $resource, $graphid, $domoscio) {
 
             $writekn = $DB->insert_record('domoscio_knowledge_nodes', $knowledgenode);
 
+            // Get all tests for each notion
             foreach ($notion->test as $test) {
                 $identifier = strval($test['identifier']);
+
                 $sco = $DB->get_record('scorm_scoes', array('identifier' => $identifier), '*');
 
                 $record = new stdClass;
@@ -1662,4 +1666,10 @@ function domoscio_sec_to_time($seconds) {
     } else {
         return $dtf->diff($dtt)->format('%a '.get_string('days', 'domoscio'));
     }
+}
+
+function domoscio_check_settings($config) {
+  if (!$config->domoscio_id || !$config->domoscio_apikey || !$config->domoscio_apiurl) {
+      throw new moodle_exception(get_string('settings_required', 'domoscio'));
+  }
 }

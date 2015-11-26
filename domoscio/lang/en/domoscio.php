@@ -60,7 +60,7 @@ $string['delete'] = 'Delete';
 $string['edit'] = 'Modifier';
 $string['welcome'] = 'Welcome, ';
 $string['student'] = 'Student';
-$string['enrol_students'] = "Etudiants inscrits";
+$string['enrol_students'] = "Enrolled students";
 $string['avr_rate'] = "Global rate";
 $string['notions_empty'] = "You didn't select any notion. Add one or more notions first to select questions to display.";
 $string['notions_intro'] = "Select which notion to link to the plugin : ";
@@ -134,6 +134,8 @@ $string['days'] = "days";
 $string['scorm_warning'] = "Warning : Please validate your answers in the SCORM frame before proceed to the next step.";
 $string['next_page'] = "Next page";
 $string['prev_page'] = "Previous page";
+$string['students_list'] = "Students list";
+$string['settings_required'] = "Domoscio settings are missing. Please contact your administrator.";
 
 $string['proxy_login_required'] = 'You must be logged in to access this url. Please log in and retry.';
 $string['proxy_permission_required'] = 'You don\'t have the permission to access this url.';

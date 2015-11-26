@@ -134,6 +134,8 @@ $string['days'] = "jours";
 $string['scorm_warning'] = "Attention : Veuillez valider vos résultats dans la fenêtre SCORM avant de passer à la suite.";
 $string['next_page'] = "Page suivante";
 $string['prev_page'] = "Page précédente";
+$string['students_list'] = "Liste des étudiants";
+$string['settings_required'] = "Les données de configuration du plugin Domoscio sont manquantes. Veuillez contacter l'administrateur de la plateforme.";
 
 $string['proxy_login_required'] = 'You must be logged in to access this url. Please log in and retry.';
 $string['proxy_permission_required'] = 'You don\'t have the permission to access this url.';

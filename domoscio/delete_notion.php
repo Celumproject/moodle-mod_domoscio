@@ -59,8 +59,8 @@ $PAGE->set_title(format_string($domoscio->name));
 $PAGE->set_heading(get_string('pluginname', 'domoscio'));
 
 echo $OUTPUT->header();
-
 echo $OUTPUT->heading(get_string('warning', 'domoscio'));
+domoscio_check_settings($config);
 
 $rest = new mod_domoscio_client();
 

@@ -33,6 +33,8 @@ require_once($CFG->dirroot.'/mod/lesson/locallib.php');
 require_once($CFG->dirroot . '/question/engine/lib.php');
 require_once($CFG->dirroot . '/question/previewlib.php');
 
+$config = get_config('domoscio');
+
 $id = optional_param('id', 0, PARAM_INT); // Course_module ID, or
 $kn = optional_param('kn', 0, PARAM_INT); // Knowledge_node ID (Rappels)
 $solo = optional_param('solo', false, PARAM_INT); // Si test unitaire
@@ -65,7 +67,6 @@ if ($id) {
     print_error('missingparameter');
 }
 
-$config = get_config('domoscio');
 require_login();
 $context = context_system::instance();
 $PAGE->set_context($context);
@@ -78,6 +79,7 @@ $PAGE->set_title(get_string('test_session', 'domoscio'));
 
 echo $OUTPUT->header();
 echo $OUTPUT->heading(get_string('test_session', 'domoscio'));
+domoscio_check_settings($config);
 
 if (has_capability('mod/domoscio:submit', $context)) {
     $urlresults = new moodle_url("$CFG->wwwroot/mod/domoscio/results.php");

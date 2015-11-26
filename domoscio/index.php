@@ -25,9 +25,15 @@
 require_once(dirname(dirname(dirname(__FILE__))).'/config.php');
 require_once(dirname(__FILE__).'/lib.php');
 require_once(dirname(__FILE__).'/sdk/client.php');
+require_once($CFG->dirroot.'/user/filters/lib.php');
+require_once($CFG->dirroot.'/user/lib.php');
 
-$config = get_config('domoscio');
+$activate = optional_param('activate', null, PARAM_RAW);
+$student = optional_param('student', null, PARAM_INT);
+$sort    = optional_param('sort', 'name', PARAM_ALPHANUM);
+
 require_login();
+$config = get_config('domoscio');
 $context = context_system::instance();
 $PAGE->set_context($context);
 
@@ -38,15 +44,76 @@ $PAGE->set_title(get_string('pluginname', 'domoscio'));
 $PAGE->set_heading(get_string('pluginname', 'domoscio'));
 $PAGE->set_pagelayout('incourse');
 
+$rest = new mod_domoscio_client();
 echo $OUTPUT->header();
-echo $OUTPUT->heading(get_string('desk', 'domoscio'));
+domoscio_check_settings($config);
 
-if (has_capability('mod/domoscio:submit', $context)) {
+if (has_capability('moodle/course:create', $context)) {
+    // --- TEACHER VIEW ---
+    if ($student) {
+        if ($activate == "false") {
+            $json = json_encode(array('id' => $student, 'active' => boolval(false)));
+
+            $update = $rest->seturl($config, 'students', $student)->put($json);
+        } else if ($activate == "true") {
+            $json = json_encode(array('id' => $student, 'active' => boolval(true)));
+
+            $update = $rest->seturl($config, 'students', $student)->put($json);
+        }
+    }
+    $returnurl = new moodle_url('index.php'/*, array('sort' => $sort, 'dir' => $dir, 'perpage' => $perpage, 'page'=>$page)*/);
+    echo $OUTPUT->heading(get_string('students_list', 'domoscio'));
+
+    $students = $DB->get_records_sql("SELECT userid, userapiid
+                                        FROM {domoscio_knode_students}
+                                    GROUP BY userid");
+
+    $fullnamedisplay = array();
+
+
+    $table = new html_table();
+    $table->head = array();
+    $table->colclasses = array();
+    $table->attributes['class'] = 'admintable generaltable';
+    $table->head[] = "Name";
+    $table->head[] = "Last activity";
+    $table->head[] = "Activation";
+
+    foreach($students as $student){
+        $row = $buttons = array();
+        $user = $DB->get_record('user', array('id' => $student->userid), '*');
+        $studentapi = json_decode($rest->seturl($config, 'students', $student->userapiid)->get());
+        if($studentapi[0]->last_activity) {
+            $date = new DateTime($studentapi[0]->last_activity);
+            $date = $date->format('d/m/Y H:i');
+        } else {
+            $date = "";
+        }
+
+        if($studentapi[0]->active == true) {
+            $buttons[] = html_writer::link(new moodle_url($returnurl, array('activate' => "false", 'student' => $student->userapiid)), "Désactiver");
+        } else {
+            $buttons[] = html_writer::link(new moodle_url($returnurl, array('activate' => "true", 'student' => $student->userapiid)), "Activer");
+        }
+
+        $row[] = $user->firstname." ".$user->lastname;
+        $row[] = $date;
+        $row[] = implode(' ', $buttons);
+        $table->data[] = $row;
+    }
+
+
+    echo html_writer::table($table);
+
+
+} else if (has_capability('mod/domoscio:submit', $context)) {
+    // --- STUDENT VIEW ---
+    echo $OUTPUT->heading(get_string('desk', 'domoscio'));
+
     $date = usergetdate(time());
     list($d, $m, $y, $h, $min) = array($date['mday'], $date['mon'], $date['year'], $date['hours'], $date['minutes']);
 
     $todotests = domoscio_count_tests($config);
-    $rest = new mod_domoscio_client();
 
     $check = $DB->get_record('domoscio_userapi', array('userid' => $USER->id), '*');
     $student = json_decode($rest->seturl($config, 'students', $check->uniqid)->get());
