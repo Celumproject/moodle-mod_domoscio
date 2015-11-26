@@ -9,6 +9,12 @@ The solution comes with the Domoscio plugin contained into "domoscio" folder to 
 This branch contains the plugin for Moodle 2.9
 
 CHANGELOG :
+- 2015112600 :
+  - Plugin now in Spanish !
+  - Alerts if API settings not completed properly
+  - Minor improvements to course module info display
+  - Various bugfixes
+
 - As Moodle 2.9 already include jQuery library, this plugin version is not embedding jQuery anymore.
 
 #LICENCE
