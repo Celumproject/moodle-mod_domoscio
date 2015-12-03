@@ -157,6 +157,12 @@ function domoscio_add_instance(stdClass $domoscio, mod_domoscio_mod_form $mform 
         domoscio_write_knowledge_nodes($contentpages, $config, $resource, $graphid, $domoscio);
     }
 
+    if ($linkedresource->modulename == "glossary") {
+        $allentries = $DB->get_records("glossary_entries", array('glossaryid' => $linkedresource->instance), '', '*');
+
+        domoscio_write_knowledge_nodes($allentries, $config, $resource, $graphid, $domoscio);
+    }
+
     return $domoscio->id;
 }
 
@@ -897,7 +903,13 @@ function domoscio_write_knowledge_nodes($notions, $config, $resource, $graphid, 
     global $DB, $CFG;
     $rest = new mod_domoscio_client();
 
+    $linkedresource = domoscio_get_resource_info($resource->id);
+
     foreach ($notions as $notion) {
+
+        if ($linkedresource->modulename == "glossary") {
+          $notion->title = $notion->concept;
+        }
         // Create new knowledge node
         $json = json_encode(array('knowledge_graph_id' => strval($graphid),
                                     'name' => strval($notion->title)));
