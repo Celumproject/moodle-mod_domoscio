@@ -80,6 +80,7 @@ class mod_domoscio_mod_form extends moodleform_mod {
         $mform->addElement('header', 'domoscioresourceset', get_string('domoscioresourceset', 'domoscio'));
 
         $select = $mform->addElement('select', 'resource', get_string('resourceset_resource', 'domoscio'), $this->select_ressource(), NOGROUPS);
+        $mform->addRule('resource', null, 'required', null, 'client');
 
         if ($this->_cm) {
             $select->setSelected($module);
@@ -109,44 +110,17 @@ class mod_domoscio_mod_form extends moodleform_mod {
 
         global $COURSE, $CFG, $DB;
 
-        // Search for course modules to display
-        $query = "SELECT *
-                    FROM {course_modules}
-                   WHERE {course_modules}.module
-                      IN (SELECT id
-                          FROM {modules}
-                          WHERE name
-                          IN ('book', 'lesson', 'page', 'scorm', 'url', 'resource', 'glossary')
-                         )
-                     AND course = :courseid";
+        $cmtypes = array('book', 'lesson', 'page', 'scorm', 'url', 'resource', 'glossary');
 
-        $modules = $DB->get_records_sql($query, array('courseid' => $COURSE->id));
+        $allinstances = array();
 
-        $datas = array();
-
-        foreach ($modules as $module) {
-            $datas[$module->id] = $this->domoscio_get_resource_info($module->module, $module->instance)->name;
+        foreach ($cmtypes as $cmtype) {
+          foreach (get_all_instances_in_course($cmtype, $COURSE) as $cm) {
+            $allinstances[$cm->coursemodule] = $cm->name;
+          }
         }
 
-        return $datas;
-    }
-
-    /**
-     * Retrives course modules data and retrun display and useful datas
-     *
-     * @param \stdClass $module the course module category in DB Moodle
-     * @param \int $instance the course module id
-     * @return \int $moduleinfo the course module data
-     */
-    public function domoscio_get_resource_info($module, $instance) {
-
-        global $DB, $CFG;
-
-        $modulename = $DB->get_record('modules', array('id' => $module), 'name')->name;
-
-        $moduleinfo = $DB->get_record($modulename, array('id' => $instance), 'name');
-
-        return $moduleinfo;
+        return $allinstances;
     }
 
     /**
