@@ -63,99 +63,122 @@ class mod_domoscio_linkto_form extends moodleform {
             $selected[] = $selectedquestion->questionid;
         }
 
-        if ($this->_customdata['module'] == 'quiz') {
-            $quiz = $DB->get_record('quiz', array('id' => $this->_customdata['exo_id']), 'id,name');
+        if ($this->_customdata['questions']) {
+              $questionsid = $this->_customdata['questions'];
 
-            $icon = html_writer::tag('img', '', array('src' => $OUTPUT->pix_url('icon', 'quiz', 'quiz', array('class' => 'icon')), 'class' => 'activityicon', 'alt' => 'disable'));
+              $questions = $DB->get_records_list('question', 'id', $questionsid);
 
-            $sqlquestions = "SELECT {question}.id, {question}.name, {question}.questiontext
-                               FROM {question}
-                         INNER JOIN {quiz_slots}
-                                 ON {question}.id = {quiz_slots}.questionid
-                              WHERE {quiz_slots}.quizid = :quizid";
+              foreach ($questions as $question) {
 
-            $questions = $DB->get_recordset_sql($sqlquestions, array('quizid' => $quiz->id));
+                  if (in_array($question->id, $selected)) {
+                      $check = true;
+                  } else {
+                      $check = false;
+                  }
 
-            $mform->addElement('html', "<h5 class='well well-small accordion-toggle' data-toggle='collapse' data-parent='#accordion'><a href='#collapse-".
-                                        $quiz->id."'>".
-                                        $icon.$quiz->name."</a></h5>");
-
-            foreach ($questions as $question) {
-                if (in_array($question->id, $selected)) {
-                    $check = true;
-                } else {
-                    $check = false;
-                }
-
-                $mform->addElement('advcheckbox',
-                                    $question->id,
-                                    $question->id." ".$question->name,
-                                    "<hr/>".$question->questiontext,
-                                    array('group' => 1), array(0, 1))->setChecked($check);
-            }
-            $questions->close();
-            
-        } else if ($this->_customdata['module'] == 'lesson') {
-            $lesson = $DB->get_record('lesson', array('id' => $this->_customdata['exo_id']), 'id,name');
-
-            list($insql, $inparams) = $DB->get_in_or_equal(array(1, 2, 3, 5, 8, 10));
-
-            $sql = "SELECT id, contents, qtype, title
-                      FROM {lesson_pages}
-                     WHERE qtype $insql";
-
-            $questions = $DB->get_records_sql($sql, $inparams);
-
-            $icon = html_writer::tag('img',
-                                     '',
-                                     array('src' => $OUTPUT->pix_url('icon', 'lesson', 'lesson', array('class' => 'icon')),
-                                         'class' => 'activityicon', 'alt' => 'disable'));
-
-            $mform->addElement('html', "<h5 class='well well-small accordion-toggle' data-toggle='collapse' data-parent='#accordion'><a href='#collapse-".
-                                        $lesson->id."'>".
-                                        $icon.$lesson->name."</a></h5>");
-
-            foreach ($questions as $question) {
-                if (in_array($question->id, $selected)) {
-                    $check = true;
-                } else {
-                    $check = false;
-                }
-
-                $mform->addElement('advcheckbox',
-                                  $question->id,
-                                  $question->id." ".$question->title." (".$question->qtype.")",
-                                  $question->contents."<hr/>",
-                                  array('group' => 1), array(0, 1))->setChecked($check);
-            }
+                  $mform->addElement('advcheckbox',
+                  $question->id,
+                  $question->id." ".$question->name,
+                  "<hr/>".$question->questiontext,
+                  array('group' => 1), array(0, 1))->setChecked($check);
+              }
         } else {
-            $scoes = $DB->get_records('scorm_scoes', array('scormtype' => 'sco', 'scorm' => $this->_customdata['exo_id']), '', '*');
 
-            $icon = html_writer::tag('img', '', array('src' => $OUTPUT->pix_url('icon',
-                                                                                'scorm',
-                                                                                'scorm',
-                                                                                array('class' => 'icon')),
-                                                                                'class' => 'activityicon',
-                                                                                'alt' => 'disable'));
+            if ($this->_customdata['module'] == 'quiz') {
+                $quiz = $DB->get_record('quiz', array('id' => $this->_customdata['exo_id']), 'id,name');
 
-            $scormflag = '';
+                $icon = html_writer::tag('img', '', array('src' => $OUTPUT->pix_url('icon', 'quiz', 'quiz', array('class' => 'icon')), 'class' => 'activityicon', 'alt' => 'disable'));
 
-            foreach ($scoes as $sco) {
-                if (in_array($sco->id, $selected)) {
-                    $check = true;
-                } else {
-                    $check = false;
+                $sqlquestions = "SELECT {question}.id, {question}.name, {question}.questiontext
+                                   FROM {question}
+                             INNER JOIN {quiz_slots}
+                                     ON {question}.id = {quiz_slots}.questionid
+                                  WHERE {quiz_slots}.quizid = :quizid";
+
+                $questions = $DB->get_recordset_sql($sqlquestions, array('quizid' => $quiz->id));
+
+                $mform->addElement('html', "<h5 class='well well-small accordion-toggle' data-toggle='collapse' data-parent='#accordion'><a href='#collapse-".
+                $quiz->id."'>".
+                $icon.$quiz->name."</a></h5>");
+
+                foreach ($questions as $question) {
+                    if (in_array($question->id, $selected)) {
+                        $check = true;
+                    } else {
+                        $check = false;
+                    }
+
+                    $mform->addElement('advcheckbox',
+                                        $question->id,
+                                        $question->id." ".$question->name,
+                                        "<hr/>".$question->questiontext,
+                                        array('group' => 1), array(0, 1))->setChecked($check);
                 }
+                $questions->close();
 
-                if ($scormflag != $sco->scorm) {
-                    $scormtitle = $DB->get_record('scorm', array('id' => $sco->scorm), 'name');
-                    $mform->addElement('html', "<h5 class='well well-small accordion-toggle' data-toggle='collapse' data-parent='#accordion'><a href='#collapse-".
-                                                $sco->id."'>".$icon.$scormtitle->name."</a></h5>");
-                    $scormflag = $sco->scorm;
+            } else if ($this->_customdata['module'] == 'lesson') {
+                $lesson = $DB->get_record('lesson', array('id' => $this->_customdata['exo_id']), 'id,name');
+
+                list($insql, $inparams) = $DB->get_in_or_equal(array(1, 2, 3, 5, 8, 10));
+
+                $sql = "SELECT id, contents, qtype, title
+                FROM {lesson_pages}
+                WHERE qtype $insql";
+
+                $questions = $DB->get_records_sql($sql, $inparams);
+
+                $icon = html_writer::tag('img',
+                '',
+                array('src' => $OUTPUT->pix_url('icon', 'lesson', 'lesson', array('class' => 'icon')),
+                'class' => 'activityicon', 'alt' => 'disable'));
+
+                $mform->addElement('html', "<h5 class='well well-small accordion-toggle' data-toggle='collapse' data-parent='#accordion'><a href='#collapse-".
+                $lesson->id."'>".
+                $icon.$lesson->name."</a></h5>");
+
+                foreach ($questions as $question) {
+                    if (in_array($question->id, $selected)) {
+                        $check = true;
+                    } else {
+                        $check = false;
+                    }
+
+                    $mform->addElement('advcheckbox',
+                    $question->id,
+                    $question->id." ".$question->title." (".$question->qtype.")",
+                    $question->contents."<hr/>",
+                    array('group' => 1), array(0, 1))->setChecked($check);
                 }
-                $mform->addElement('advcheckbox', $sco->id, '', $sco->title, array('group' => 1), array(0, 1))->setChecked($check);
+            } else {
+                $scoes = $DB->get_records('scorm_scoes', array('scormtype' => 'sco', 'scorm' => $this->_customdata['exo_id']), '', '*');
+
+                $icon = html_writer::tag('img', '', array('src' => $OUTPUT->pix_url('icon',
+                'scorm',
+                'scorm',
+                array('class' => 'icon')),
+                'class' => 'activityicon',
+                'alt' => 'disable'));
+
+                $scormflag = '';
+
+                foreach ($scoes as $sco) {
+                    if (in_array($sco->id, $selected)) {
+                        $check = true;
+                    } else {
+                        $check = false;
+                    }
+
+                    if ($scormflag != $sco->scorm) {
+                        $scormtitle = $DB->get_record('scorm', array('id' => $sco->scorm), 'name');
+                        $mform->addElement('html', "<h5 class='well well-small accordion-toggle' data-toggle='collapse' data-parent='#accordion'><a href='#collapse-".
+                                            $sco->id."'>".$icon.$scormtitle->name."</a></h5>");
+                        $scormflag = $sco->scorm;
+                    }
+                    $mform->addElement('advcheckbox', $sco->id, '', $sco->title, array('group' => 1), array(0, 1))->setChecked($check);
+                }
             }
         }
+
         $this->add_action_buttons();
     }
 }

@@ -28,6 +28,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 require_once($CFG->dirroot.'/course/moodleform_mod.php');
+require_once($CFG->dirroot.'/mod/scorm/locallib.php');
 
 /**
  * Module instance settings form
@@ -52,7 +53,7 @@ class mod_domoscio_mod_form extends moodleform_mod {
 
         $mform = $this->_form;
         if (!$config->domoscio_id || !$config->domoscio_apikey || !$config->domoscio_apiurl) {
-          $mform->addElement('html', '<div class="well">'.get_string('settings_required', 'domoscio').'</div>');
+            $mform->addElement('html', '<div class="well">'.get_string('settings_required', 'domoscio').'</div>');
         }
         // Adding the "general" fieldset, where all the common settings are showed.
         $mform->addElement('header', 'general', get_string('general', 'form'));
@@ -75,16 +76,26 @@ class mod_domoscio_mod_form extends moodleform_mod {
             $this->add_intro_editor();
         }
 
-        // Adding the rest of domoscio settings, spreading all them into this fieldset
-        // ... or adding more fieldsets ('header' elements) if needed for better logic.
+        // Link the plugin to existing CM
         $mform->addElement('header', 'domoscioresourceset', get_string('domoscioresourceset', 'domoscio'));
-
         $select = $mform->addElement('select', 'resource', get_string('resourceset_resource', 'domoscio'), $this->select_ressource(), NOGROUPS);
 
         if ($this->_cm) {
             $select->setSelected($module);
         }
         $mform->addHelpButton('resource', 'domoscioresourceset', 'domoscio');
+
+
+        // Add local activity package field
+        $mform->addElement('header', 'import_activities', get_string('import_activities', 'domoscio'));
+
+        $filemanageroptions = array();
+        $filemanageroptions['accepted_types'] = array('.zip', '.xml');
+        $filemanageroptions['maxbytes'] = 0;
+        $filemanageroptions['maxfiles'] = 1;
+        $filemanageroptions['subdirs'] = 0;
+        $mform->addElement('filemanager', 'activitiesfile', get_string('import_activities', 'domoscio'), null, $filemanageroptions);
+        $mform->addHelpButton('activitiesfile', 'import_activities', 'domoscio');
 
         // Add standard grading elements.
         // $this->standard_grading_coursemodule_elements();
@@ -94,9 +105,9 @@ class mod_domoscio_mod_form extends moodleform_mod {
 
         // Add standard buttons, common to all modules.
         if ($config->domoscio_id && $config->domoscio_apikey && $config->domoscio_apiurl) {
-          $this->add_action_buttons();
+            $this->add_action_buttons();
         } else {
-          $mform->addElement('html', '<hr/>');
+            $mform->addElement('html', '<hr/>');
         }
     }
 
@@ -105,68 +116,42 @@ class mod_domoscio_mod_form extends moodleform_mod {
      *
      * @return \array $datas all course modules
      */
-    public function select_ressource() {
+     public function select_ressource() {
 
-        global $COURSE, $CFG, $DB;
+         global $COURSE, $CFG, $DB;
 
-        // Search for course modules to display
-        $query = "SELECT *
-                    FROM {course_modules}
-                   WHERE {course_modules}.module
-                      IN (SELECT id
-                          FROM {modules}
-                          WHERE name
-                          IN ('book', 'lesson', 'page', 'scorm', 'url', 'resource', 'glossary')
-                         )
-                     AND course = :courseid";
+         $cmtypes = array('book', 'lesson', 'page', 'scorm', 'url', 'resource', 'glossary');
 
-        $modules = $DB->get_records_sql($query, array('courseid' => $COURSE->id));
+         $allinstances = array();
 
-        $datas = array();
+         foreach ($cmtypes as $cmtype) {
+             foreach (get_all_instances_in_course($cmtype, $COURSE) as $cm) {
+                $allinstances[$cm->coursemodule] = $cm->name;
+             }
+         }
 
-        foreach ($modules as $module) {
-            $datas[$module->id] = $this->domoscio_get_resource_info($module->module, $module->instance)->name;
-        }
+         return $allinstances;
+     }
 
-        return $datas;
-    }
+     /**
+      * Retrives course modules by its knowledge_node once the module was linked to Domoscio for edit purpose
+      *
+      * @param \int $knowledgenode the knowledge node id
+      * @return \int $resource->id the course module id
+      */
+     public function domoscio_get_resource_bykn($knowledgenode) {
 
-    /**
-     * Retrives course modules data and retrun display and useful datas
-     *
-     * @param \stdClass $module the course module category in DB Moodle
-     * @param \int $instance the course module id
-     * @return \int $moduleinfo the course module data
-     */
-    public function domoscio_get_resource_info($module, $instance) {
+         global $DB, $CFG, $OUTPUT;
 
-        global $DB, $CFG;
+         $query = "SELECT {course_modules}.module, {course_modules}.instance, {course_modules}.id
+                     FROM {course_modules}
+               INNER JOIN {domoscio_knowledge_nodes}
+                       ON {course_modules}.id = {domoscio_knowledge_nodes}.resourceid
+                    WHERE {domoscio_knowledge_nodes}.knodeid = :knid";
 
-        $modulename = $DB->get_record('modules', array('id' => $module), 'name')->name;
+         $resource = $DB->get_record_sql($query, array('knid' => $knowledgenode));
 
-        $moduleinfo = $DB->get_record($modulename, array('id' => $instance), 'name');
+         return $resource->id;
+     }
 
-        return $moduleinfo;
-    }
-
-    /**
-     * Retrives course modules by its knowledge_node once the module was linked to Domoscio for edit purpose
-     *
-     * @param \int $knowledgenode the knowledge node id
-     * @return \int $resource->id the course module id
-     */
-    public function domoscio_get_resource_bykn($knowledgenode) {
-
-        global $DB, $CFG, $OUTPUT;
-
-        $query = "SELECT {course_modules}.module, {course_modules}.instance, {course_modules}.id
-                    FROM {course_modules}
-              INNER JOIN {domoscio_knowledge_nodes}
-                      ON {course_modules}.id = {domoscio_knowledge_nodes}.resourceid
-                   WHERE {domoscio_knowledge_nodes}.knodeid = :knid";
-
-        $resource = $DB->get_record_sql($query, array('knid' => $knowledgenode));
-
-        return $resource->id;
-    }
 }

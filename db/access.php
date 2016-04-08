@@ -74,7 +74,7 @@ $capabilities = array(
 
     // Ability to see that the quiz exists, and the basic information
     // about it, for example the start date and time limit.
-    'mod/domscio:view' => array(
+    'mod/domoscio:view' => array(
         'captype' => 'read',
         'contextlevel' => CONTEXT_MODULE,
         'archetypes' => array(
@@ -100,10 +100,7 @@ $capabilities = array(
         'captype' => 'write',
         'contextlevel' => CONTEXT_MODULE,
         'archetypes' => array(
-            'student' => CAP_ALLOW,
-            'teacher' => CAP_ALLOW,
-            'editingteacher' => CAP_ALLOW,
-            'manager' => CAP_ALLOW
+            'student' => CAP_ALLOW
         )
     ),
 

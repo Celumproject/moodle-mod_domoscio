@@ -24,6 +24,8 @@
 
 require_once(dirname(__FILE__).'/sdk/client.php');
 require_once(dirname(dirname(__FILE__)).'/scorm/locallib.php');
+require_once(dirname(__FILE__).'/classes/test_session.php');
+
 
 defined('MOODLE_INTERNAL') || die();
 
@@ -67,6 +69,8 @@ function domoscio_supports($feature) {
  */
 function domoscio_add_instance(stdClass $domoscio, mod_domoscio_mod_form $mform = null) {
     global $DB, $COURSE, $CFG;
+    $cmid = $domoscio->coursemodule;
+    $context = context_module::instance($cmid);
 
     $config = get_config('domoscio');
 
@@ -101,20 +105,28 @@ function domoscio_add_instance(stdClass $domoscio, mod_domoscio_mod_form $mform 
     $rest = new mod_domoscio_client();
 
     // Create new parent knowledge node for this new instance
-    $query = "SELECT {course_modules}.instance, {modules}.name
-              FROM {course_modules}
-              INNER JOIN {modules}
-              ON {course_modules}.module = {modules}.id
-              WHERE {course_modules}.id = :coursemodule";
+    if ($domoscio->resource != null) {
+        $query = "SELECT {course_modules}.instance, {modules}.name
+                  FROM {course_modules}
+                  INNER JOIN {modules}
+                  ON {course_modules}.module = {modules}.id
+                  WHERE {course_modules}.id = :coursemodule";
 
-    $cmdata = $DB->get_record_sql($query, array('coursemodule' => $domoscio->resource));
-    $cmselected = $DB->get_record($cmdata->name, array('id' => $cmdata->instance));
+        $cmdata = $DB->get_record_sql($query, array('coursemodule' => $domoscio->resource));
+        $cmselected = $DB->get_record($cmdata->name, array('id' => $cmdata->instance));
 
+        $knname = $cmselected->name;
+    } else {
+        $knname = $domoscio->name;
+    }
+
+    // Send new knowledge node data to API
     $json = json_encode(array('knowledge_graph_id' => strval($graphid),
-                              'name' => strval($cmselected->name)));
+                              'name' => strval($knname)));
 
     $resource = json_decode($rest->seturl($config, 'knowledge_nodes', null)->post($json));
 
+    // And store it in Moodle DB
     $knowledgenode = new stdClass;
 
     $knowledgenode->resourceid = $domoscio->resource;
@@ -134,33 +146,57 @@ function domoscio_add_instance(stdClass $domoscio, mod_domoscio_mod_form $mform 
     $knowledgenode->instance = $domoscio->id;
     $DB->update_record('domoscio_knowledge_nodes', $knowledgenode);
 
-    // If linkedresource is SCORM package, create new knowledge node for each SCO
-    if ($linkedresource->modulename == "scorm") {
-        if (domoscio_check_domstructure(context_module::instance($domoscio->resource))) {
-            domoscio_autoimport($config, $resource, $graphid, $domoscio);
-        } else {
-            $scoes = domoscio_get_scorm_scoes($resource->id);
+    $component = "mod_domoscio";
+    $draftitemid = file_get_submitted_draft_itemid('activitiesfile');
+    file_prepare_draft_area($draftitemid, $context->id, 'mod_domoscio', 'package', 0,
+    array('subdirs' => 0, 'maxfiles' => 1));
 
-            domoscio_write_knowledge_nodes($scoes, $config, $resource, $graphid, $domoscio);
+    $fs = get_file_storage();
+    $fs->delete_area_files($context->id, 'mod_domoscio', 'package');
+    file_save_draft_area_files($domoscio->activitiesfile, $context->id, 'mod_domoscio', 'package',
+    0, array('subdirs' => 0, 'maxfiles' => 1));
+
+    $files = $fs->get_area_files($context->id, 'mod_domoscio', 'package', 0, '', false);
+
+    if (count($files)>0) {
+        foreach ($files as $f) {
+            $packagefile = $fs->get_file($context->id, 'mod_domoscio', 'package', 0, '/', $f->get_filename());
+            $packer = get_file_packer('application/zip');
+            $packagefile->extract_to_storage($packer, $context->id, 'mod_domoscio', 'content', 0, '/');
         }
-    }
 
-    if ($linkedresource->modulename == "book") {
-        $chapters = domoscio_get_book_chapters($resource->id);
+        domoscio_autoimport_extpkg($config, $context, $resource, $graphid, $component, $domoscio->resource, $domoscio);
+    } else {
+        switch ($linkedresource->modulename) {
+            case "scorm":
+                $component = "mod_scorm";
+                if (domoscio_check_domstructure(context_module::instance($domoscio->resource), $component)) {
+                    domoscio_autoimport($config, $domoscio->resource, $graphid, $component, $domoscio);
+                } else {
+                    $scoes = domoscio_get_scorm_scoes($resource->id);
 
-        domoscio_write_knowledge_nodes($chapters, $config, $resource, $graphid, $domoscio);
-    }
+                    domoscio_write_knowledge_nodes($scoes, $config, $resource, $graphid, $domoscio);
+                }
+                break;
 
-    if ($linkedresource->modulename == "lesson") {
-        $contentpages = domoscio_get_lesson_content($resource->id);
+            case "book":
+                $chapters = domoscio_get_book_chapters($resource->id);
 
-        domoscio_write_knowledge_nodes($contentpages, $config, $resource, $graphid, $domoscio);
-    }
+                domoscio_write_knowledge_nodes($chapters, $config, $resource, $graphid, $domoscio);
+                break;
 
-    if ($linkedresource->modulename == "glossary") {
-        $allentries = $DB->get_records("glossary_entries", array('glossaryid' => $linkedresource->instance), '', '*');
+            case "lesson":
+                $contentpages = domoscio_get_lesson_content($resource->id);
 
-        domoscio_write_knowledge_nodes($allentries, $config, $resource, $graphid, $domoscio);
+                domoscio_write_knowledge_nodes($contentpages, $config, $resource, $graphid, $domoscio);
+                break;
+
+            case "glossary":
+                $allentries = $DB->get_records("glossary_entries", array('glossaryid' => $linkedresource->instance), '', '*');
+
+                domoscio_write_knowledge_nodes($allentries, $config, $resource, $graphid, $domoscio);
+                break;
+        }
     }
 
     return $domoscio->id;
@@ -182,14 +218,76 @@ function domoscio_update_instance(stdClass $domoscio, mod_domoscio_mod_form $mfo
 
     $domoscio->timemodified = time();
     $domoscio->id = $domoscio->instance;
+    $rest = new mod_domoscio_client();
 
-    // You may have to add extra stuff in here.
+    $cmid = $domoscio->coursemodule;
+    $context = context_module::instance($cmid);
 
-    $result = $DB->update_record('domoscio', $domoscio);
+    $kn = $DB->get_record('domoscio', array('id' => $domoscio->id))->resourceid;
+    $graphid = $DB->get_record('domoscio_knowledge_graphs', array('courseid' => $domoscio->course))->kgraphid;
 
-    domoscio_grade_item_update($domoscio);
+    $config = get_config('domoscio');
+    $resource = json_decode($rest->seturl($config, 'knowledge_nodes', $kn)->get());
+    $linkedresource = domoscio_get_resource_info($resource->id);
 
-    return $result;
+    if (!empty($domoscio->activitiesfile)) {
+        $component = "mod_domoscio";
+        $draftitemid = file_get_submitted_draft_itemid('activitiesfile');
+        file_prepare_draft_area($draftitemid, $context->id, 'mod_domoscio', 'package', 0,
+        array('subdirs' => 0, 'maxfiles' => 1));
+
+        $fs = get_file_storage();
+        $fs->delete_area_files($context->id, 'mod_domoscio', 'package');
+        file_save_draft_area_files($domoscio->activitiesfile, $context->id, 'mod_domoscio', 'package',
+        0, array('subdirs' => 0, 'maxfiles' => 1));
+
+        $files = $fs->get_area_files($context->id, 'mod_domoscio', 'package', 0, '', false);
+
+        foreach ($files as $f) {
+            $packagefile = $fs->get_file($context->id, 'mod_domoscio', 'package', 0, '/', $f->get_filename());
+            $packer = get_file_packer('application/zip');
+            $packagefile->extract_to_storage($packer, $context->id, 'mod_domoscio', 'content', 0, '/');
+        }
+
+        domoscio_autoimport_extpkg($config, $context, $resource, $graphid, $component, $domoscio->resource, $domoscio);
+    } else {
+        switch ($linkedresource->modulename) {
+            case "scorm":
+                $component = "mod_scorm";
+                if (domoscio_check_domstructure(context_module::instance($domoscio->resource), $component)) {
+                    domoscio_autoimport($config, $domoscio->resource, $graphid, $component, $domoscio->resourceid, $domoscio);
+                } else {
+                    $scoes = domoscio_get_scorm_scoes($resource->id);
+
+                    domoscio_write_knowledge_nodes($scoes, $config, $resource, $graphid, $domoscio);
+                }
+                break;
+
+            case "book":
+                $chapters = domoscio_get_book_chapters($resource->id);
+
+                domoscio_write_knowledge_nodes($chapters, $config, $resource, $graphid, $domoscio);
+                break;
+
+            case "lesson":
+                $contentpages = domoscio_get_lesson_content($resource->id);
+
+                domoscio_write_knowledge_nodes($contentpages, $config, $resource, $graphid, $domoscio);
+                break;
+
+            case "glossary":
+                $allentries = $DB->get_records("glossary_entries", array('glossaryid' => $linkedresource->instance), '', '*');
+
+                domoscio_write_knowledge_nodes($allentries, $config, $resource, $graphid, $domoscio);
+                break;
+        }
+    }
+
+    $DB->update_record('domoscio', $domoscio);
+
+    //domoscio_grade_item_update($domoscio);
+
+    return true;
 }
 
 /**
@@ -204,13 +302,21 @@ function domoscio_update_instance(stdClass $domoscio, mod_domoscio_mod_form $mfo
  */
 function domoscio_delete_instance($id) {
     global $DB;
+    $rest = new mod_domoscio_client();
 
     if (! $domoscio = $DB->get_record('domoscio', array('id' => $id))) {
         return false;
     }
 
-    // Delete any dependent records here.
+    // Disable knstudents on api
+    $instancekns = $DB->get_records('domoscio_knode_students', array('instance' => $domoscio->id), '', '*');
 
+    foreach ($instancekns as $kns) {
+        $json = json_encode(array('active' => 0));
+        $rest->seturl(get_config('domoscio'), 'knowledge_node_students', $kns->knodeid)->put($json);
+    }
+
+    // Delete any dependent records here.
     $DB->delete_records('domoscio_knode_students', array('instance' => $domoscio->id));
     $DB->delete_records('domoscio_knode_questions', array('instance' => $domoscio->id));
     $DB->delete_records('domoscio', array('id' => $domoscio->id));
@@ -490,13 +596,33 @@ function domoscio_get_file_info($browser, $areas, $course, $cm, $context, $filea
 function domoscio_pluginfile($course, $cm, $context, $filearea, array $args, $forcedownload, array $options=array()) {
     global $DB, $CFG;
 
+    $lifetime = null;
+
     if ($context->contextlevel != CONTEXT_MODULE) {
         send_file_not_found();
     }
 
     require_login($course, true, $cm);
 
-    send_file_not_found();
+    if ($filearea === 'content') {
+        $revision = (int)array_shift($args); // Prevents caching problems - ignored here.
+        $relativepath = implode('/', $args);
+        $fullpath = "/$context->id/mod_domoscio/content/0/$relativepath";
+        // TODO: add any other access restrictions here if needed!
+
+    }
+
+    $fs = get_file_storage();
+    if (!$file = $fs->get_file_by_hash(sha1($fullpath)) or $file->is_directory()) {
+        if ($filearea === 'content') { // Return file not found straight away to improve performance.
+            send_header_404();
+            die;
+        }
+        return false;
+    }
+
+    // Finally send the file.
+    send_stored_file($file, $lifetime, 0, false, $options);
 }
 
 /**
@@ -509,14 +635,21 @@ function domoscio_pluginfile($course, $cm, $context, $filearea, array $args, $fo
  * @param navigation_node $domoscionode domoscio administration node
  */
 function domoscio_extend_settings_navigation(settings_navigation $settingsnav, navigation_node $domoscionode=null) {
-    global $PAGE;
+    global $CFG, $PAGE;
     $cm = $PAGE->cm;
     $context = $cm->context;
 
     // Link to students list
-    if (has_capability('moodle/course:create', $context)) {
+    if (has_capability('mod/domoscio:addinstance', $context)) {
         $url = new moodle_url('index.php');
         $urlname = get_string('students_list', 'domoscio');
+        $node = $domoscionode->add($urlname, $url, navigation_node::TYPE_SETTING);
+    }
+
+    if (has_capability('moodle/question:managecategory', $context)) {
+        $url = new moodle_url("$CFG->wwwroot/question/edit.php");
+        $url->param('cmid', $cm->id);
+        $urlname = get_string('choose_q_from_qbank', 'domoscio');
         $node = $domoscionode->add($urlname, $url, navigation_node::TYPE_SETTING);
     }
 }
@@ -577,7 +710,8 @@ function domoscio_manage_student($config, $domoscio, $check) {
 
     // Retrive all active knowledge nodes relative to this instance of Domoscio
     $knowledgenodes = $DB->get_records_select('domoscio_knowledge_nodes', "instance = :instance AND active <> 0", array('instance' => $domoscio->id));
-    // Retrive all knowledge nodes students for selected students
+
+    // Retrive all knowledge nodes students for selected student
     $knsarray = json_decode($rest->seturl($config, 'students', $student[0]->id, 'knowledge_node_students')->get());
 
     $knstudent = array();
@@ -642,7 +776,12 @@ function domoscio_manage_student($config, $domoscio, $check) {
                         } else {
                             $scoreraw = $tracks->{"cmi.core.score.raw"};
                             $scoremax = $tracks->{"cmi.core.score.max"};
-                            $scoredata[] = $scoreraw / $scoremax;
+
+                            if (($scoreraw != 0) && ($scoremax != 0)) {
+                                $scoredata[] = $scoreraw / $scoremax;
+                            } else {
+                                $scoredata[] = 0;
+                            }
                         }
                     }
                 }
@@ -882,7 +1021,7 @@ function domoscio_display_activities_list($activity, $moduletype, $kn, $cm) {
     if (has_capability($cap, $activitycontext)) {
         $icon = html_writer::tag('img', '', array('src' => $OUTPUT->pix_url('icon', $moduletype, $moduletype, array('class' => 'smallicon navicon')),
                                                  'class' => 'icon', 'alt' => 'disable'));
-        $url = html_writer::link("$CFG->wwwroot/mod/domoscio/linkto.php?id=$cm->id&notion=$kn&exo=".$moduletype."_".$activity->id, $icon." ".$activity->name);
+        $url = html_writer::link("$CFG->wwwroot/mod/domoscio/linkto.php?cmid=$cm->id&notion=$kn&exo=".$moduletype."_".$activity->id, $icon." ".$activity->name);
         $listitem = html_writer::tag('p', $url, array('class' => ''));
     }
 
@@ -1556,12 +1695,12 @@ function domoscio_get_student_by_kns($kns) {
  * @param \stdClass $context Moodle context for getting the file
  * @return \stdClass $student the student datas
  */
-function domoscio_check_domstructure($context) {
+function domoscio_check_domstructure($context, $component) {
     $fs = get_file_storage();
 
     // Prepare file record object
     $fileinfo = array(
-        'component' => 'mod_scorm',     // usually = table name
+        'component' => $component,     // usually = table name
         'filearea' => 'content',     // usually = table name
         'itemid' => 0,               // usually = ID of row in table
         'contextid' => $context->id, // ID of context
@@ -1589,46 +1728,14 @@ function domoscio_check_domstructure($context) {
  * @param \stdClass $domoscio the plugin instance data
  * @return \string $domoscioplural leave empty or fill with a 's'
  */
-function domoscio_autoimport($config, $resource, $graphid, $domoscio) {
+function domoscio_autoimport($config, $resource, $graphid, $component, $domoscio) {
     global $DB;
-
-    $rest = new mod_domoscio_client();
-
-    if ($structurefile = domoscio_check_domstructure(context_module::instance($domoscio->resource))) {
+    if ($structurefile = domoscio_check_domstructure(context_module::instance($resource), $component)) {
         $xml = simplexml_load_string($structurefile) or die("Error: Cannot create object");
         foreach ($xml->notion as $notion) {
-            // Check if notion has content
-            if (isset($notion['identifier'])) {
-                $n = $DB->get_record('scorm_scoes', array('identifier' => strval($notion['identifier'])), '*');
-            } else {
-                $n = new stdClass;
-                $n->title = $notion->title;
-                $n->id = null;
-            }
+            $knowledgenode = domoscio_create_notion_from_structure($notion, $graphid, $config, $domoscio->resourceid, $component, $resource, $domoscio);
 
-            // Create new knowledge node
-            $json = json_encode(array('knowledge_graph_id' => strval($graphid),
-                                        'name' => strval($n->title)));
-            $kn = json_decode($rest->seturl($config, 'knowledge_nodes', null)->post($json));
-
-            // Create knowledge edges
-            $json = json_encode(array('knowledge_graph_id' => strval($graphid),
-                                        'source_node_id' => strval($resource->id),
-                                        'destination_node_id' => strval($kn->id)));
-
-            $knedge = json_decode($rest->seturl($config, 'knowledge_edges', null)->post($json));
-
-            // Write knowledge node SCO in database
-            $knowledgenode = new stdClass;
-            $knowledgenode->instance = $domoscio->id;
-            $knowledgenode->knodeid = $kn->id;
-            $knowledgenode->resourceid = $domoscio->resource;
-            $knowledgenode->childid = $n->id;
-            $knowledgenode->active = true;
-
-            $writekn = $DB->insert_record('domoscio_knowledge_nodes', $knowledgenode);
-
-            // Get all tests for each notion
+            // Get all tests for notion
             foreach ($notion->test as $test) {
                 $identifier = strval($test['identifier']);
 
@@ -1644,6 +1751,101 @@ function domoscio_autoimport($config, $resource, $graphid, $domoscio) {
             }
         }
     }
+}
+
+/**
+ * This function build test sessions from an imported SCORM package through Domoscio plugin
+ *
+ * @param \stdClass $config the config data
+ * @param \stdClass $context the Domoscio plugin context data
+ * @param \stdClass $knsource the knowledge node created for this instance of Domoscio plugin
+ * @param \int $graphid the knowledge graph id of the course
+ * @param \string $component the component used to access Domoscio files
+ * @param \stdClass $domoscio the plugin instance data
+ * @return \void
+ */
+function domoscio_autoimport_extpkg($config, $context, $knsource, $graphid, $component, $resource, $domoscio) {
+    global $DB;
+
+    $fs = get_file_storage();
+
+    if ($structurefile = domoscio_check_domstructure($context, $component)) {
+        $xml = simplexml_load_string($structurefile) or die("Error: Cannot create obj");
+
+        // Get imsmanifest
+        $manifestfile = $fs->get_file($context->id, 'mod_domoscio', 'content', 0,
+                              '/', 'imsmanifest.xml');
+        $manifestxml = $manifestfile->get_content();
+        $manifest = simplexml_load_string($manifestxml) or die("Error: Cannot create object");
+
+        foreach ($xml->notion as $notion) {
+            $knowledgenode = domoscio_create_notion_from_structure($notion, $graphid, $config, $knsource->id, $component, $resource, $domoscio);
+            // Get all tests for the notion
+            foreach ($notion->test as $test) {
+                $notionname = strval($test['identifier']);
+                $resourcename = str_replace('-sco', '-res', $notionname);
+
+                foreach ($manifest->resources->resource as $r) {
+                    if ($r['identifier'] == $resourcename) {
+                        foreach ($r->file as $f) {
+                            if (substr_compare($f['href'], '.html', -5, 5) == 0) {
+                                $filename = (string)$f['href'];
+                            }
+                        }
+                    }
+                }
+                $conditions = array('contextid'=>$context->id, 'component'=>$component, 'filearea'=>"content", 'itemid'=>0, 'filepath'=>'/Content/', 'filename'=>$filename);
+                $file_record = $DB->get_record('files', $conditions);
+                if ($file_record) {
+                    $record = new stdClass;
+                    $record->instance = $domoscio->id;
+                    $record->knodeid = $knowledgenode->knodeid;
+                    $record->questionid = $file_record->id;
+                    $record->type = "file";
+
+                    $import = $DB->insert_record('domoscio_knode_questions', $record);
+                }
+            }
+        }
+    }
+}
+
+
+function domoscio_create_notion_from_structure($xmlnotion, $graphid, $config, $knsource, $component, $resource, $domoscio) {
+    global $DB;
+    $rest = new mod_domoscio_client();
+    // Check if notion has content
+    if (isset($xmlnotion['identifier']) && ($component == "mod_scorm")) {
+        $n = $DB->get_record('scorm_scoes', array('identifier' => strval($xmlnotion['identifier'])), '*');
+    } else {
+        $n = new stdClass;
+        $n->title = $xmlnotion->title;
+        $n->id = null;
+    }
+
+    // Create new knowledge node
+    $json = json_encode(array('knowledge_graph_id' => strval($graphid),
+                                'name' => strval($n->title)));
+    $kn = json_decode($rest->seturl($config, 'knowledge_nodes', null)->post($json));
+
+    // Create knowledge edges
+    $json = json_encode(array('knowledge_graph_id' => strval($graphid),
+                                'source_node_id' => strval($knsource),
+                                'destination_node_id' => strval($kn->id)));
+
+    $knedge = json_decode($rest->seturl($config, 'knowledge_edges', null)->post($json));
+
+    // Write knowledge node SCO in database
+    $knowledgenode = new stdClass;
+    $knowledgenode->instance = $domoscio->id;
+    $knowledgenode->knodeid = $kn->id;
+    $knowledgenode->resourceid = $resource;
+    $knowledgenode->childid = $n->id;
+    $knowledgenode->active = true;
+
+    $writekn = $DB->insert_record('domoscio_knowledge_nodes', $knowledgenode);
+
+    return $knowledgenode;
 }
 
 /**
@@ -1681,7 +1883,7 @@ function domoscio_sec_to_time($seconds) {
 }
 
 function domoscio_check_settings($config) {
-  if (!$config->domoscio_id || !$config->domoscio_apikey || !$config->domoscio_apiurl) {
-      throw new moodle_exception(get_string('settings_required', 'domoscio'));
-  }
+    if (!$config->domoscio_id || !$config->domoscio_apikey || !$config->domoscio_apiurl) {
+        throw new moodle_exception(get_string('settings_required', 'domoscio'));
+    }
 }

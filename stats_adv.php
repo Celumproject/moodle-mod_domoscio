@@ -31,9 +31,9 @@ require_once(dirname(dirname(dirname(__FILE__))).'/config.php');
 require_once(dirname(__FILE__).'/lib.php');
 require_once(dirname(__FILE__).'/sdk/client.php');
 
+$PAGE->requires->js('/mod/domoscio/jquery-1.11.3.min.js', true);
 $PAGE->requires->js('/mod/domoscio/bootstrap-collapse.js', true);
 $PAGE->requires->js('/mod/domoscio/Chart.min.js', true);
-$PAGE->requires->js('/mod/domoscio/jquery-1.11.3.min.js', true);
 
 $config = get_config('domoscio');
 $id = optional_param('id', 0, PARAM_INT); // Course_module ID, or
@@ -78,7 +78,7 @@ echo html_writer::tag('div', '<h5 class="content">'.
 
 // --- TEACHER VIEW ---
 
-if (has_capability('moodle/course:create', $context)) {
+if (has_capability('mod/domoscio:addinstance', $context)) {
     // Display teacher dashboard tabs
     $overviewurl = html_writer::tag('li',
                                      html_writer::link($CFG->wwwroot.'/mod/domoscio/view.php?id='.$cm->id,
@@ -103,47 +103,61 @@ if (has_capability('moodle/course:create', $context)) {
         $limit = 10;
         $offset = max(($pagenum - 1), 0) * $limit;
         $students = domoscio_get_stats($kn, $offset, $limit)->enrolled;
-        $pagestotal = round((domoscio_get_stats($kn)->count_students) / $limit);
-        $pagesarr = array();
-        $pageplusone = $pagenum + 1;
-        $pageminusone = $pagenum - 1;
+        $nextpage = $pagenum + 1;
+        $prevpage = $pagenum - 1;
+        $pagestotal = ceil((domoscio_get_stats($kn)->count_students) / $limit);
 
-        for ($i = 1; $i <= $pagestotal; $i++) {
-            $pagesarr[] = $i;
-        }
-
-        $trows = "";
+        $table = new html_table();
+        $table->head = array();
+        $table->attributes['class'] = 'table table-bordered table-hover table-striped';
+        $table->head[] = get_string('student', 'domoscio');
+        $table->head[] = get_string('next_due_th', 'domoscio');
+        $headcell1 = new html_table_cell(html_writer::tag('i', '', array('class' => 'icon-ok')).get_string('test_succeeded', 'domoscio'));
+        $headcell1->attributes['class'] = 'alert-success';
+        $table->head[] = $headcell1;
+        $headcell2 = new html_table_cell(html_writer::tag('i', '', array('class' => 'icon-remove')).get_string('test_failed', 'domoscio'));
+        $headcell2->attributes['class'] = 'alert-danger';
+        $table->head[] = $headcell2;
 
         foreach ($students as $student) {
             $studentinfo = domoscio_get_student_by_kns($student->id);
             $attempts = count(array_filter(str_split($student->history), 'strlen'));
             $rightattempts = count(array_filter(str_split($student->history)));
             $wrongattempts = $attempts - $rightattempts;
+            $row = new html_table_row();
+
 
             // Add stats to display for each students
-            $trows .= html_writer::tag('tr', html_writer::tag('td', $studentinfo->firstname." ".$studentinfo->lastname).
-                                             html_writer::tag('td', domoscio_sec_to_time(strtotime($student->next_review_at) - time())).
-                                             html_writer::tag('td', $rightattempts, array('class' => 'alert-success')).
-                                             html_writer::tag('td', $wrongattempts, array('class' => 'alert-danger'))
-                                      );
+            $row->cells[] = $studentinfo->firstname." ".$studentinfo->lastname;
+            $row->cells[] = domoscio_sec_to_time(strtotime($student->next_review_at) - time());
+            $cell1 = new html_table_cell(html_writer::tag('div', $rightattempts));
+            $cell1->attributes['class'] = 'alert-success';
+            $row->cells[] = $cell1;
+            $cell2 = new html_table_cell(html_writer::tag('div', $wrongattempts));
+            $cell2->attributes['class'] = 'alert-danger';
+            $row->cells[] = $cell2;
+            $table->data[] = $row;
         }
 
-        // Prepare table header
-        $th = html_writer::tag('tr', html_writer::tag('th', get_string('student', 'domoscio')).
-                                     html_writer::tag('th', get_string('next_due_th', 'domoscio')).
-                                     html_writer::tag('th', "<i class='icon-ok'></i>".get_string('test_succeeded', 'domoscio'), array('class' => 'alert-success')).
-                                     html_writer::tag('th', "<i class='icon-remove'></i>".get_string('test_failed', 'domoscio'), array('class' => 'alert-danger')));
-        echo html_writer::tag('table', $th.$trows, array('class' => 'table table-striped table-bordered table-hover'));
+        // Display stats table
+        echo html_writer::table($table);
 
         // Display pagination
-        if (in_array($pageminusone, $pagesarr)) {
-            echo html_writer::link("$CFG->wwwroot/mod/domoscio/stats_adv.php?id=$cm->id&kn=$kn&stat=students&page=$pageminusone",
-                                     get_string('prev_page', 'domoscio'));
-        }
-        echo html_writer::tag('p', 'Page '.$pagenum.'/'.$pagestotal);
-        if (in_array($pageplusone, $pagesarr)) {
-            echo html_writer::link("$CFG->wwwroot/mod/domoscio/stats_adv.php?id=$cm->id&kn=$kn&stat=students&page=$pageplusone",
-                                     get_string('next_page', 'domoscio'));
+        $statsurl = new moodle_url("$CFG->wwwroot/mod/domoscio/stats_adv.php");
+        $statsurl->param('id', $cm->id);
+        $statsurl->param('kn', $kn);
+        $statsurl->param('stat', "students");
+
+        if ($pagestotal > 1) {
+            if ($pagenum > 1) {
+                $statsurl->param('page', $prevpage);
+                echo html_writer::link($statsurl, get_string('prev_page', 'domoscio'));
+            }
+            echo html_writer::tag('p', 'Page '.$pagenum.'/'.$pagestotal);
+            if ($pagenum < $pagestotal) {
+                $statsurl->param('page', $nextpage);
+                echo html_writer::link($statsurl, get_string('next_page', 'domoscio'));
+            }
         }
     }
 }

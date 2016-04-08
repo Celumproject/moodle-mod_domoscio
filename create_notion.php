@@ -70,7 +70,7 @@ $linkedresource = domoscio_get_resource_info($resource->id);
 
 echo html_writer::tag('div', html_writer::tag('b', get_string('newnotion_intro', 'domoscio'), array('class' => 'mod_introbox')), array('class' => 'block'));
 
-if (has_capability('moodle/course:create', $context)) {
+if (has_capability('mod/domoscio:addinstance', $context)) {
 
     $mform = new mod_domoscio_create_notion_form("$CFG->wwwroot/mod/domoscio/create_notion.php?id=$cm->id");
 
