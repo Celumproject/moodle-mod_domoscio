@@ -25,12 +25,12 @@
 require_once(dirname(dirname(dirname(__FILE__))).'/config.php');
 require_once(dirname(__FILE__).'/lib.php');
 require_once(dirname(__FILE__).'/sdk/client.php');
-require_once(dirname(__FILE__).'/classes/delete_notion_form.php');
 
 $config = get_config('domoscio');
 $id = optional_param('id', 0, PARAM_INT); // Course_module ID, or
 $n  = optional_param('d', 0, PARAM_INT);  // ... domoscio instance ID - it should be named as the first character of the module.
 $kn = optional_param('kn', 0, PARAM_INT); // Knowledge_node ID (Rappels)
+$confirm = optional_param('confirm', '', PARAM_ALPHANUM); // Confirmation of deletion
 
 if ($id) {
     $cm         = $DB->get_record('course_modules', array('id' => $id), '*', MUST_EXIST);
@@ -42,7 +42,8 @@ if ($id) {
     $cm         = get_coursemodule_from_instance('domoscio', $domoscio->id, $course->id, false, MUST_EXIST);
 } else if ($kn) {
     $module     = $DB->get_record('modules', array('name' => 'domoscio'), '*', MUST_EXIST);
-    $domoscio   = $DB->get_record('domoscio', array('resourceid' => $kn), '*', MUST_EXIST);
+    $instance   = $DB->get_record('domoscio_knowledge_nodes', array('knodeid' => $kn), '*', MUST_EXIST);
+    $domoscio   = $DB->get_record('domoscio', array('id' => $instance->instance), '*', MUST_EXIST);
     $course     = get_course($domoscio->course);
     $cm         = $DB->get_record('course_modules', array('instance' => $domoscio->id, 'module' => $module->id), '*', MUST_EXIST);
     $id         = $cm->id;
@@ -57,32 +58,34 @@ require_login($course, true, $cm);
 $PAGE->set_url('/mod/domoscio/view.php', array('id' => $cm->id));
 $PAGE->set_title(format_string($domoscio->name));
 $PAGE->set_heading(get_string('pluginname', 'domoscio'));
-
 echo $OUTPUT->header();
 echo $OUTPUT->heading(get_string('warning', 'domoscio'));
 domoscio_check_settings($config);
 
+$returnurl = new moodle_url('select_notions.php');
+
 $rest = new mod_domoscio_client();
 
-if (has_capability('moodle/course:create', $context)) {
+if (has_capability('mod/domoscio:addinstance', $context) && confirm_sesskey()) {
 
-    $mform = new mod_domoscio_create_notion_form("$CFG->wwwroot/mod/domoscio/delete_notion.php?d=$n&kn=$kn");
+    if ($confirm != md5($kn)) {
+        $options = array('kn' => $kn, 'confirm' => md5($kn), 'sesskey' => sesskey());
+        $deleteurl = new moodle_url('delete_notion.php', $options);
+        $deletebtn = new single_button($deleteurl, get_string('delete'), 'post');
 
-    if ($mform->is_cancelled()) {
-        redirect("$CFG->wwwroot/mod/domoscio/select_notions.php?id=".$cm->id);
-        exit;
-    } else if ($fromform = $mform->get_data()) {
+        echo $OUTPUT->confirm(get_string('confirm_notiondel', 'domoscio'), $deletebtn, $deleteurl);
+
+    } else if ($confirm == md5($kn) && data_submitted()) {
+
         $deletenotion = $rest->seturl($config, 'knowledge_nodes', $kn)->delete();
 
         $deletedb = $DB->delete_records('domoscio_knowledge_nodes', array('knodeid' => $kn));
 
         echo get_string('notion_deleted', 'domoscio')."<hr/>".
-                        html_writer::link("$CFG->wwwroot/mod/domoscio/select_notions.php?id=$cm->id",
-                        '<< '.get_string('back_btn', 'domoscio')."&nbsp");
-    } else {
-        echo html_writer::tag('p', get_string('confirm_notiondel', 'domoscio'));
-        $mform->display();
+                      html_writer::link(new moodle_url($returnurl, array('id' => $cm->id)),
+                                        '<< '.get_string('back_btn', 'domoscio')."&nbsp");
     }
+
 }
 
 // Finish the page.

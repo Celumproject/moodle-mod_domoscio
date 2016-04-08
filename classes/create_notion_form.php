@@ -51,7 +51,8 @@ class mod_domoscio_create_notion_form extends moodleform {
         // Adding text field for new notion
         $mform->addElement('text', 'notion', get_string('notion_title', 'domoscio'), $attributes);
 
-        $mform->setType('notion', PARAM_TEXT);
+        $mform->setType('notion', PARAM_ALPHANUMEXT);
+        $mform->addRule('notion', get_string('maximumchars', '', 255), 'maxlength', 255, 'client');
 
         $this->add_action_buttons();
     }

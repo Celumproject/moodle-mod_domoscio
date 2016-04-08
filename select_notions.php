@@ -76,7 +76,7 @@ $rest = new mod_domoscio_client();
 
 $resource = json_decode($rest->seturl($config, 'knowledge_nodes', $domoscio->resourceid)->get());
 
-if (has_capability('moodle/course:create', $context)) {
+if (has_capability('mod/domoscio:addinstance', $context)) {
 
     echo html_writer::tag('div', html_writer::tag('b', get_string('notions_intro', 'domoscio'), array('class' => 'mod_introbox')), array('class' => 'block'));
     $overviewurl = html_writer::tag('li',
@@ -108,16 +108,30 @@ if (has_capability('moodle/course:create', $context)) {
 
         foreach ($fromform as $k => $value) {
             if (is_numeric($k)) {
+                $rest = new mod_domoscio_client();
                 if ($value == 1) {
                     $entry = new stdClass;
                     $entry->id = $k;
                     $entry->active = 1;
                     $write = $DB->update_record('domoscio_knowledge_nodes', $entry, $bulk = false);
+                    $kn = $DB->get_record('domoscio_knowledge_nodes', array('id' => $k));
+                    $knodestudents = $DB->get_records('domoscio_knode_students', array('knodeid' => $kn->knodeid), '', '*');
+                    foreach ($knodestudents as $kns) {
+                        $json = json_encode(array('active' => 1));
+                        $rest->seturl(get_config('domoscio'), 'knowledge_node_students', $kns->knodestudentid)->put($json);
+                    }
+
                 } else if ($value == 0) {
                     $entry = new stdClass;
                     $entry->id = $k;
                     $entry->active = 0;
                     $write = $DB->update_record('domoscio_knowledge_nodes', $entry, $bulk = false);
+                    $kn = $DB->get_record('domoscio_knowledge_nodes', array('id' => $k));
+                    $knodestudents = $DB->get_records('domoscio_knode_students', array('knodeid' => $kn->knodeid), '', '*');
+                    foreach ($knodestudents as $kns) {
+                        $json = json_encode(array('active' => 0));
+                        $rest->seturl(get_config('domoscio'), 'knowledge_node_students', $kns->knodestudentid)->put($json);
+                    }
                 }
             }
         }
