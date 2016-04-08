@@ -43,9 +43,10 @@ class mod_domoscio_select_notion_form extends moodleform {
      * @return void
      */
     public function definition() {
-        global $DB, $CFG;
+        global $DB, $CFG, $OUTPUT;
 
         $config = get_config('domoscio');
+        $strdelete = get_string('delete');
         $mform = $this->_form;
 
         $notions = $DB->get_records('domoscio_knowledge_nodes', array('instance' => $this->_customdata['instance']), '', '*');
@@ -68,10 +69,10 @@ class mod_domoscio_select_notion_form extends moodleform {
 
         foreach ($notions as $notion) {
             $title = json_decode($this->seturl($config, "knowledge_nodes", $notion->knodeid)->get());
+            $deleteurl = new moodle_url('delete_notion.php');
+            $deleteurl->params(array('kn' => $notion->knodeid, 'sesskey' => sesskey()));
 
-            $deletelink = html_writer::link($CFG->wwwroot.'/mod/domoscio/delete_notion.php?d='.$this->_customdata['instance'].'&kn='.$notion->knodeid,
-                                            "<i class='icon-remove'></i>"
-                                           );
+            $deletelink = html_writer::link(new moodle_url($deleteurl, array('kn' => $notion->knodeid, 'sesskey' => sesskey())), html_writer::empty_tag('img', array('src'=>$OUTPUT->pix_url('t/delete'), 'alt'=>$strdelete, 'class'=>'iconsmall')), array('title'=>$strdelete));
 
             if (in_array($notion->id, $selected)) {
                 $check = true;
@@ -86,8 +87,8 @@ class mod_domoscio_select_notion_form extends moodleform {
                 $parent = $mform->addElement('advcheckbox',
                                              $notion->id,
                                              '',
-                                             $notionname." ".$deletelink,
-                                             array('group' => 1, 'class' => 'parent_notion'),
+                                             $notionname,
+                                             array('group' => 1, 'id' => 'parent_notion'),
                                              array(0, 1))->setChecked($check);
 
                 $mform->addElement('html',

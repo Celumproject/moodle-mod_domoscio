@@ -25,6 +25,7 @@ require_once(dirname(dirname(dirname(__FILE__))).'/config.php');
 require_once(dirname(dirname(dirname(__FILE__))).'/calendar/lib.php');
 require_once(dirname(dirname(__FILE__)).'/scorm/locallib.php');
 require_once(dirname(__FILE__).'/lib.php');
+require_once(dirname(__FILE__).'/classes/renderer.php');
 require_once($CFG->dirroot.'/mod/lesson/locallib.php');
 require_once($CFG->dirroot . '/question/engine/lib.php');
 require_once($CFG->dirroot . '/question/previewlib.php');
@@ -39,8 +40,6 @@ $q = optional_param('q', 0, PARAM_INT); // Course_module ID, or
 $kn = optional_param('kn', 0, PARAM_INT);
 $scorm = optional_param('scorm', '', PARAM_INT);
 $end = optional_param('end', false, PARAM_INT);
-$usageid = optional_param('usageid', '', PARAM_INT);
-$slots = optional_param('slots', '', PARAM_INT);
 
 if ($id) {
     $cm         = $DB->get_record('course_modules', array('id' => $id), '*', MUST_EXIST);
@@ -55,15 +54,23 @@ if ($id) {
     $id         = $cm->id;
 }
 
-$context = context_system::instance();
+$rest = new mod_domoscio_client();
+$cache = cache::make_from_params(cache_store::MODE_SESSION, 'mod_domoscio', 'cache');
+$tsobj = $cache->get('test_session');
+
+$context = context_course::instance($course->id);
 $PAGE->set_context($context);
 $strname = get_string('modulename', 'mod_domoscio');
-$PAGE->set_url('/mod/domoscio/index.php', array('id' => $id));
+$PAGE->set_url('/mod/domoscio/results.php', array('id' => $id, 'kn' => $kn));
 $PAGE->navbar->add($strname);
 $PAGE->set_heading(get_string('pluginname', 'domoscio'));
-$PAGE->set_pagelayout('incourse');
+$PAGE->set_pagelayout('standard');
+$PAGE->blocks->show_only_fake_blocks();
+$output = $PAGE->get_renderer('mod_domoscio');
+$navbc = $tsobj->get_navigation_panel($output, $kn, $id, $end);
+$regions = $PAGE->blocks->get_regions();
+$PAGE->blocks->add_fake_block($navbc, reset($regions));
 
-$rest = new mod_domoscio_client();
 $urlresults = new moodle_url("$CFG->wwwroot/mod/domoscio/results.php");
 $urlresults->param('sesskey', sesskey());
 $urlresults->param('id', $id);
@@ -73,175 +80,21 @@ echo $OUTPUT->heading(get_string('results', 'domoscio'));
 domoscio_check_settings($config);
 
 if (has_capability('mod/domoscio:submit', $context)) {
-    unset($SESSION->selected);
-    if ($q) {
-        // If exercise is Quiz question or lesson question
-        if (data_submitted() && confirm_sesskey()) {
-            // Retrive answered question data
-            $selected = $DB->get_record('domoscio_knode_questions', array('questionid' => $q, 'knodeid' => $kn), '*');
-            if ($selected->type == "quiz") {
-                $question = $DB->get_record_sql("SELECT *
-                                                   FROM {question}
-                                                  WHERE id = :qid",
-                                                array('qid' => $q)
-                                               );
+    unset($cache->selected);
 
-                $quba = question_engine::load_questions_usage_by_activity($usageid);
-                $correctresponse = $quba->get_correct_response($slots);
+    if (data_submitted() && confirm_sesskey() && $end == false) {
+        // Processing student answer and display correction if available
+        $test = $tsobj->get_test_by_kn($kn);
+        $display = $test->process_result();
 
-                if (!is_null($correctresponse)) {
-                    $transaction = $DB->start_delegated_transaction();
-                    $timenow = time();
-                    $quba->process_all_actions($timenow);
-                    question_engine::save_questions_usage_by_activity($quba);
-                    $transaction->allow_commit();
-                    $quba->finish_question($slots, $timenow);
-                }
-
-                $options = new question_preview_options($question);
-                $options->readonly = true;
-                $result = new stdClass;
-                $result->score = round($quba->get_total_mark() * 100);
-
-                // Display question correction
-                echo $quba->render_question($slots, $options, $q);
-            } else if ($selected->type == "lesson") {
-                $question = $DB->get_record('lesson_pages', array('id' => $q), '*');
-                $lesson = new lesson($DB->get_record('lesson', array('id' => $question->lessonid), '*', MUST_EXIST));
-                $page = $lesson->load_page($q);
-
-                // Retrieve question type
-                $qtype = $page->get_idstring();
-                $submitted = optional_param('q0:'.$question->id.'_answer', '', PARAM_TEXT);
-
-                if ($qtype == "calculated" || $qtype == "numerical" || $qtype == "shortanswer") {
-                    $result = domoscio_get_input_result($question, $submitted);
-                } else if ($qtype == "multichoice" || $qtype == "calculatedmulti" || $qtype == "truefalse") {
-                    $result = domoscio_get_multi_choice_result($question, $submitted);
-                } else if ($qtype == "multianswer") {
-                    $result = domoscio_get_multi_result($question, $submitted);
-                } else if ($qtype == "matching") {
-                    $result = domoscio_get_match_result($question);
-                }
-
-                // Display correction
-                $qspan = html_writer::start_span('qno') . $question->id . html_writer::end_span();
-                $qheader = html_writer::tag('h3', get_string('question', 'domoscio').$qspan, array('class' => 'no'));
-
-                $qcontent = html_writer::tag('div', $result->output, array('class' => 'formulation'));
-
-                $output = html_writer::tag('div', $qheader, array('class' => 'info'));
-                $output .= html_writer::tag('div', $qcontent, array('class' => 'content'));
-                $output = html_writer::tag('div', $output, array('class' => 'que '.$qtype.' deferredfeedback notyetanswered'));
-
-                echo $output;
-            }
-        }
-    } else if ($scorm) {
-        // else if exercise is SCO
-        if (data_submitted() && confirm_sesskey()) {
-            $scoid = optional_param('scoid', null, PARAM_INT);
-        }
-        $redirect = optional_param('redirect', true, PARAM_BOOL);
-
-        // Redirect once to search for student answer being written in DB
-        if ($redirect == true && confirm_sesskey()) {
-            if (isset($scoid)) {
-                $SESSION->scoid = $scoid;
-            }
-
-            $urlresults->param('scorm', $scorm);
-            $urlresults->param('kn', $kn);
-            $urlresults->param('redirect', false);
-            redirect($urlresults);
-            exit;
-        } else {
-            // Once student result is written, retrive the answer
-            if ($tracks = scorm_get_tracks($SESSION->scoid, $USER->id)) {
-                if (isset($tracks->{"cmi.score.scaled"})) {
-                    $score = $tracks->{"cmi.score.scaled"};
-                } else if (isset($tracks->{"cmi.core.score.raw"})) {
-                    $scoreraw = $tracks->{"cmi.core.score.raw"};
-                    $scoremax = $tracks->{"cmi.core.score.max"};
-                    $score = $scoreraw / $scoremax;
-                } else {
-                    // If student didn't answered, reload doquiz page
-                    redirect("$CFG->wwwroot/mod/domoscio/doquiz.php?kn=".$kn."&alert=true");
-                    exit;
-                }
-                // Scale the result to be used by Domoscio API
-                if (isset($score) && confirm_sesskey()) {
-                    $result = new stdClass;
-                    $result->score = $score * 100;
-                    unset($SESSION->scoid);
-                }
-            }
-        }
-    } else if ($end == true) {
-        // Once the todo list is empty, sum up all results for tests done
-        if (isset($SESSION->start)) {
-            $finish = time();
-            $runningtime = $finish - $SESSION->start;
-
-            // Display test session duration
-            echo html_writer::tag('div',
-                                  html_writer::tag('h5',
-                                                   get_string('running_time', 'domoscio').date('i:s', $runningtime),
-                                                   array('class' => 'mod_introbox')),
-                                  array('class' => 'block'));
-
-            unset($SESSION->start);
-            $trows = "";
-
-            foreach ($SESSION->results as $rapport) {
-                // For each notion, display student result
-                $kns = $DB->get_record('domoscio_knode_students', array('knodestudentid' => $rapport->knowledge_node_student_id), '*');
-
-                $resource = domoscio_get_resource_info($kns->knodeid);
-
-                $kninfo = json_decode($rest->seturl($config, 'knowledge_nodes', $kns->knodeid)->get());
-
-                if ($rapport->payload == 100) {
-                    $state = get_string('notion_ok', 'domoscio');
-                    $class = "success";
-                    $feedbackclass = "correct";
-                } else {
-                    $state = html_writer::link($resource->url, "<i class='icon-book'></i>".get_string('notion_rvw', 'domoscio'), array('target' => '_blank'));
-                    $class = "error";
-                    $feedbackclass = "incorrect";
-                }
-
-                $attributes = array(
-                    'src' => $OUTPUT->pix_url('i/grade_' . $feedbackclass),
-                    'alt' => get_string($feedbackclass, 'question'),
-                    'class' => 'questioncorrectnessicon',
-                );
-
-                $trows .= html_writer::tag('tr', html_writer::tag('td', $resource->display." - ".$kninfo->name).
-                                                html_writer::tag('td', $rapport->payload).
-                                                html_writer::tag('td', html_writer::empty_tag('img', $attributes)." ".$state),
-                                                array("class" => $class)
-                                           );
-            }
-            $th = html_writer::tag('tr', html_writer::tag('th', get_string('resourceset_resource', 'domoscio')).
-                                         html_writer::tag('th', get_string('score', 'domoscio')).
-                                         html_writer::tag('th', get_string('state', 'domoscio')
-                                         )
-                                  );
-            echo html_writer::tag('table', $th.$trows, array('class' => 'table table-bordered table-hover'));
-
-            unset($SESSION->results);
-            unset($SESSION->todo);
+        if ($display != null) {
+            echo $display;
         }
 
-        echo html_writer::tag('button', get_string('home_btn', 'domoscio'), array('type' => 'button',
-                                                                               'onclick' => "javascript:location.href='$CFG->wwwroot/'"));
-    }
-
-    if ($end == false) {
+        // Result recording and confirmation display
         if ($q || $scorm) {
             // Display an alert message about student Success
-            if ($result->score == 100) {
+            if ($test->get_result()->score == 100) {
                 echo html_writer::tag('div', "<i class='icon-ok'></i> ".get_string('test_succeeded', 'domoscio'), array('class' => 'alert alert-success'));
             } else {
                 echo html_writer::tag('div', "<i class='icon-remove'></i> ".get_string('test_failed', 'domoscio'), array('class' => 'alert alert-error'));
@@ -251,27 +104,48 @@ if (has_capability('mod/domoscio:submit', $context)) {
             $knstudent = $DB->get_record('domoscio_knode_students', array('userid' => $USER->id,
                                                                          'knodeid' => $kn), '*');
             $json = json_encode(array('knowledge_node_student_id' => intval($knstudent->knodestudentid),
-                                                        'payload' => $result->score));
+                                                        'payload' => $test->get_result()->score));
 
-            $SESSION->results[] = json_decode($rest->seturl($config, 'events', null, null, "&type=EventResult")->post($json));
+            $cache->results[] = json_decode($rest->seturl($config, 'events', null, null, "&type=EventResult")->post($json));
 
             // Put a new event in calendar
             $knstudent = json_decode($rest->seturl($config, 'knowledge_node_students', $knstudent->knodestudentid)->get());
             $resource = json_decode($rest->seturl($config, 'knowledge_nodes', $kn)->get());
-
             $newevent = domoscio_create_event($domoscio, $knstudent, $kn, $resource);
         }
+
+        // Remove last test from todolist
+        $tsobj->update_todo($kn);
     }
 
-    if (!empty($SESSION->todo)) {
+    if ($end == true) {
+        $tsobj->clear_todo();
+        // Once the todo list is empty, sum up all results for tests done
+        echo $tsobj->display_session_results();
+
+        echo html_writer::tag('button', get_string('back_to_coursepage', 'domoscio'), array('type' => 'button',
+                                                                               'onclick' => "javascript:location.href='$CFG->wwwroot/course/view.php?id=".$course->id."'"));
+
+        $cache->delete('test_session');
+    }
+
+    // If tests remains to be completed
+    $gettodo = $tsobj->get_todo();
+    if (!empty($gettodo)) {
+        // Output Next button
+        $todo = $tsobj->get_todo();
+        $nextkn = reset($todo)->kn;
         echo html_writer::tag('button',
                               get_string('next_btn', 'domoscio'),
                               array('type' => 'button',
-                                 'onclick' => "javascript:location.href='$CFG->wwwroot/mod/domoscio/doquiz.php?kn=".array_shift($SESSION->todo)."'"));
-    } else if (empty($SESSION->todo) && $end == false) {
+                                 'onclick' => "javascript:location.href='$CFG->wwwroot/mod/domoscio/doquiz.php?kn=".$nextkn."'"));
+        $cache->set('test_session', $tsobj);
+
+    } else if (empty($gettodo) && $end == false) {
+        // Else, this is the end of the session, display End button
         $urlresults->param('end', true);
-        echo $OUTPUT->single_button($urlresults, get_string('end_btn', 'domoscio'));
+        echo $OUTPUT->single_button($urlresults, get_string('results', 'domoscio'));
+        $cache->set('test_session', $tsobj);
     }
 }
-
 echo $OUTPUT->footer();

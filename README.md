@@ -2,12 +2,22 @@
 
 This plugin integrate the Domoscio algorithm to consolidate knowledge into Moodle.
 
+[Documentation can be found here](https://s3-eu-west-1.amazonaws.com/domoscio-backedn/user_doc.PDF)
+
 The solution comes with the Domoscio plugin contained into "domoscio" folder to be placed into the "mod" folder, and a Domoscio Reminder, useful for students, to be placed into "blocks" folder
 
 [Get the Domoscio Reminder block](https://github.com/Celumproject/moodle-block_domoscioreminder)
 
 ### Note for Moodle testers : see the wiki for API login informations
 [Get API key](https://github.com/Celumproject/moodle-mod_domoscio/wiki/8.-FAQ---Troubleshooting)
+
+# CHANGELOG
+
+- Version 2016040800:
+  - Resolve issues reported in Moodle tracker
+  - Improved Test session navigation
+  - Plugin own its dedicated question bank so users can create questions from scratch and assign them to the Plugin
+  - Improve overall stability
 
 # LICENCE
 
