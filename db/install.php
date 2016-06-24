@@ -21,9 +21,11 @@
  * lib.php/modulename_install() post installation hook and partially defaults.php.
  *
  * @package    mod_domoscio
- * @copyright  2015 Your Name <your@email.adress>
+ * @copyright  2016 Domoscio SA
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+
+require_once(dirname(__FILE__).'/../sdk/backend.php');
 
 /**
  * Post installation procedure
@@ -31,6 +33,33 @@
  * @see upgrade_plugins_modules()
  */
 function xmldb_domoscio_install() {
+
+    global $CFG, $SITE, $USER;
+
+    $json = json_encode(array('user' => array(
+                                'email' => $USER->email,
+                                'firstname' => $USER->firstname,
+                                'sirname' => $USER->lastname,
+                                'organization' => strip_tags($SITE->fullname)
+                                        ),
+                              'instance' => array(
+                                'title' => get_site()->fullname,
+                                'instance_type_id' => 2,
+                                'instance_mode_id' => 1,
+                                'url' => $CFG->wwwroot
+                                        )
+                             )
+                       );
+
+    $rest = new mod_domoscio_backend();
+    $instanceapi = json_decode($rest->post($json));
+
+    set_config('domoscio_id', $instanceapi->client_id, 'domoscio');
+    set_config('domoscio_apikey', $instanceapi->client_passphrase, 'domoscio');
+    set_config('domoscio_apiurl', "http://stats-engine.domoscio.com/v1", 'domoscio');
+
+    return true;
+
 }
 
 /**

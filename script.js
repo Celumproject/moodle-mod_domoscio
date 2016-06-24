@@ -44,7 +44,6 @@ function send_result() {
     var scoreElem = innerFrame.getElementsByClassName('pquizScore');
     var scoreTxt = scoreElem[0].textContent || scoreElem[0].innerText;
     var score = scoreTxt.replace(" / 10", "");
-    console.log(score);
     if (score == " ") {
         scoreHtml.value = "NAN";
     } else {

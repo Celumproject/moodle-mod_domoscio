@@ -72,6 +72,7 @@ domoscio_check_settings($config);
 $cache = cache::make_from_params(cache_store::MODE_SESSION, 'mod_domoscio', 'cache');
 
 $rest = new mod_domoscio_client();
+
 $resource = json_decode($rest->seturl($config, 'knowledge_nodes', $domoscio->resourceid)->get());
 
 $linkedresource = domoscio_get_resource_info($resource->id);
@@ -188,8 +189,8 @@ if (has_capability('mod/domoscio:addinstance', $context)) {
                                                get_string('welcome', 'domoscio').$USER->firstname,
                                                array('class' => 'content')),
                               array('class' => 'block'));
-        echo get_string('student_first_visit', 'domoscio')."<br/>";
-        echo html_writer::tag('button',
+        print_string('student_first_visit', 'domoscio');
+        echo "<br/>".html_writer::tag('button',
                               get_string('start_btn', 'domoscio'),
                               array('type' => 'button',
                                   'onclick' => "javascript:location.href='$CFG->wwwroot/mod/domoscio/view.php?id=$cm->id'"));

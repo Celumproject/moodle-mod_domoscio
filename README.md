@@ -11,7 +11,12 @@ The solution comes with the Domoscio plugin contained into "domoscio" folder to 
 This branch contains the plugin for Moodle 2.9
 
 CHANGELOG :
--Version 2016040800:
+- 2016062400:
+  - Domoscio API access automatically during installation process = Better user experience
+  - This give a free access to Domoscio service, unlimited in time, up to 30 students
+  - Minor fixes for reported issues
+
+- 2016040800:
   - Improved Test session navigation
   - Plugin own its dedicated question bank so users can create questions from scratch and assign them to the Plugin
   - Improve overall stability

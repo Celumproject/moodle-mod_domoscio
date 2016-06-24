@@ -124,7 +124,7 @@ if (has_capability('mod/domoscio:addinstance', $context)) {
             if (has_capability($cap, $cmcontext)) {
                 $linktourl->param('exo', $exo);
             } else {
-                echo get_string('nocapabilitytousethisservice', 'error');
+                print_string('nocapabilitytousethisservice', 'error');
             }
 
             $questionsdata = null;
@@ -172,12 +172,12 @@ if (has_capability('mod/domoscio:addinstance', $context)) {
                     }
                 }
 
-                echo get_string('upd_qlist', 'domoscio')."<hr/>";
-                echo html_writer::tag('button',
-                get_string('next_btn', 'domoscio'),
-                array('type' => 'button',
-                    'onclick' => "javascript:location.href='$CFG->wwwroot/mod/domoscio/view.php?id=$cm->id'")
-                );
+                print_string('upd_qlist', 'domoscio');
+                echo "<hr/>".html_writer::tag('button',
+                                              get_string('next_btn', 'domoscio'),
+                                              array('type' => 'button',
+                                                    'onclick' => "javascript:location.href='$CFG->wwwroot/mod/domoscio/view.php?id=$cm->id'")
+                                             );
 
             } else {
                 $mform->display();

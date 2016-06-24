@@ -76,9 +76,8 @@ if (has_capability('mod/domoscio:addinstance', $context)) {
     $returnurl = new moodle_url('index.php'/*, array('sort' => $sort, 'dir' => $dir, 'perpage' => $perpage, 'page'=>$page)*/);
     echo $OUTPUT->heading(get_string('students_list', 'domoscio'));
 
-    $students = $DB->get_records_sql("SELECT userid, userapiid
-                                        FROM {domoscio_knode_students}
-                                    GROUP BY userid");
+    $students = $DB->get_records_sql("SELECT DISTINCT userid, userapiid
+                                        FROM {domoscio_knode_students}");
 
     $fullnamedisplay = array();
 
@@ -179,7 +178,7 @@ if (has_capability('mod/domoscio:addinstance', $context)) {
         echo html_writer::tag('div', html_writer::tag('h5', $displayuser."<hr/>".$notification.$startbtn, array('class' => 'content')), array('class' => 'block'));
         echo html_writer::table($table);
     } else {
-        echo get_string('no_test', 'domoscio');
+        print_string('no_test', 'domoscio');
     }
 }
 echo $OUTPUT->footer();

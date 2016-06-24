@@ -86,14 +86,21 @@ if (has_capability('mod/domoscio:addinstance', $context)) {
 
         $newnotion = json_decode($rest->seturl($config, 'knowledge_nodes', null)->post($json));
 
-        // Add new entry into knowledge_nodes table
-        $record = new stdClass();
-        $record->knodeid = $newnotion->id;
-        $record->instance = $domoscio->id;
-        $record->resourceid = $linkedresource->cm;
-        $record->childid = null;
+        if ($newnotion->id != null) {
+            // Add new entry into knowledge_nodes table
+            $record = new stdClass();
+            $record->knodeid = $newnotion->id;
+            $record->instance = $domoscio->id;
+            $record->resourceid = $linkedresource->cm;
+            $record->childid = null;
 
-        $insert = $DB->insert_record('domoscio_knowledge_nodes', $record);
+            $insert = $DB->insert_record('domoscio_knowledge_nodes', $record);
+
+        } else {
+            if ($newnotion->message == "Instance disabled") {
+                throw new moodle_exception('instance_disabled', 'mod_domoscio', '', '', get_string('instance_disabled', 'domoscio'));
+            }
+        }
 
         // Store knowledge_edges
         $json = json_encode(array('knowledge_graph_id' => strval($kngraph->kgraphid),
@@ -102,8 +109,8 @@ if (has_capability('mod/domoscio:addinstance', $context)) {
 
         $knedge = json_decode($rest->seturl($config, 'knowledge_edges', null)->post($json));
 
-        echo get_string('notion_created', 'domoscio')."<hr/>".
-             html_writer::link("$CFG->wwwroot/mod/domoscio/select_notions.php?id=$cm->id", '<< '.get_string('back_btn', 'domoscio')."&nbsp");
+        print_string('notion_created', 'domoscio');
+        echo "<hr>".html_writer::link("$CFG->wwwroot/mod/domoscio/select_notions.php?id=$cm->id", '<< '.get_string('back_btn', 'domoscio')."&nbsp");
     } else {
         $mform->display();
     }

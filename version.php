@@ -18,16 +18,16 @@
  * Domoscio version information.
  *
  * @package    mod_domoscio
- * @copyright  2015 Domoscio
+ * @copyright  2016 Domoscio
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 if (!defined('MOODLE_INTERNAL')) {
     die('Direct access to this script is forbidden.');
 }
 
-$plugin->version   = 2016040801;
+$plugin->version   = 2016062401;
 $plugin->requires  = 2014051209;
 $plugin->component = 'mod_domoscio';
 $plugin->cron      = 0;
-$plugin->release   = '2016021101';
+$plugin->release   = '2016062401';
 $plugin->maturity  = MATURITY_BETA;

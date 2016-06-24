@@ -147,3 +147,4 @@ $string['proxy_parsing_error'] = 'No se puede analizar la respuesta de MediaServ
 $string['import_activities'] = 'Importer des activités';
 $string['import_activities_help'] = "Utilisez ce formulaire pour associer un paquet SCORM d'activités. Si vous le laissez vide, vous devrez associer des activités pour chaque notion à l'étape suivante.";
 $string['no_questions_in_bank'] = "No questions in plugin bank yet.";
+$string['instance_disabled'] = "L'accès au service Domoscio a été désactivé.";
