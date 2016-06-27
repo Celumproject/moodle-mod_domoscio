@@ -83,9 +83,7 @@ function domoscio_add_instance(stdClass $domoscio, mod_domoscio_mod_form $mform 
 
     if (count($check) > 0) {
         // Retrive existing knowledgegraph
-        foreach ($check as $result) {
-            $graphid = $result->kgraphid;
-        }
+        $graphid = reset($check)->kgraphid;
 
         $graph = json_decode($rest->seturl($config, 'knowledge_graphs', $graphid)->get());
     } else {
@@ -94,12 +92,18 @@ function domoscio_add_instance(stdClass $domoscio, mod_domoscio_mod_form $mform 
 
         $graph = json_decode($rest->seturl($config, 'knowledge_graphs', null)->post($json));
 
-        $graphid = $graph->id;
-        $knowledgegraph = new stdClass;
-        $knowledgegraph->courseid = $domoscio->course;
-        $knowledgegraph->kgraphid = $graph->id;
+        if ($graph->id != null) {
+            $graphid = $graph->id;
+            $knowledgegraph = new stdClass;
+            $knowledgegraph->courseid = $domoscio->course;
+            $knowledgegraph->kgraphid = $graph->id;
 
-        $knowledgegraph = $DB->insert_record('domoscio_knowledge_graphs', $knowledgegraph);
+            $knowledgegraph = $DB->insert_record('domoscio_knowledge_graphs', $knowledgegraph);
+        } else {
+            if ($graph->message == "Instance disabled") {
+                throw new moodle_exception('instance_disabled', 'mod_domoscio', '', '', get_string('instance_disabled', 'domoscio'));
+            }
+        }
     }
 
     $rest = new mod_domoscio_client();
@@ -126,13 +130,19 @@ function domoscio_add_instance(stdClass $domoscio, mod_domoscio_mod_form $mform 
 
     $resource = json_decode($rest->seturl($config, 'knowledge_nodes', null)->post($json));
 
-    // And store it in Moodle DB
-    $knowledgenode = new stdClass;
+    if ($resource->id != null) {
+        // And store it in Moodle DB
+        $knowledgenode = new stdClass;
 
-    $knowledgenode->resourceid = $domoscio->resource;
-    $knowledgenode->knodeid = $resource->id;
-    $knowledgenode->instance = null;
-    $knowledgenode->id = $DB->insert_record('domoscio_knowledge_nodes', $knowledgenode);
+        $knowledgenode->resourceid = $domoscio->resource;
+        $knowledgenode->knodeid = $resource->id;
+        $knowledgenode->instance = null;
+        $knowledgenode->id = $DB->insert_record('domoscio_knowledge_nodes', $knowledgenode);
+    } else {
+        if ($resource->message == "Instance disabled") {
+            throw new moodle_exception('instance_disabled', 'mod_domoscio', '', '', get_string('instance_disabled', 'domoscio'));
+        }
+    }
 
     // Retrive resource id created by API and store it with new Domoscio instance
     $domoscio->resourceid = $resource->id;
@@ -642,6 +652,7 @@ function domoscio_extend_settings_navigation(settings_navigation $settingsnav, n
     // Link to students list
     if (has_capability('mod/domoscio:addinstance', $context)) {
         $url = new moodle_url('index.php');
+        $url->param('id', $cm->id);
         $urlname = get_string('students_list', 'domoscio');
         $node = $domoscionode->add($urlname, $url, navigation_node::TYPE_SETTING);
     }
@@ -683,11 +694,18 @@ function domoscio_create_student() {
 
     $student = json_decode($rest->seturl($config, 'students', null)->post($json));
 
-    // Plugin retrive uniqid and store id in DB
-    $record = new stdClass();
-    $record->userid = $USER->id;
-    $record->uniqid = $student->id;
-    $insert = $DB->insert_record('domoscio_userapi', $record, false);
+    if ($student->id != null) {
+
+        // Plugin retrive uniqid and store id in DB
+        $record = new stdClass();
+        $record->userid = $USER->id;
+        $record->uniqid = $student->id;
+        $insert = $DB->insert_record('domoscio_userapi', $record, false);
+    } else {
+        if ($student->message == "Instance disabled") {
+            throw new moodle_exception('instance_disabled', 'mod_domoscio', '', '', get_string('instance_disabled', 'domoscio'));
+        }
+    }
 }
 
 /**
@@ -708,7 +726,7 @@ function domoscio_manage_student($config, $domoscio, $check) {
     // Retrive student data from API
     $student = json_decode($rest->seturl($config, 'students', $check->uniqid)->get());
 
-    // Retrive all active knowledge nodes relative to this instance of Domoscio
+    // Retrive all active knowledge nodes related to this instance of Domoscio
     $knowledgenodes = $DB->get_records_select('domoscio_knowledge_nodes', "instance = :instance AND active <> 0", array('instance' => $domoscio->id));
 
     // Retrive all knowledge nodes students for selected student
@@ -732,13 +750,21 @@ function domoscio_manage_student($config, $domoscio, $check) {
 
                 $kndata = json_decode($rest->seturl($config, 'knowledge_node_students', null)->post($jsonkn));
             }
-            // Get knowledgenodestudent created and store it into database
-            $record->userid = $USER->id;
-            $record->instance = $domoscio->id;
-            $record->knodeid = $kn->knodeid;
-            $record->knodestudentid = $kndata->id;
-            $record->userapiid = $student[0]->id;
-            $insert = $DB->insert_record('domoscio_knode_students', $record, false);
+
+            if ($kndata->id != null) {
+              // Get knowledgenodestudent created and store it into database
+              $record->userid = $USER->id;
+              $record->instance = $domoscio->id;
+              $record->knodeid = $kn->knodeid;
+              $record->knodestudentid = $kndata->id;
+              $record->userapiid = $student[0]->id;
+              $insert = $DB->insert_record('domoscio_knode_students', $record, false);
+            } else {
+                if ($kndata->message == "Instance disabled") {
+                    throw new moodle_exception('instance_disabled', 'mod_domoscio', '', '', get_string('instance_disabled', 'domoscio'));
+                }
+            }
+
             $knsquery = $DB->get_record('domoscio_knode_students', array('knodeid' => $kn->knodeid, 'userid' => $USER->id));
         }
 
@@ -933,13 +959,7 @@ function domoscio_get_scorm_scoes($kn) {
     global $DB, $CFG;
 
     $instance = domoscio_get_resource_info($kn)->instance;
-
-    $scoes = $DB->get_records_sql("SELECT *
-                                   FROM {scorm_scoes}
-                                  WHERE scorm = :instance
-                                    AND scormtype = 'sco'",
-                                  array('instance' => $instance)
-                                 );
+    $scoes = $DB->get_records('scorm_scoes', array('scorm' => $instance, 'scormtype' => "sco"), '', '*');
 
     return $scoes;
 }
@@ -954,12 +974,7 @@ function domoscio_get_book_chapters($cm) {
     global $DB, $CFG;
 
     $instance = domoscio_get_resource_info($cm)->instance;
-
-    $chapters = $DB->get_records_sql("SELECT *
-                                        FROM {book_chapters}
-                                       WHERE bookid = :instance",
-                                     array('instance' => $instance)
-                                    );
+    $chapters = $DB->get_records('book_chapters', array('bookid' => $instance), '', '*');
 
     return $chapters;
 }
@@ -974,13 +989,7 @@ function domoscio_get_lesson_content($cm) {
     global $DB, $CFG;
 
     $instance = domoscio_get_resource_info($cm)->instance;
-
-    $contents = $DB->get_records_sql("SELECT *
-                                        FROM {lesson_pages}
-                                       WHERE lessonid = :instance
-                                         AND qtype = 20",
-                                       array('instance' => $instance)
-                                    );
+    $contents = $DB->get_records('lesson_pages', array('lessonid' => $instance, 'qtype' => 20), '', '*');
 
     return $contents;
 }
@@ -1062,12 +1071,19 @@ function domoscio_write_knowledge_nodes($notions, $config, $resource, $graphid, 
 
         $knedge = json_decode($rest->seturl($config, 'knowledge_edges', null)->post($json));
 
-        // Write knowledge node SCO in database
-        $knowledgenode = new stdClass;
-        $knowledgenode->instance = $domoscio->id;
-        $knowledgenode->knodeid = $kn->id;
-        $knowledgenode->resourceid = $domoscio->resource;
-        $knowledgenode->childid = $notion->id;
+        if ($kn->id != null) {
+            // Write knowledge node SCO in database
+            $knowledgenode = new stdClass;
+            $knowledgenode->instance = $domoscio->id;
+            $knowledgenode->knodeid = $kn->id;
+            $knowledgenode->resourceid = $domoscio->resource;
+            $knowledgenode->childid = $notion->id;
+        } else {
+            if ($kn->message == "Instance disabled") {
+                throw new moodle_exception('instance_disabled', 'mod_domoscio', '', '', get_string('instance_disabled', 'domoscio'));
+            }
+        }
+
 
         $knowledgenode = $DB->insert_record('domoscio_knowledge_nodes', $knowledgenode);
     }
@@ -1835,15 +1851,22 @@ function domoscio_create_notion_from_structure($xmlnotion, $graphid, $config, $k
 
     $knedge = json_decode($rest->seturl($config, 'knowledge_edges', null)->post($json));
 
-    // Write knowledge node SCO in database
-    $knowledgenode = new stdClass;
-    $knowledgenode->instance = $domoscio->id;
-    $knowledgenode->knodeid = $kn->id;
-    $knowledgenode->resourceid = $resource;
-    $knowledgenode->childid = $n->id;
-    $knowledgenode->active = true;
+    if ($kn->id != null) {
+        // Write knowledge node SCO in database
+        $knowledgenode = new stdClass;
+        $knowledgenode->instance = $domoscio->id;
+        $knowledgenode->knodeid = $kn->id;
+        $knowledgenode->resourceid = $resource;
+        $knowledgenode->childid = $n->id;
+        $knowledgenode->active = true;
 
-    $writekn = $DB->insert_record('domoscio_knowledge_nodes', $knowledgenode);
+        $writekn = $DB->insert_record('domoscio_knowledge_nodes', $knowledgenode);
+
+    } else {
+        if ($kn->message == "Instance disabled") {
+            throw new moodle_exception('instance_disabled', 'mod_domoscio', '', '', get_string('instance_disabled', 'domoscio'));
+        }
+    }
 
     return $knowledgenode;
 }

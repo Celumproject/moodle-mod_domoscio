@@ -25,8 +25,6 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-// Replace domoscio with the name of your module and remove this line.
-
 require_once(dirname(dirname(dirname(__FILE__))).'/config.php');
 require_once(dirname(__FILE__).'/lib.php');
 require_once(dirname(__FILE__).'/sdk/client.php');
@@ -73,6 +71,7 @@ domoscio_check_settings($config);
 $cache = cache::make_from_params(cache_store::MODE_SESSION, 'mod_domoscio', 'cache');
 
 $rest = new mod_domoscio_client();
+
 $resource = json_decode($rest->seturl($config, 'knowledge_nodes', $domoscio->resourceid)->get());
 
 $linkedresource = domoscio_get_resource_info($resource->id);
@@ -174,6 +173,7 @@ if (has_capability('mod/domoscio:addinstance', $context)) {
     echo html_writer::tag('ul', $overviewurl.$defnotionurl.$showstatsurl, array('class' => 'nav nav-tabs')).
          html_writer::tag('div', '<h6 class="lead muted text-center">'.get_string('set_notions', 'domoscio').'</h6>'.$notionlist, array('class' => 'coursebox header'));
 
+
 } else if (has_capability('mod/domoscio:submit', $context)) {
     // --- STUDENT VIEW ---
     // Check if student already logged up the Domoscio plugin
@@ -188,8 +188,8 @@ if (has_capability('mod/domoscio:addinstance', $context)) {
                                                get_string('welcome', 'domoscio').$USER->firstname,
                                                array('class' => 'content')),
                               array('class' => 'block'));
-        echo get_string('student_first_visit', 'domoscio')."<br/>";
-        echo html_writer::tag('button',
+        print_string('student_first_visit', 'domoscio');
+        echo "<br/>".html_writer::tag('button',
                               get_string('start_btn', 'domoscio'),
                               array('type' => 'button',
                                   'onclick' => "javascript:location.href='$CFG->wwwroot/mod/domoscio/view.php?id=$cm->id'"));
@@ -327,8 +327,8 @@ if (has_capability('mod/domoscio:addinstance', $context)) {
 
         $cache->set('test_session', $tsobj);
 
-        $row = html_writer::tag('div', $introbox.$testbtn.$startbtn, array('class' => 'block col-sm-6')).
-               html_writer::tag('div', $statsheader . $divcanvas, array('class' => 'block col-sm-6'));
+        $row = html_writer::tag('div', $introbox.$testbtn.$startbtn, array('class' => 'block span6')).
+               html_writer::tag('div', $statsheader . $divcanvas, array('class' => 'block span6'));
 
         echo html_writer::tag('div', $row, array('class' => 'row mod_introbox', 'style' => 'margin-left:-10px'));
 

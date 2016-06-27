@@ -142,6 +142,7 @@ $string['back_to_coursepage'] = "Retour au cours";
 $string['import_activities'] = 'Importer des activités';
 $string['import_activities_help'] = "Utilisez ce formulaire pour associer un paquet SCORM d'activités. Si vous le laissez vide, vous devrez associer des activités pour chaque notion à l'étape suivante.";
 $string['no_questions_in_bank'] = "Vous n'avez pas ajouté de questions dans la banque associée au plugin.";
+$string['instance_disabled'] = "L'accès au service Domoscio a été suspendu.";
 
 $string['proxy_login_required'] = 'You must be logged in to access this url. Please log in and retry.';
 $string['proxy_permission_required'] = 'You don\'t have the permission to access this url.';

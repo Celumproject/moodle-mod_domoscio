@@ -108,7 +108,7 @@ if (has_capability('mod/domoscio:submit', $context)) {
     if (!empty($test)) {
         echo $test->render_test();
     } else {
-        echo get_string('tests_empty', 'domoscio');
+        print_string('tests_empty', 'domoscio');
     }
 }
 

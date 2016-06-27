@@ -66,8 +66,10 @@ class mod_domoscio_test_session {
                 $obj = new stdClass;
                 $obj->kn = $knstudent->knowledge_node_id;
                 $domoscioinstance = $DB->get_record('domoscio_knowledge_nodes', array('knodeid' => $obj->kn));
-                $obj->domoscio = get_coursemodule_from_instance('domoscio', $domoscioinstance->instance, 0, false, MUST_EXIST);
-                $list[] = $obj;
+                try {
+                    $obj->domoscio = get_coursemodule_from_instance('domoscio', $domoscioinstance->instance, 0, false, MUST_EXIST);
+                    $list[] = $obj;
+                } catch (Exception $e) {}
             }
         }
 
@@ -78,7 +80,7 @@ class mod_domoscio_test_session {
     }
 
     public function fetch_tests_by_instance($domoscio) {
-        global $DB, $USER, $CFG;
+        global $DB, $CFG;
         $knowledgenodes = $DB->get_records_select('domoscio_knowledge_nodes', "instance = :instance AND active <> 0", array('instance' => $domoscio->id));
 
         foreach ($knowledgenodes as $kn) {

@@ -47,7 +47,7 @@ $string['modulenamedomoscio_plural'] = 'Domoscios';
 $string['modulename_help'] = 'To learn is good, to know is better. <br/><br/>Link the plugin with any Moodle course module or SCORM package,
  add questions from your quiz module or create from scratch, or use your SCORM package activites. You can also fetch datas from your
   students to evaluate their progress.';
-$string['domoscioresourceset'] = 'Link to a ressource';
+$string['domoscioresourceset'] = 'Link to a resource';
 $string['resourceset_resource'] = 'Course module';
 $string['domoscioresourceset_help'] = 'The Domoscio plugin need to be linked to a resource from your course in order to display right questions to right people';
 $string['domoscioname'] = 'domoscio name';
@@ -142,6 +142,7 @@ $string['back_to_coursepage'] = "Return to course";
 $string['import_activities'] = 'Import activities';
 $string['import_activities_help'] = "Utilisez ce formulaire pour associer un paquet SCORM d'activités. Si vous le laissez vide, vous devrez associer des activités pour chaque notion à l'étape suivante.";
 $string['no_questions_in_bank'] = "No questions in plugin bank yet.";
+$string['instance_disabled'] = "Access to Domoscio service disabled.";
 
 $string['proxy_login_required'] = 'You must be logged in to access this url. Please log in and retry.';
 $string['proxy_permission_required'] = 'You don\'t have the permission to access this url.';

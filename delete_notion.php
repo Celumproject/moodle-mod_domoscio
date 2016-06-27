@@ -81,8 +81,8 @@ if (has_capability('mod/domoscio:addinstance', $context) && confirm_sesskey()) {
 
         $deletedb = $DB->delete_records('domoscio_knowledge_nodes', array('knodeid' => $kn));
 
-        echo get_string('notion_deleted', 'domoscio')."<hr/>".
-                      html_writer::link(new moodle_url($returnurl, array('id' => $cm->id)),
+        print_string('notion_deleted', 'domoscio');
+        echo "<hr/>".html_writer::link(new moodle_url($returnurl, array('id' => $cm->id)),
                                         '<< '.get_string('back_btn', 'domoscio')."&nbsp");
     }
 
