@@ -140,7 +140,7 @@ $string['students_list'] = "Students list";
 $string['settings_required'] = "Domoscio settings are missing. Please contact your administrator.";
 $string['back_to_coursepage'] = "Return to course";
 $string['import_activities'] = 'Import activities';
-$string['import_activities_help'] = "Utilisez ce formulaire pour associer un paquet SCORM d'activités. Si vous le laissez vide, vous devrez associer des activités pour chaque notion à l'étape suivante.";
+$string['import_activities_help'] = "Use this form to associate a SCORM activity package. If you leave it blank, you will need to associate activities for each notion to the next step.";
 $string['no_questions_in_bank'] = "No questions in plugin bank yet.";
 
 $string['proxy_login_required'] = 'You must be logged in to access this url. Please log in and retry.';
